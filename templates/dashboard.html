@@ -74,19 +74,24 @@
                             <div class="p-3 rounded" style="background: rgba(29, 185, 84, 0.05); border: 1px solid rgba(29, 185, 84, 0.2);">
                                 <div class="mb-3">
                                     <label for="geminiApiKey" class="form-label text-muted small">
-                                        <i class="fas fa-key me-1"></i>Your Gemini API Key (Optional)
+                                        <i class="fas fa-key me-1"></i>Your Gemini API Key (Required)
+                                        <button class="btn btn-link p-0 ms-2 text-info" type="button" 
+                                                data-bs-toggle="modal" data-bs-target="#apiKeyGuideModal"
+                                                title="How to get your free Gemini API key">
+                                            <i class="fas fa-question-circle"></i>
+                                        </button>
                                     </label>
                                     <div class="input-group">
                                         <input type="password" class="form-control bg-dark border-secondary text-white" 
-                                               id="geminiApiKey" placeholder="Enter your Gemini API key for advanced AI model">
+                                               id="geminiApiKey" placeholder="Enter your Gemini API key (required for AI recommendations)">
                                         <button class="btn btn-outline-spotify" type="button" id="saveApiKey">
                                             <i class="fas fa-save me-1"></i>Save
                                         </button>
                                     </div>
                                     <div class="form-text text-muted small mt-2">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        With your own API key, you'll get access to Gemini 2.5 Flash Preview with higher rate limits.
-                                        <a href="https://ai.google.dev/gemini-api/docs" target="_blank" class="text-spotify">Get API key</a>
+                                        <i class="fas fa-shield-alt me-1 text-success"></i>
+                                        Your API key is stored securely in your browser and never shared.
+                                        <strong>API key required</strong> - get yours free from Google AI Studio.
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">

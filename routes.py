@@ -482,12 +482,12 @@ def ai_recommendation():
         session_adjustment = request_data.get('session_adjustment')
         custom_gemini_key = request_data.get('custom_gemini_key')
         
-        # Require a Gemini API key (custom or environment)
-        gemini_api_key = custom_gemini_key or os.environ.get('GEMINI_API_KEY')
+        # Require a custom Gemini API key - no fallback to environment key
+        gemini_api_key = custom_gemini_key
         if not gemini_api_key:
             return jsonify({
                 'success': False, 
-                'message': 'Gemini API key required. Please add your API key in AI Settings to use advanced recommendations.'
+                'message': 'Personal Gemini API key required. Please add your API key in AI Settings to use AI recommendations.'
             }), 400
             
         # Determine which model to use based on API key source
