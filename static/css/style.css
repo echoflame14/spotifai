@@ -185,16 +185,6 @@ html, body {
 }
 
 /* Dashboard Layout */
-.sidebar {
-    background-color: var(--spotify-dark-gray);
-    min-height: calc(100vh - 56px);
-    padding: 0;
-}
-
-.sidebar-content {
-    padding: 2rem 1.5rem;
-}
-
 .main-content {
     padding: 2rem;
     background-color: var(--spotify-black);
@@ -451,10 +441,6 @@ html, body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .sidebar {
-        display: none;
-    }
-    
     .main-content {
         padding: 1rem;
     }
@@ -513,22 +499,23 @@ html, body {
     animation: fadeInUp 0.5s ease-out;
 }
 
-/* Custom scrollbar for sidebar */
-.sidebar::-webkit-scrollbar {
-    width: 8px;
+/* User Profile Header Styling */
+.user-profile-header {
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
 }
 
-.sidebar::-webkit-scrollbar-track {
-    background: var(--spotify-dark-gray);
+.ai-info-card {
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.1), rgba(30, 215, 96, 0.05));
+    border: 1px solid rgba(29, 185, 84, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
 }
 
-.sidebar::-webkit-scrollbar-thumb {
-    background: var(--spotify-gray);
-    border-radius: 4px;
-}
-
-.sidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--spotify-light-gray);
+.gradient-header {
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(30, 215, 96, 0.08));
+    border-bottom: 1px solid rgba(29, 185, 84, 0.2);
 }
 
 /* Alert customization */
