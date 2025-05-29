@@ -168,11 +168,6 @@ function handlePlayPauseClick(button) {
     .then(data => {
         // Show success/error message
         showNotification(data.message, data.success ? 'success' : 'error');
-        
-        // Refresh page content after a short delay
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
     })
     .catch(error => {
         console.error('Error:', error);
