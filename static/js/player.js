@@ -17,6 +17,9 @@ function initializeAIRecommender() {
     if (aiButton) {
         aiButton.addEventListener('click', handleAIRecommendation);
     }
+    
+    // Setup session preferences
+    setupSessionPreferences();
 
     // Auto-refresh current track info every 30 seconds
     if (document.querySelector('.now-playing')) {

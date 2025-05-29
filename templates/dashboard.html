@@ -178,6 +178,33 @@
 
 
                         
+                        <!-- Session Preferences Section -->
+                        <div id="sessionPreferences" class="session-preferences mt-4">
+                            <hr class="border-secondary">
+                            <h6 class="text-white mb-3">
+                                <i class="fas fa-adjust text-warning me-2"></i>
+                                Adjust This Session
+                            </h6>
+                            <div class="mb-3">
+                                <textarea id="sessionAdjustmentText" class="form-control bg-dark text-white border-secondary" 
+                                          rows="2" placeholder="Tell me what you'd like to explore for this session... (e.g., 'Show me more country music', 'I want heavier rock today', 'Mix in some jazz')"></textarea>
+                            </div>
+                            <div class="d-flex gap-2 mb-3">
+                                <button id="applySessionAdjustment" class="btn btn-warning">
+                                    <i class="fas fa-magic me-2"></i>
+                                    Apply Preference
+                                </button>
+                                <button id="clearSessionAdjustment" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-times me-1"></i>
+                                    Clear
+                                </button>
+                            </div>
+                            <div id="sessionAdjustmentStatus" class="alert alert-info" style="display: none;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <span id="sessionAdjustmentMessage"></span>
+                            </div>
+                        </div>
+
                         <!-- Chat Feedback Section -->
                         <div id="chatFeedback" class="chat-feedback mt-4" style="display: none;">
                             <hr class="border-secondary">
