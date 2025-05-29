@@ -104,17 +104,17 @@
                                     <button type="button" class="btn-close btn-close-white" 
                                             data-bs-toggle="collapse" data-bs-target="#musicProfileCollapse"></button>
                                 </div>
-                                <p class="text-muted">The AI analyzes your Spotify listening history to roast your music taste and reveal what it says about your personality.</p>
+                                <p class="text-muted">The AI analyzes your Spotify listening history to understand your musical preferences and personality.</p>
                                 
                                 {% if music_insights and music_insights.analysis_ready %}
-                                    <!-- AI Taste Roast -->
-                                    {% if music_insights.user_taste_roast %}
+                                    <!-- Musical Taste Profile -->
+                                    {% if music_insights.user_taste_profile %}
                                         <div class="mt-4 p-4 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.2);">
                                             <h6 class="text-spotify mb-3">
                                                 <i class="fas fa-fire me-2"></i>
                                                 Musical Personality Analysis
                                             </h6>
-                                            <p class="text-light mb-0" style="font-size: 1.1rem; line-height: 1.6;">{{ music_insights.user_taste_roast }}</p>
+                                            <p class="text-light mb-0" style="font-size: 1.1rem; line-height: 1.6;">{{ music_insights.user_taste_profile }}</p>
                                         </div>
                                     {% endif %}
                                     
@@ -184,6 +184,10 @@
                             <h6 class="text-white mb-3">
                                 <i class="fas fa-adjust text-warning me-2"></i>
                                 Adjust This Session
+                                <i class="fas fa-question-circle text-muted ms-2" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Temporarily influence recommendations for this session only! Tell the AI what genres, moods, or styles you want to explore. This won't permanently change your taste profile - it's perfect for discovering new music or matching your current mood. Try: 'Show me ambient music for studying' or 'I want energetic workout songs'"></i>
                             </h6>
                             <div class="mb-3">
                                 <textarea id="sessionAdjustmentText" class="form-control bg-dark text-white border-secondary" 

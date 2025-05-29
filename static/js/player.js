@@ -12,6 +12,12 @@ function initializeAIRecommender() {
     console.log('%cDiscover your next favorite song with AI', 'color: #b3b3b3; font-size: 12px;');
     console.log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
 
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
     // Add AI recommendation button handler
     const aiButton = document.getElementById('getRecommendation');
     if (aiButton) {

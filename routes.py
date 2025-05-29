@@ -295,15 +295,15 @@ def generate_ai_music_analysis(music_data, gemini_api_key):
         
         # Create insightful, data-driven prompt for music analysis
         prompt = f"""
-Analyze this user's Spotify listening data and provide insightful commentary about their musical personality, incorporating specific data points and observations. Be perceptive and engaging while remaining respectful.
+Analyze this user's Spotify listening data and provide thoughtful insights about their musical preferences and patterns. Be conversational and informative while remaining positive.
 
 MUSIC DATA:
 {json.dumps(music_data, indent=2)}
 
 Respond ONLY with a JSON object in this exact format:
 {{
-    "user_taste_roast": "[2-3 sentences analyzing their overall music preferences with specific data points. Include genre counts, artist patterns, or listening habits. Make insightful observations about what their choices reveal about their personality or life. Be observant but not overly critical]",
-    "recent_mood_analysis": "[1-2 sentences examining their recent listening patterns with concrete details. Mention specific tracks, tempo changes, or genre shifts. Connect these patterns to their current emotional state or life phase with genuine insight]",
+    "user_taste_profile": "[2-3 sentences describing their overall music preferences with specific data points. Include genre patterns, favorite artists, or listening habits. Focus on what makes their taste unique and interesting]",
+    "recent_mood_analysis": "[1-2 sentences examining their recent listening patterns. Mention specific trends, energy levels, or genre shifts. Connect these patterns to their current musical journey with positive insights]",
     "analysis_ready": true
 }}
 
@@ -1102,9 +1102,7 @@ ORIGINAL AI REASONING:
 USER'S PSYCHOLOGICAL ANALYSIS:
 {recommendation.psychological_analysis}
 
-Write ONE tight, conversational paragraph (4-6 sentences max) explaining why this user will love this track. Be enthusiastic and specific about musical connections to their taste. Mention 2-3 artists they already love and explain how this song relates. Keep it casual and engaging, like you're texting a friend about why they need to hear this song right now.
-
-Start with something like "Okay, so..." or "Dude, you're gonna love this because..." and make it feel personal and exciting.
+Write ONE concise, engaging paragraph (4-6 sentences max) explaining why this user will love this track. Be specific about musical connections to their taste. Mention 2-3 artists they already love and explain how this song relates. Keep it conversational and informative, focusing on the musical elements that connect to their preferences.
 """
         
         # Generate the reasoning
