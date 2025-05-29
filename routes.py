@@ -355,7 +355,7 @@ def ai_recommendation():
         
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         # First, analyze the user's music patterns and psychology
         app.logger.info("Performing psychological and pattern analysis...")
@@ -747,7 +747,7 @@ def chat_feedback():
         
         # Configure Gemini for feedback analysis
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         # Create prompt for analyzing user feedback
         feedback_analysis_prompt = f"""
