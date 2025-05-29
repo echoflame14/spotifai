@@ -168,18 +168,25 @@ def dashboard():
                          current_track=current_track,
                          playback_state=playback_state)
 
-@app.route('/play')
+@app.route('/play', methods=['GET', 'POST'])
 def play():
     """Resume playback"""
     if 'user_id' not in session:
+        if request.method == 'POST':
+            return jsonify({'error': 'Not authenticated'}), 401
         return redirect(url_for('index'))
     
     user = User.query.get(session['user_id'])
     if not user:
+        if request.method == 'POST':
+            return jsonify({'error': 'User not found'}), 404
         return redirect(url_for('index'))
     
     spotify_client = SpotifyClient(user.access_token)
     success = spotify_client.play()
+    
+    if request.method == 'POST':
+        return jsonify({'success': success})
     
     if success:
         flash('Playback resumed', 'success')
@@ -188,18 +195,25 @@ def play():
     
     return redirect(url_for('dashboard'))
 
-@app.route('/pause')
+@app.route('/pause', methods=['GET', 'POST'])
 def pause():
     """Pause playback"""
     if 'user_id' not in session:
+        if request.method == 'POST':
+            return jsonify({'error': 'Not authenticated'}), 401
         return redirect(url_for('index'))
     
     user = User.query.get(session['user_id'])
     if not user:
+        if request.method == 'POST':
+            return jsonify({'error': 'User not found'}), 404
         return redirect(url_for('index'))
     
     spotify_client = SpotifyClient(user.access_token)
     success = spotify_client.pause()
+    
+    if request.method == 'POST':
+        return jsonify({'success': success})
     
     if success:
         flash('Playback paused', 'success')
