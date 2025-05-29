@@ -510,8 +510,11 @@ let currentRecommendationId = null;
 let currentPreviewAudio = null;
 
 function previewTrack(previewUrl, buttonElement) {
+    console.log('Preview button clicked!', { previewUrl, buttonElement });
+    
     if (!previewUrl || previewUrl === '' || previewUrl === 'null') {
-        showNotification('No preview available for this track', 'warning');
+        console.log('No preview URL available');
+        showNotification('Preview not available for this track - Spotify doesn\'t provide previews for all songs', 'info');
         return;
     }
     
