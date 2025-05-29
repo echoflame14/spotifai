@@ -444,6 +444,59 @@ html, body {
     border: 1px solid rgba(29, 185, 84, 0.2);
 }
 
+/* Process Steps Styling */
+.process-steps .step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--spotify-green);
+    color: var(--spotify-black);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.how-it-works {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Music Profile Stats */
+.stat-item {
+    padding: 1rem;
+}
+
+.stat-item i {
+    opacity: 0.8;
+}
+
+.music-profile .card-body {
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.05), rgba(30, 215, 96, 0.02));
+}
+
+/* Enhanced Recommendation Info */
+.recommendation-info p {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.recommendation-info i {
+    width: 16px;
+    text-align: center;
+}
+
 .recommendation-result {
     animation: fadeInUp 0.6s ease-out;
 }

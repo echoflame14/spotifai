@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Spotify Clone{% endblock %}
+{% block title %}AI Music Recommender - Discover Your Next Favorite Song{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -23,33 +23,51 @@
                     {% endif %}
                 </div>
                 
-                <!-- Quick Actions -->
-                <div class="quick-actions mb-4">
-                    <h6 class="text-muted text-uppercase small mb-3">Quick Actions</h6>
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('play') }}" class="btn btn-outline-spotify btn-sm">
-                            <i class="fas fa-play me-1"></i> Play
-                        </a>
-                        <a href="{{ url_for('pause') }}" class="btn btn-outline-spotify btn-sm">
-                            <i class="fas fa-pause me-1"></i> Pause
-                        </a>
+
+                
+                <!-- AI Music Recommender -->
+                <div class="ai-recommendations">
+                    <h6 class="text-muted text-uppercase small mb-3">
+                        <i class="fas fa-brain me-2"></i>AI Music Intelligence
+                    </h6>
+                    <div class="d-grid gap-2 mb-3">
+                        <button id="getRecommendation" class="btn btn-gradient-spotify">
+                            <i class="fas fa-sparkles me-2"></i>
+                            Discover New Music
+                        </button>
+                    </div>
+                    <div class="recommendation-info">
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-magic me-1 text-spotify"></i>
+                            Advanced AI analyzes your listening patterns
+                        </p>
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-chart-line me-1 text-spotify"></i>
+                            Learns from your feedback to improve
+                        </p>
+                        <p class="text-muted small">
+                            <i class="fas fa-heart me-1 text-spotify"></i>
+                            Finds songs that match your unique taste
+                        </p>
                     </div>
                 </div>
                 
-                <!-- AI Recommendations -->
-                <div class="ai-recommendations">
-                    <h6 class="text-muted text-uppercase small mb-3">AI Recommendations</h6>
-                    <div class="d-grid gap-2">
-                        <button id="getRecommendation" class="btn btn-gradient-spotify">
-                            <i class="fas fa-robot me-2"></i>
-                            Get AI Recommendation
-                        </button>
-                    </div>
-                    <p class="text-muted small mt-2">Let AI analyze your music taste and recommend the perfect track!</p>
-                    
-                    <!-- Permission Status & Data Transparency -->
-                    <div class="mt-3">
-
+                <!-- How It Works -->
+                <div class="how-it-works mt-4">
+                    <h6 class="text-muted text-uppercase small mb-3">How It Works</h6>
+                    <div class="process-steps">
+                        <div class="step mb-2">
+                            <span class="step-number">1</span>
+                            <span class="text-muted small">Analyze your Spotify history</span>
+                        </div>
+                        <div class="step mb-2">
+                            <span class="step-number">2</span>
+                            <span class="text-muted small">Understand your preferences</span>
+                        </div>
+                        <div class="step mb-2">
+                            <span class="step-number">3</span>
+                            <span class="text-muted small">Recommend perfect matches</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -57,112 +75,43 @@
         
         <!-- Main Content -->
         <div class="col-lg-9 col-md-8 main-content">
-            <!-- Now Playing -->
-            {% if current_track and current_track.item %}
-                <div class="now-playing mb-4">
-                    <div class="card bg-dark-card border-0">
-                        <div class="card-body">
-                            <h5 class="card-title text-white mb-3">
-                                <i class="fas fa-music text-spotify me-2"></i>
-                                Now Playing
-                            </h5>
-                            <div class="row align-items-center">
-                                <div class="col-auto">
-                                    {% if current_track.item.album.images %}
-                                        <img src="{{ current_track.item.album.images[0].url }}" alt="{{ current_track.item.album.name }}" class="album-cover">
-                                    {% else %}
-                                        <div class="album-cover-placeholder">
-                                            <i class="fas fa-music"></i>
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                <div class="col">
-                                    <h6 class="text-white mb-1">{{ current_track.item.name }}</h6>
-                                    <p class="text-muted mb-1">
-                                        {% for artist in current_track.item.artists %}
-                                            {{ artist.name }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                    </p>
-                                    <p class="text-muted small mb-0">{{ current_track.item.album.name }}</p>
-                                </div>
-                                <div class="col-auto">
-                                    <div class="player-controls">
-                                        <button onclick="togglePlayPause()" 
-                                                class="btn btn-spotify btn-lg rounded-circle" 
-                                                id="playPauseBtn">
-                                            <i class="fas fa-{{ 'pause' if playback_state and playback_state.is_playing else 'play' }}"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Progress Bar -->
-                            {% if playback_state and playback_state.progress_ms and current_track.item.duration_ms %}
-                                <div class="progress mt-3" style="height: 4px;">
-                                    <div class="progress-bar bg-spotify" 
-                                         style="width: {{ (playback_state.progress_ms / current_track.item.duration_ms * 100) | round(1) }}%">
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-between mt-1">
-                                    <small class="text-muted">{{ (playback_state.progress_ms / 1000 / 60) | int }}:{{ '%02d' | format(((playback_state.progress_ms / 1000) % 60) | int) }}</small>
-                                    <small class="text-muted">{{ (current_track.item.duration_ms / 1000 / 60) | int }}:{{ '%02d' | format(((current_track.item.duration_ms / 1000) % 60) | int) }}</small>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            {% else %}
-                <div class="no-track mb-4">
-                    <div class="card bg-dark-card border-0">
-                        <div class="card-body text-center py-5">
-                            <i class="fas fa-music fa-3x text-muted mb-3"></i>
-                            <h5 class="text-white mb-2">No Music Playing</h5>
-                            <p class="text-muted mb-3">Start playing music on Spotify to see it here.</p>
-                            <p class="text-muted small">Make sure Spotify is open on one of your devices.</p>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
-            
-            <!-- Playback Controls -->
-            <div class="playback-controls mb-4">
+            <!-- Music Taste Profile -->
+            <div class="music-profile mb-4">
                 <div class="card bg-dark-card border-0">
                     <div class="card-body">
                         <h5 class="card-title text-white mb-3">
-                            <i class="fas fa-sliders-h text-spotify me-2"></i>
-                            Playback Controls
+                            <i class="fas fa-user-music text-spotify me-2"></i>
+                            Your Music Taste Profile
                         </h5>
-                        <div class="row">
-                            <div class="col-auto">
-                                <a href="{{ url_for('play') }}" class="btn btn-spotify me-2">
-                                    <i class="fas fa-play me-1"></i> Play
-                                </a>
-                                <a href="{{ url_for('pause') }}" class="btn btn-outline-spotify">
-                                    <i class="fas fa-pause me-1"></i> Pause
-                                </a>
-                            </div>
-                        </div>
-                        
-                        {% if playback_state %}
-                            <div class="mt-3">
-                                <div class="row align-items-center">
-                                    <div class="col-auto">
-                                        <small class="text-muted">Status:</small>
-                                    </div>
-                                    <div class="col">
-                                        <span class="badge bg-{{ 'success' if playback_state.is_playing else 'secondary' }}">
-                                            {{ 'Playing' if playback_state.is_playing else 'Paused' }}
-                                        </span>
-                                        {% if playback_state.device %}
-                                            <span class="text-muted ms-2">on {{ playback_state.device.name }}</span>
-                                        {% endif %}
-                                    </div>
+                        <p class="text-muted">The AI analyzes your Spotify listening history, favorite tracks, and artists to understand your unique musical preferences and recommend songs you'll love.</p>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="stat-item text-center">
+                                    <i class="fas fa-headphones text-spotify fa-2x mb-2"></i>
+                                    <h6 class="text-white">Recent Tracks</h6>
+                                    <p class="text-muted small">Analyzing listening patterns</p>
                                 </div>
                             </div>
-                        {% endif %}
+                            <div class="col-md-4">
+                                <div class="stat-item text-center">
+                                    <i class="fas fa-heart text-spotify fa-2x mb-2"></i>
+                                    <h6 class="text-white">Top Artists</h6>
+                                    <p class="text-muted small">Understanding preferences</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stat-item text-center">
+                                    <i class="fas fa-brain text-spotify fa-2x mb-2"></i>
+                                    <h6 class="text-white">AI Analysis</h6>
+                                    <p class="text-muted small">Psychological insights</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+
             
             <!-- AI Recommendation Result -->
             <div id="recommendationResult" class="recommendation-result mb-4" style="display: none;">

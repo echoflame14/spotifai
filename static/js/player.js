@@ -1,48 +1,16 @@
 /**
- * Spotify Clone Player JavaScript
- * Handles interactive music controls and UI updates
+ * AI Music Recommender JavaScript
+ * Handles AI recommendation interactions and feedback
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializePlayer();
+    initializeAIRecommender();
 });
 
-function initializePlayer() {
-    // Add click handlers for playlist items
-    const playlistItems = document.querySelectorAll('.playlist-item');
-    playlistItems.forEach(item => {
-        item.addEventListener('click', function() {
-            // Add visual feedback
-            this.style.backgroundColor = 'var(--spotify-gray)';
-            setTimeout(() => {
-                this.style.backgroundColor = '';
-            }, 200);
-        });
-    });
-
-    // Add hover effects for playlist cards
-    const playlistCards = document.querySelectorAll('.playlist-card');
-    playlistCards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-4px)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
-
-    // Add AJAX handlers for control buttons
-    const controlButtons = document.querySelectorAll('.btn-spotify, .btn-outline-spotify');
-    controlButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            // Handle play/pause buttons with AJAX
-            if (this.href && (this.href.includes('/play') || this.href.includes('/pause'))) {
-                e.preventDefault();
-                handlePlayPauseClick(this);
-            }
-        });
-    });
+function initializeAIRecommender() {
+    console.log('%c🎵 AI Music Recommender Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
+    console.log('%cDiscover your next favorite song with AI', 'color: #b3b3b3; font-size: 12px;');
+    console.log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
 
     // Add AI recommendation button handler
     const aiButton = document.getElementById('getRecommendation');
