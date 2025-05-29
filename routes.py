@@ -233,8 +233,28 @@ def ai_recommendation():
         # Collect comprehensive user music data
         app.logger.info("Collecting comprehensive user music data for AI recommendation...")
         
-        # Get recent listening history (50 tracks)
+        # Get recent listening history (150 tracks)
         recent_tracks = spotify_client.get_recently_played(limit=50) or {'items': []}
+        
+        # Get additional recent tracks in batches since Spotify limits to 50 per request
+        all_recent_tracks = recent_tracks.get('items', [])
+        
+        # Get more recent tracks using pagination if available
+        after = recent_tracks.get('cursors', {}).get('after') if recent_tracks else None
+        for _ in range(2):  # Get 2 more batches of 50 tracks each
+            if after:
+                batch = spotify_client._make_request('GET', f'/me/player/recently-played?limit=50&after={after}') or {'items': []}
+                batch_items = batch.get('items', [])
+                if batch_items:
+                    all_recent_tracks.extend(batch_items)
+                    after = batch.get('cursors', {}).get('after')
+                else:
+                    break
+            else:
+                break
+        
+        # Limit to 150 tracks total
+        all_recent_tracks = all_recent_tracks[:150]
         
         # Get top tracks across different time ranges
         top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=20) or {'items': []}
@@ -256,7 +276,7 @@ def ai_recommendation():
         music_data = {
             'recent_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name'], 
                              'album': track['track']['album']['name'], 'genres': track['track'].get('genres', [])} 
-                            for track in recent_tracks.get('items', [])],
+                            for track in all_recent_tracks],
             'top_tracks_last_month': [{'name': track['name'], 'artist': track['artists'][0]['name'], 
                                      'album': track['album']['name'], 'popularity': track.get('popularity', 0)} 
                                     for track in top_tracks_short.get('items', [])],
@@ -291,13 +311,13 @@ def ai_recommendation():
         
         # Log the collected data for transparency
         app.logger.info(f"Comprehensive data collected:")
-        app.logger.info(f"Recent tracks: {len(music_data['recent_tracks'])}")
+        app.logger.info(f"Recent tracks collected: {len(all_recent_tracks)} (requested 150)")
+        app.logger.info(f"Recent tracks in data: {len(music_data['recent_tracks'])}")
         app.logger.info(f"Top tracks (short/medium/long): {len(music_data['top_tracks_last_month'])}/{len(music_data['top_tracks_6_months'])}/{len(music_data['top_tracks_all_time'])}")
         app.logger.info(f"Top artists (short/medium/long): {len(music_data['top_artists_last_month'])}/{len(music_data['top_artists_6_months'])}/{len(music_data['top_artists_all_time'])}")
         app.logger.info(f"Saved tracks: {len(music_data['saved_tracks'])}")
         app.logger.info(f"Playlists: {len(music_data['playlist_names'])}")
         app.logger.info(f"Unique genres: {len(music_data['favorite_genres'])}")
-        app.logger.info(f"Full data being sent to AI: {music_data}")
         
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
@@ -390,6 +410,24 @@ Do not include any other text, explanations, or formatting."""
         if search_results and search_results.get('tracks', {}).get('items'):
             recommended_track = search_results['tracks']['items'][0]
             
+            # Save recommendation to database
+            from models import Recommendation
+            recommendation = Recommendation(
+                user_id=user.id,
+                track_name=recommended_track['name'],
+                artist_name=recommended_track['artists'][0]['name'],
+                track_uri=recommended_track['uri'],
+                album_name=recommended_track['album']['name'],
+                ai_reasoning=recommendation_text,
+                psychological_analysis=user_analysis,
+                listening_data_snapshot=json.dumps(music_data)
+            )
+            db.session.add(recommendation)
+            db.session.commit()
+            
+            # Store recommendation ID in session for feedback
+            session['current_recommendation_id'] = recommendation.id
+            
             return jsonify({
                 'success': True,
                 'track': {
@@ -403,7 +441,8 @@ Do not include any other text, explanations, or formatting."""
                 'ai_reasoning': recommendation_text,
                 'ai_input_data': prompt,
                 'ai_output_data': recommendation_text,
-                'psychological_analysis': user_analysis
+                'psychological_analysis': user_analysis,
+                'recommendation_id': recommendation.id
             })
         else:
             return jsonify({
