@@ -3,156 +3,80 @@
 {% block title %}AI Music Recommender - Discover Your Next Favorite Song{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-lg-3 col-md-4 sidebar">
-            <div class="sidebar-content">
-                <!-- User Profile -->
-                <div class="user-profile mb-4">
-                    {% if user.image_url %}
-                        <img src="{{ user.image_url }}" alt="{{ user.display_name }}" class="profile-image rounded-circle mb-2">
-                    {% else %}
-                        <div class="profile-image-placeholder rounded-circle mb-2">
-                            <i class="fas fa-user"></i>
-                        </div>
-                    {% endif %}
-                    <h5 class="text-white">{{ user.display_name or 'Spotify User' }}</h5>
-                    {% if user.email %}
-                        <p class="text-muted small">{{ user.email }}</p>
-                    {% endif %}
-                </div>
-                
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10">
+            <!-- User Profile Header -->
+            <div class="user-profile-header text-center mb-4">
+                {% if user.image_url %}
+                    <img src="{{ user.image_url }}" alt="{{ user.display_name }}" class="profile-image rounded-circle mb-2" style="width: 60px; height: 60px;">
+                {% else %}
+                    <div class="profile-image-placeholder rounded-circle mb-2 d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px; background: rgba(255,255,255,0.1);">
+                        <i class="fas fa-user text-muted"></i>
+                    </div>
+                {% endif %}
+                <h4 class="text-white mb-1">{{ user.display_name or 'Spotify User' }}</h4>
+                {% if user.email %}
+                    <p class="text-muted small">{{ user.email }}</p>
+                {% endif %}
+            </div>
 
-                
-                <!-- AI Music Recommender -->
-                <div class="ai-recommendations">
-                    <h6 class="text-muted text-uppercase small mb-3">
-                        <i class="fas fa-brain me-2"></i>AI Music Intelligence
-                    </h6>
-                    <div class="d-grid gap-2 mb-3">
-                        <button id="getRecommendation" class="btn btn-gradient-spotify">
+            <!-- AI Music Intelligence Card -->
+            <div class="ai-info-card mb-4">
+                <div class="gradient-header p-4 text-center">
+                    <h4 class="text-white mb-3">
+                        <i class="fas fa-brain me-2"></i>
+                        AI Music Intelligence
+                    </h4>
+                    <div class="d-grid gap-2 mb-4">
+                        <button id="getRecommendation" class="btn btn-gradient-spotify btn-lg">
                             <i class="fas fa-sparkles me-2"></i>
                             Discover New Music
                         </button>
                     </div>
-                    <div class="recommendation-info">
-                        <p class="text-muted small mb-2">
-                            <i class="fas fa-magic me-1 text-spotify"></i>
-                            Advanced AI analyzes your listening patterns
-                        </p>
-                        <p class="text-muted small mb-2">
-                            <i class="fas fa-chart-line me-1 text-spotify"></i>
-                            Learns from your feedback to improve
-                        </p>
-                        <p class="text-muted small">
-                            <i class="fas fa-heart me-1 text-spotify"></i>
-                            Finds songs that match your unique taste
-                        </p>
-                    </div>
-                    
-                    <!-- Learned from Feedback Section -->
-                    <div id="feedbackLearningSection" class="feedback-learning-section mt-3">
-                        <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
-                                data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" aria-expanded="false">
-                            <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
-                                <span><i class="fas fa-brain me-2"></i>Learned from Your Feedback</span>
-                                <i class="fas fa-chevron-down small"></i>
-                            </h6>
-                        </button>
-                        
-                        <div class="collapse mt-3" id="feedbackLearningCollapse">
-                            <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
-                                <div class="d-flex align-items-center justify-content-center py-3">
-                                    <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
-                                    <span class="text-muted small">Loading feedback insights...</span>
-                                </div>
-                            </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-magic me-1 text-spotify"></i>
+                                Advanced AI analyzes your listening patterns
+                            </p>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-chart-line me-1 text-spotify"></i>
+                                Learns from your feedback to improve
+                            </p>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-heart me-1 text-spotify"></i>
+                                Finds songs that match your unique taste
+                            </p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- How It Works -->
-                <div class="how-it-works mt-4">
+                <!-- Learned from Feedback Section -->
+                <div id="feedbackLearningSection" class="feedback-learning-section p-3">
                     <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
-                            data-bs-toggle="collapse" data-bs-target="#technicalDetails" aria-expanded="false">
+                            data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" aria-expanded="false">
                         <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
-                            How It Works
+                            <span><i class="fas fa-brain me-2"></i>Learned from Your Feedback</span>
                             <i class="fas fa-chevron-down small"></i>
                         </h6>
                     </button>
                     
-                    <div class="collapse mt-3" id="technicalDetails">
-                        <div class="process-steps mb-4">
-                            <div class="step mb-2">
-                                <span class="step-number">1</span>
-                                <span class="text-muted small">Analyze your Spotify history</span>
-                            </div>
-                            <div class="step mb-2">
-                                <span class="step-number">2</span>
-                                <span class="text-muted small">Understand your preferences</span>
-                            </div>
-                            <div class="step mb-2">
-                                <span class="step-number">3</span>
-                                <span class="text-muted small">Recommend perfect matches</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Technical Details -->
-                        <div class="technical-details p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
-                            <h6 class="text-white mb-3">
-                                <i class="fas fa-cogs me-2"></i>
-                                Technical Implementation
-                            </h6>
-                            
-                            <div class="tech-section mb-3">
-                                <h6 class="text-spotify small mb-2">Data Collection</h6>
-                                <ul class="text-muted small mb-0 ps-3">
-                                    <li>Fetches 150+ recent tracks via Spotify Web API</li>
-                                    <li>Analyzes top tracks/artists across 3 time periods</li>
-                                    <li>Collects saved tracks, playlists, and genre data</li>
-                                    <li>Tracks recommendation history to prevent repetition</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="tech-section mb-3">
-                                <h6 class="text-spotify small mb-2">AI Analysis Engine</h6>
-                                <ul class="text-muted small mb-0 ps-3">
-                                    <li>Google Gemini 2.0 Flash Exp for psychological analysis</li>
-                                    <li>Processes listening patterns and musical evolution</li>
-                                    <li>Identifies genre preferences and mood patterns</li>
-                                    <li>Learns from user feedback to improve accuracy</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="tech-section mb-3">
-                                <h6 class="text-spotify small mb-2">Recommendation Logic</h6>
-                                <ul class="text-muted small mb-0 ps-3">
-                                    <li>Avoids recently played and recommended tracks</li>
-                                    <li>Balances familiar artists with new discoveries</li>
-                                    <li>Uses multi-strategy Spotify search validation</li>
-                                    <li>Stores recommendations with AI reasoning</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="tech-section">
-                                <h6 class="text-spotify small mb-2">Technology Stack</h6>
-                                <div class="d-flex flex-wrap gap-1">
-                                    <span class="badge bg-secondary">Python Flask</span>
-                                    <span class="badge bg-secondary">Spotify Web API</span>
-                                    <span class="badge bg-secondary">Google Gemini AI</span>
-                                    <span class="badge bg-secondary">PostgreSQL</span>
-                                    <span class="badge bg-secondary">OAuth 2.0</span>
-                                </div>
+                    <div class="collapse mt-3" id="feedbackLearningCollapse">
+                        <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
+                            <div class="d-flex align-items-center justify-content-center py-3">
+                                <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                                <span class="text-muted small">Loading feedback insights...</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Main Content -->
-        <div class="col-lg-9 col-md-8 main-content">
+            
             <!-- Music Taste Profile Toggle -->
             <div class="music-profile-toggle mb-3">
                 <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" 
