@@ -23,7 +23,12 @@ class SpotifyClient:
                 return True
             
             if response.status_code in [200, 201]:
-                return response.json() if response.content else True
+                if response.content:
+                    try:
+                        return response.json()
+                    except ValueError:
+                        return True
+                return True
             
             logging.error(f"Spotify API error: {response.status_code} - {response.text}")
             return None

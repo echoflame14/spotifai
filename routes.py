@@ -106,7 +106,7 @@ def callback():
         
         user.display_name = user_profile.get('display_name', '')
         user.email = user_profile.get('email', '')
-        user.image_url = user_profile['images'][0]['url'] if user_profile.get('images') else None
+        user.image_url = user_profile['images'][0]['url'] if user_profile.get('images') and len(user_profile['images']) > 0 else None
         user.access_token = access_token
         user.refresh_token = refresh_token
         user.token_expires_at = expires_at
