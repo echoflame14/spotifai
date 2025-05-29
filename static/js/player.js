@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeAIRecommender() {
-    console.log('%c🎵 AI Music Recommender Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
+    console.log('%c🎵 SpotifAI Music Recommender Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
     console.log('%cDiscover your next favorite song with AI', 'color: #b3b3b3; font-size: 12px;');
     console.log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
 
@@ -510,7 +510,7 @@ let currentRecommendationId = null;
 let currentPreviewAudio = null;
 
 function previewTrack(previewUrl, buttonElement) {
-    if (!previewUrl) {
+    if (!previewUrl || previewUrl === '' || previewUrl === 'null') {
         showNotification('No preview available for this track', 'warning');
         return;
     }
