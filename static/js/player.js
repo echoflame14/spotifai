@@ -430,7 +430,7 @@ function displayRecommendedTrack(track, reasoning) {
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
                     <i class="fas fa-play me-1"></i>Play
                 </button>
-                <button class="btn btn-outline-secondary me-2 preview-btn" onclick="previewTrack(${track.preview_url ? `'${track.preview_url}'` : 'null'}, this)" ${!track.preview_url ? 'disabled title="No preview available"' : ''}>
+                <button class="btn btn-outline-secondary me-2 preview-btn" onclick="previewTrack('${track.preview_url || ''}', this)" ${!track.preview_url ? 'disabled title="No preview available"' : ''}>
                     <i class="fas fa-play-circle me-1"></i>Preview
                 </button>
                 <button class="btn btn-outline-light me-2" onclick="getNextRecommendation()">
