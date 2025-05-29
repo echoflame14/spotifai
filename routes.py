@@ -153,6 +153,15 @@ def callback():
 
 def generate_music_insights(spotify_client):
     """Generate music taste profile insights from user's Spotify data using AI analysis"""
+    
+    # Check if we already have cached insights for this session
+    if 'music_taste_profile' in session and 'profile_timestamp' in session:
+        import time
+        # Cache for 30 minutes per session to avoid redundant AI calls
+        if time.time() - session['profile_timestamp'] < 1800:
+            app.logger.info("Using cached music taste profile")
+            return session['music_taste_profile']
+    
     try:
         # Check if Gemini API key is available
         gemini_api_key = os.environ.get('GEMINI_API_KEY')
@@ -215,6 +224,11 @@ def generate_music_insights(spotify_client):
         ai_insights = generate_ai_music_analysis(music_data, gemini_api_key)
         
         if ai_insights:
+            # Cache the result in session for 30 minutes
+            import time
+            session['music_taste_profile'] = ai_insights
+            session['profile_timestamp'] = time.time()
+            app.logger.info("Cached new music taste profile")
             return ai_insights
         else:
             # Fallback to basic insights if AI fails
@@ -455,12 +469,12 @@ def ai_recommendation():
         session_adjustment = request_data.get('session_adjustment')
         custom_gemini_key = request_data.get('custom_gemini_key')
         
-        # Use custom API key if provided, otherwise fall back to environment key
+        # Require a Gemini API key (custom or environment)
         gemini_api_key = custom_gemini_key or os.environ.get('GEMINI_API_KEY')
         if not gemini_api_key:
             return jsonify({
                 'success': False, 
-                'message': 'Gemini API key not configured. Please provide your API key.'
+                'message': 'Gemini API key required. Please add your API key in AI Settings to use advanced recommendations.'
             }), 400
             
         # Determine which model to use based on API key source
@@ -1139,6 +1153,14 @@ def feedback_insights():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
+    # Check if we already have cached feedback insights for this session
+    if 'feedback_insights_cache' in session and 'feedback_cache_timestamp' in session:
+        import time
+        # Cache for 20 minutes per session to avoid redundant AI calls
+        if time.time() - session['feedback_cache_timestamp'] < 1200:
+            app.logger.info("Using cached feedback insights")
+            return jsonify(session['feedback_insights_cache'])
+    
     try:
         user_id = session['user_id']
         
@@ -1200,11 +1222,17 @@ Keep it concise and insightful - focus on actionable insights that show the AI i
         
         app.logger.info(f"Generated feedback insights for user {user_id}")
         
-        return jsonify({
+        # Cache the result for 20 minutes
+        import time
+        result = {
             'success': True,
             'insights': insights_text,
             'feedback_count': len(feedback_entries)
-        })
+        }
+        session['feedback_insights_cache'] = result
+        session['feedback_cache_timestamp'] = time.time()
+        
+        return jsonify(result)
         
     except Exception as e:
         app.logger.error(f"Feedback insights failed: {e}")
