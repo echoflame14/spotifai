@@ -541,6 +541,14 @@ def ai_recommendation():
         
         music_data['feedback_history'] = feedback_insights
         
+        # Get recent recommendations to avoid repeating them
+        recent_recommendations = Recommendation.query.filter_by(user_id=user.id).order_by(Recommendation.created_at.desc()).limit(20).all()
+        recently_recommended_tracks = []
+        for rec in recent_recommendations:
+            recently_recommended_tracks.append(f'"{rec.track_name}" by {rec.artist_name}')
+        
+        app.logger.info(f"Recently recommended tracks to avoid: {recently_recommended_tracks}")
+        
         # Log the collected data for transparency
         app.logger.info(f"Comprehensive data collected:")
         app.logger.info(f"Recent tracks collected: {len(all_recent_tracks)} (requested 150)")
@@ -618,6 +626,9 @@ Total Playlists: {music_data['total_playlists']}
 FEEDBACK HISTORY:
 {music_data['feedback_history']}
 
+RECENTLY RECOMMENDED TRACKS (DO NOT REPEAT THESE):
+{recently_recommended_tracks}
+
 ANALYSIS INSTRUCTIONS:
 1. Consider the user's listening patterns across all time periods
 2. Identify recurring artists, genres, and musical styles
@@ -626,7 +637,12 @@ ANALYSIS INSTRUCTIONS:
 5. Consider the diversity vs consistency in their taste
 6. Recommend a song that bridges their established preferences with potential new discovery
 
-CRITICAL: DO NOT recommend any song that appears in the "RECENT LISTENING HISTORY" section above. The user has already played these tracks recently. Find something new that matches their taste but hasn't been played recently.
+CRITICAL REQUIREMENTS:
+1. DO NOT recommend any song that appears in the "RECENT LISTENING HISTORY" section above
+2. DO NOT recommend any song from the "RECENTLY RECOMMENDED TRACKS" list above  
+3. The user has already heard these tracks - find something completely NEW
+4. Choose a song that matches their taste but is a fresh discovery
+5. Avoid overplayed mainstream hits they've likely heard before
 
 Please respond with ONLY the song title and artist in this exact format:
 "Song Title" by Artist Name
