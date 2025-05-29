@@ -91,9 +91,54 @@ function refreshTrackInfo() {
 }
 
 function updateTrackInfoViaAjax() {
-    // This function would make an AJAX call to get current track info
-    // Implementation depends on having AJAX endpoints in the Flask app
-    console.log('Would update track info via AJAX');
+    fetch('/api/current-track')
+        .then(response => response.json())
+        .then(data => {
+            if (data.current_track && data.current_track.item) {
+                const track = data.current_track.item;
+                const playbackState = data.playback_state;
+                
+                // Update track name
+                const trackNameEl = document.querySelector('.current-track h5');
+                if (trackNameEl) trackNameEl.textContent = track.name;
+                
+                // Update artist names
+                const artistEl = document.querySelector('.current-track p:first-of-type');
+                if (artistEl) {
+                    artistEl.textContent = track.artists.map(artist => artist.name).join(', ');
+                }
+                
+                // Update album name
+                const albumEl = document.querySelector('.current-track p.text-muted');
+                if (albumEl) albumEl.textContent = track.album.name;
+                
+                // Update album artwork
+                const imgEl = document.querySelector('.current-track img');
+                if (imgEl && track.album.images && track.album.images.length > 0) {
+                    imgEl.src = track.album.images[0].url;
+                }
+                
+                // Update play/pause button
+                const playPauseBtn = document.getElementById('playPauseBtn');
+                const icon = playPauseBtn?.querySelector('i');
+                if (icon && playbackState) {
+                    icon.classList.remove('fa-play', 'fa-pause');
+                    icon.classList.add(playbackState.is_playing ? 'fa-pause' : 'fa-play');
+                }
+                
+                // Update progress bar
+                if (playbackState && playbackState.progress_ms && track.duration_ms) {
+                    const progressBar = document.querySelector('.progress-bar');
+                    if (progressBar) {
+                        const percentage = (playbackState.progress_ms / track.duration_ms) * 100;
+                        progressBar.style.width = `${percentage}%`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Failed to update track info:', error);
+        });
 }
 
 function isTrackPlaying() {
@@ -130,6 +175,46 @@ function formatTime(milliseconds) {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Toggle play/pause function for the main control button
+function togglePlayPause() {
+    const button = document.getElementById('playPauseBtn');
+    const icon = button.querySelector('i');
+    const isCurrentlyPlaying = icon.classList.contains('fa-pause');
+    
+    addLoadingState(button);
+    
+    const endpoint = isCurrentlyPlaying ? '/pause' : '/play';
+    
+    fetch(endpoint, { method: 'POST' })
+        .then(response => {
+            if (response.ok) {
+                // Toggle the icon immediately for better UX
+                if (isCurrentlyPlaying) {
+                    icon.classList.remove('fa-pause');
+                    icon.classList.add('fa-play');
+                } else {
+                    icon.classList.remove('fa-play');
+                    icon.classList.add('fa-pause');
+                }
+                
+                // Refresh track info after a short delay
+                setTimeout(() => {
+                    refreshTrackInfo();
+                }, 500);
+            } else {
+                showNotification('Playback control failed', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Playback error:', error);
+            showNotification('Playback control failed', 'error');
+        })
+        .finally(() => {
+            button.classList.remove('loading');
+            button.disabled = false;
+        });
 }
 
 // Add keyboard shortcuts

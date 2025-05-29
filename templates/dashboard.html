@@ -104,10 +104,11 @@
                                 </div>
                                 <div class="col-auto">
                                     <div class="player-controls">
-                                        <a href="{{ url_for('pause' if playback_state and playback_state.is_playing else 'play') }}" 
-                                           class="btn btn-spotify btn-lg rounded-circle">
+                                        <button onclick="togglePlayPause()" 
+                                                class="btn btn-spotify btn-lg rounded-circle" 
+                                                id="playPauseBtn">
                                             <i class="fas fa-{{ 'pause' if playback_state and playback_state.is_playing else 'play' }}"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

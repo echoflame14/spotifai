@@ -657,6 +657,22 @@ Provide a structured analysis in JSON format:
         return jsonify({'success': False, 'message': 'Error processing feedback'}), 500
 
 
+@app.route('/api/current-track')
+def api_current_track():
+    """API endpoint to get current track info without page reload"""
+    if 'access_token' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    spotify_client = SpotifyClient(session['access_token'])
+    
+    current_track = spotify_client.get_current_track()
+    playback_state = spotify_client.get_playback_state()
+    
+    return jsonify({
+        'current_track': current_track,
+        'playback_state': playback_state
+    })
+
 @app.route('/logout')
 def logout():
     """Log out user"""
