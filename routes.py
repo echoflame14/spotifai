@@ -454,6 +454,9 @@ Do not include any other text, explanations, or formatting."""
         
         app.logger.info(f"Searching for: '{song_title}' by '{artist_name}'")
         
+        # First, do a quick check if this exact song exists
+        exact_match_found = False
+        
         # Try multiple search strategies for better results
         search_results = None
         
@@ -464,22 +467,32 @@ Do not include any other text, explanations, or formatting."""
             app.logger.info(f"Trying search strategy 1 (advanced): '{advanced_query}'")
             search_results = spotify_client.search_tracks(advanced_query, limit=10)
             
-            # Check if we got good results
+            # Check if we got good results and look for exact matches
             if search_results and search_results.get('tracks', {}).get('items'):
                 items = search_results['tracks']['items']
-                # Filter results to only include tracks by the target artist
-                filtered_items = []
+                # First check for exact matches
                 for item in items:
-                    if any(artist_name.lower() in artist['name'].lower() or 
-                          artist['name'].lower() in artist_name.lower() 
-                          for artist in item['artists']):
-                        filtered_items.append(item)
+                    if (item['name'].lower() == song_title.lower() and 
+                        any(artist['name'].lower() == artist_name.lower() for artist in item['artists'])):
+                        exact_match_found = True
+                        search_results['tracks']['items'] = [item]  # Use only the exact match
+                        app.logger.info(f"Found exact match: {item['name']} by {item['artists'][0]['name']}")
+                        break
                 
-                if filtered_items:
-                    search_results['tracks']['items'] = filtered_items
-                    app.logger.info(f"Advanced search found {len(filtered_items)} tracks by {artist_name}")
-                else:
-                    search_results = None
+                if not exact_match_found:
+                    # Filter results to only include tracks by the target artist
+                    filtered_items = []
+                    for item in items:
+                        if any(artist_name.lower() in artist['name'].lower() or 
+                              artist['name'].lower() in artist_name.lower() 
+                              for artist in item['artists']):
+                            filtered_items.append(item)
+                    
+                    if filtered_items:
+                        search_results['tracks']['items'] = filtered_items
+                        app.logger.info(f"Advanced search found {len(filtered_items)} tracks by {artist_name}")
+                    else:
+                        search_results = None
         
         # Strategy 2: If no results, try simple concatenation
         if not search_results or not search_results.get('tracks', {}).get('items'):
@@ -499,6 +512,44 @@ Do not include any other text, explanations, or formatting."""
         if not search_results or not search_results.get('tracks', {}).get('items'):
             app.logger.info(f"Trying search strategy 4 (title only): '{song_title}'")
             search_results = spotify_client.search_tracks(song_title, limit=10)
+        
+        # If no exact match was found and we only have alternative tracks, ask AI for a real song
+        if (not exact_match_found and search_results and 
+            search_results.get('tracks', {}).get('items') and 
+            artist_name):
+            
+            app.logger.warning(f"Could not find exact track '{song_title}' by '{artist_name}' on Spotify")
+            
+            # Get some real tracks by this artist to help AI pick a real song
+            real_tracks = search_results['tracks']['items'][:5]
+            track_list = [f"- {track['name']}" for track in real_tracks]
+            
+            # Ask AI to recommend a real song that exists
+            real_song_prompt = f"""Your previous recommendation "{recommendation_text}" could not be found on Spotify.
+
+Here are some actual songs by {artist_name} that exist on Spotify:
+{chr(10).join(track_list)}
+
+Please recommend ONE real song by {artist_name} that exists on Spotify and matches the user's taste. 
+
+Respond with ONLY the song title in quotes, like: "Song Title"
+Do not include the artist name or any other text."""
+
+            try:
+                real_song_response = model.generate_content(real_song_prompt)
+                real_song_title = real_song_response.text.strip().replace('"', '')
+                app.logger.info(f"AI suggested real song: '{real_song_title}' by {artist_name}")
+                
+                # Search for this real song
+                for track in real_tracks:
+                    if (real_song_title.lower() in track['name'].lower() or 
+                        track['name'].lower() in real_song_title.lower()):
+                        search_results['tracks']['items'] = [track]
+                        app.logger.info(f"Found real song match: {track['name']} by {track['artists'][0]['name']}")
+                        break
+                        
+            except Exception as e:
+                app.logger.error(f"Error getting real song recommendation: {e}")
         
         if search_results and search_results.get('tracks', {}).get('items'):
             search_items = search_results['tracks']['items']
