@@ -348,13 +348,15 @@ function handleAIRecommendation() {
     `;
     
     // Make AI recommendation request
+    const customApiKey = localStorage.getItem('gemini_api_key');
     fetch('/ai-recommendation', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            session_adjustment: sessionAdjustment
+            session_adjustment: sessionAdjustment,
+            custom_gemini_key: customApiKey
         })
     })
     .then(response => {
@@ -919,6 +921,58 @@ function clearSessionAdjustment() {
     
     console.log('🎛️ Session adjustment cleared');
 }
+
+function setupAISettings() {
+    const saveBtn = document.getElementById('saveApiKey');
+    const clearBtn = document.getElementById('clearApiKey');
+    const apiKeyInput = document.getElementById('geminiApiKey');
+    const currentModelSpan = document.getElementById('currentModel');
+    
+    // Load saved API key if exists
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) {
+        apiKeyInput.value = savedKey;
+        currentModelSpan.textContent = 'Gemini 2.5 Flash Preview';
+        clearBtn.style.display = 'inline-block';
+    }
+    
+    saveBtn.addEventListener('click', function() {
+        const apiKey = apiKeyInput.value.trim();
+        if (apiKey) {
+            localStorage.setItem('gemini_api_key', apiKey);
+            currentModelSpan.textContent = 'Gemini 2.5 Flash Preview';
+            clearBtn.style.display = 'inline-block';
+            showNotification('API key saved! Using Gemini 2.5 Flash Preview', 'success');
+        } else {
+            showNotification('Please enter a valid API key', 'error');
+        }
+    });
+    
+    clearBtn.addEventListener('click', function() {
+        localStorage.removeItem('gemini_api_key');
+        apiKeyInput.value = '';
+        currentModelSpan.textContent = 'Gemini 1.5 Flash';
+        clearBtn.style.display = 'none';
+        showNotification('API key cleared! Using default Gemini 1.5 Flash', 'info');
+    });
+    
+    // Allow saving with Enter key
+    apiKeyInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveBtn.click();
+        }
+    });
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAIRecommender();
+    setupChatFeedback();
+    setupSessionPreferences();
+    setupAISettings();
+    addButtonFeedback();
+    addSmoothScrolling();
+});
 
 // Console welcome message
 console.log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
