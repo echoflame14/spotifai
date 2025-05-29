@@ -408,6 +408,103 @@
         </div>
     </div>
 </div>
+
+<!-- API Key Guide Modal -->
+<div class="modal fade" id="apiKeyGuideModal" tabindex="-1" aria-labelledby="apiKeyGuideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="apiKeyGuideModalLabel">
+                    <i class="fas fa-key me-2 text-spotify"></i>How to Get Your Free Gemini API Key
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info border-0 mb-4" style="background-color: rgba(29, 185, 84, 0.1);">
+                    <i class="fas fa-gift me-2"></i>
+                    <strong>Free & Powerful!</strong> Google's Gemini AI is completely free to use and provides advanced AI capabilities for music recommendations.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="text-spotify mb-3">
+                            <i class="fas fa-list-ol me-2"></i>Step-by-Step Instructions:
+                        </h6>
+                        
+                        <div class="steps-container">
+                            <div class="step-item mb-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid #1db954;">
+                                <div class="d-flex align-items-start">
+                                    <span class="badge bg-spotify rounded-circle me-3 mt-1" style="width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">1</span>
+                                    <div>
+                                        <strong>Visit Google AI Studio</strong>
+                                        <p class="text-muted mb-0 mt-1">Go to <code>aistudio.google.com</code> in a new tab</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="step-item mb-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid #1db954;">
+                                <div class="d-flex align-items-start">
+                                    <span class="badge bg-spotify rounded-circle me-3 mt-1" style="width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">2</span>
+                                    <div>
+                                        <strong>Sign in with Google</strong>
+                                        <p class="text-muted mb-0 mt-1">Use your Google account to access AI Studio</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="step-item mb-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid #1db954;">
+                                <div class="d-flex align-items-start">
+                                    <span class="badge bg-spotify rounded-circle me-3 mt-1" style="width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">3</span>
+                                    <div>
+                                        <strong>Click "Get API Key"</strong>
+                                        <p class="text-muted mb-0 mt-1">Look for the "Get API Key" button and click it</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="step-item mb-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid #1db954;">
+                                <div class="d-flex align-items-start">
+                                    <span class="badge bg-spotify rounded-circle me-3 mt-1" style="width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">4</span>
+                                    <div>
+                                        <strong>Copy Your API Key</strong>
+                                        <p class="text-muted mb-0 mt-1">Copy the generated API key and paste it into the field above</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="info-panel p-3 rounded" style="background: rgba(29, 185, 84, 0.05); border: 1px solid rgba(29, 185, 84, 0.2);">
+                            <h6 class="text-spotify mb-3">
+                                <i class="fas fa-shield-alt me-2"></i>Privacy & Security
+                            </h6>
+                            <ul class="text-muted small mb-0 ps-3">
+                                <li class="mb-2">Your API key stays in your browser</li>
+                                <li class="mb-2">Never shared with anyone else</li>
+                                <li class="mb-2">Used only for AI recommendations</li>
+                                <li class="mb-2">Free tier includes generous limits</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mt-3 text-center">
+                            <a href="https://aistudio.google.com" target="_blank" class="btn btn-spotify">
+                                <i class="fas fa-external-link-alt me-2"></i>Open AI Studio
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <div class="text-muted small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Need help? The API key should start with "AIza" and be about 39 characters long.
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Got it!</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
