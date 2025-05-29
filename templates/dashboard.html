@@ -56,35 +56,44 @@
                     </div>
                 </div>
                 
+            </div>
+            
+            <!-- Side-by-side Dropdowns -->
+            <div class="row g-3 mb-4">
                 <!-- Learned from Feedback Section -->
-                <div id="feedbackLearningSection" class="feedback-learning-section p-3">
-                    <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
-                            data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" aria-expanded="false">
-                        <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
-                            <span><i class="fas fa-brain me-2"></i>Learned from Your Feedback</span>
-                            <i class="fas fa-chevron-down small"></i>
-                        </h6>
-                    </button>
-                    
-                    <div class="collapse mt-3" id="feedbackLearningCollapse">
-                        <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
-                            <div class="d-flex align-items-center justify-content-center py-3">
-                                <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
-                                <span class="text-muted small">Loading feedback insights...</span>
+                <div class="col-md-6">
+                    <div id="feedbackLearningSection" class="feedback-learning-section p-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 0.5rem;">
+                        <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" aria-expanded="false">
+                            <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
+                                <span><i class="fas fa-brain me-2"></i>Learned from Your Feedback</span>
+                                <i class="fas fa-chevron-down small"></i>
+                            </h6>
+                        </button>
+                        
+                        <div class="collapse mt-3" id="feedbackLearningCollapse">
+                            <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
+                                <div class="d-flex align-items-center justify-content-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                                    <span class="text-muted small">Loading feedback insights...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Music Taste Profile Toggle -->
-            <div class="music-profile-toggle mb-3">
-                <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" 
-                        data-bs-target="#musicProfileCollapse" aria-expanded="false">
-                    <i class="fas fa-user-music me-2"></i>
-                    Your Music Taste Profile
-                    <i class="fas fa-chevron-down ms-2"></i>
-                </button>
+                
+                <!-- Music Taste Profile Section -->
+                <div class="col-md-6">
+                    <div class="music-profile-toggle p-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 0.5rem;">
+                        <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#musicProfileCollapse" aria-expanded="false">
+                            <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
+                                <span><i class="fas fa-user-music me-2"></i>Your Music Taste Profile</span>
+                                <i class="fas fa-chevron-down small"></i>
+                            </h6>
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <!-- Collapsible Music Taste Profile Overlay -->
