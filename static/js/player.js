@@ -603,6 +603,12 @@ function getNextRecommendation() {
         chatFeedback.style.display = 'none';
     }
     
+    // Hide why this track section
+    const whySection = document.getElementById('whyThisTrack');
+    if (whySection) {
+        whySection.style.display = 'none';
+    }
+    
     // Clear feedback status
     const statusDiv = document.getElementById('feedbackStatus');
     if (statusDiv) {
@@ -611,6 +617,77 @@ function getNextRecommendation() {
     
     // Trigger a new recommendation
     handleAIRecommendation();
+}
+
+// Show Why This Track section
+function showWhyThisTrack() {
+    const whySection = document.getElementById('whyThisTrack');
+    if (whySection) {
+        whySection.style.display = 'block';
+        
+        // Add event listener for when the collapse is opened
+        const collapseElement = document.getElementById('trackReasoningCollapse');
+        if (collapseElement) {
+            collapseElement.addEventListener('shown.bs.collapse', function () {
+                if (!this.classList.contains('reasoning-loaded')) {
+                    fetchTrackReasoning();
+                    this.classList.add('reasoning-loaded');
+                }
+            });
+        }
+    }
+}
+
+// Fetch detailed track reasoning from backend
+function fetchTrackReasoning() {
+    if (!currentRecommendationId) {
+        console.error('No current recommendation ID available');
+        return;
+    }
+    
+    const contentDiv = document.getElementById('trackReasoningContent');
+    
+    fetch('/track-reasoning', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            recommendation_id: currentRecommendationId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            contentDiv.innerHTML = `
+                <div class="track-reasoning-content">
+                    <h6 class="text-white mb-3">
+                        <i class="fas fa-lightbulb text-spotify me-2"></i>
+                        Why "${data.track_info.name}" by ${data.track_info.artist}
+                    </h6>
+                    <div class="reasoning-text text-light" style="line-height: 1.6;">
+                        ${data.reasoning.replace(/\n/g, '<br><br>')}
+                    </div>
+                </div>
+            `;
+        } else {
+            contentDiv.innerHTML = `
+                <div class="text-center py-3">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <span class="text-muted">Unable to generate reasoning: ${data.message}</span>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching track reasoning:', error);
+        contentDiv.innerHTML = `
+            <div class="text-center py-3">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                <span class="text-muted">Failed to load reasoning. Please try again.</span>
+            </div>
+        `;
+    });
 }
 
 // Console welcome message
