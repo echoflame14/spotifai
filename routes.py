@@ -455,37 +455,49 @@ Do not include any other text, explanations, or formatting."""
                 app.logger.info(f"Multiple search results found, using AI to select best match...")
                 
                 # Create a prompt for AI to select the best track
+                track_options = []
+                for i, track in enumerate(search_items[:10]):
+                    track_options.append({
+                        'option_number': i + 1,
+                        'track_name': track['name'],
+                        'artist_name': track['artists'][0]['name'],
+                        'album_name': track['album']['name'],
+                        'spotify_uri': track['uri']
+                    })
+                
                 track_selection_prompt = f"""
 You recommended: "{recommendation_text}"
 
-Here are the available tracks from Spotify:
-{json.dumps([{
-    'track_name': track['name'],
-    'artist_name': track['artists'][0]['name'],
-    'album_name': track['album']['name'],
-    'spotify_uri': track['uri']
-} for track in search_items[:10]], indent=2)}
+Here are the search results from Spotify:
+{json.dumps(track_options, indent=2)}
 
-Your recommendation was "{recommendation_text}". Which Spotify URI best matches your intended recommendation?
+Your original recommendation was "{recommendation_text}". 
 
-Consider:
-1. If you meant the original version, prefer tracks without "(Remix)", "(Live)", or other modifiers
-2. If multiple versions exist, choose the most appropriate one for the user
-3. Match both the song title and artist from your recommendation
+Look at the track_name and artist_name for each option. Which option number (1-{len(track_options)}) contains the exact song you intended to recommend?
 
-Return ONLY the spotify_uri (spotify:track:xxxxx) of your chosen track.
+CRITICAL: If you recommended "The Drug In Me Is You" by Falling In Reverse, find the option where track_name is "The Drug In Me Is You" (not "Raised By Wolves" or any other song).
+
+Respond with ONLY the option number (just the number, nothing else).
 """
                 
                 selection_response = model.generate_content(track_selection_prompt)
-                selected_uri = selection_response.text.strip()
+                selected_option = selection_response.text.strip()
                 
-                # Find the track with the selected URI
+                app.logger.info(f"AI selection response: '{selected_option}'")
+                
+                # Parse the option number and get the track
                 recommended_track = None
-                for track in search_items:
-                    if track['uri'] in selected_uri:
-                        recommended_track = track
-                        app.logger.info(f"AI selected track: {track['name']} by {track['artists'][0]['name']}")
-                        break
+                try:
+                    option_num = int(selected_option)
+                    if 1 <= option_num <= len(search_items):
+                        recommended_track = search_items[option_num - 1]
+                        app.logger.info(f"AI selected option {option_num}: {recommended_track['name']} by {recommended_track['artists'][0]['name']}")
+                    else:
+                        app.logger.warning(f"AI selected invalid option {option_num}, using first result")
+                        recommended_track = search_items[0]
+                except ValueError:
+                    app.logger.warning(f"AI returned non-numeric response '{selected_option}', using first result")
+                    recommended_track = search_items[0]
                 
                 # If AI selection fails, use first result as fallback
                 if not recommended_track:
