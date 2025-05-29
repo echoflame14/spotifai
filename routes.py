@@ -435,6 +435,10 @@ def ai_recommendation():
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
     try:
+        # Get session adjustment if provided
+        request_data = request.get_json() or {}
+        session_adjustment = request_data.get('session_adjustment')
+        
         # Check if Gemini API key is available
         gemini_api_key = os.environ.get('GEMINI_API_KEY')
         if not gemini_api_key:
@@ -643,6 +647,11 @@ CRITICAL REQUIREMENTS:
 3. The user has already heard these tracks - find something completely NEW
 4. Choose a song that matches their taste but is a fresh discovery
 5. Avoid overplayed mainstream hits they've likely heard before
+
+{f'''SESSION PREFERENCE ADJUSTMENT (TEMPORARY FOR THIS SESSION ONLY):
+The user has requested: "{session_adjustment}"
+Please factor this temporary preference into your recommendation while still respecting their core musical taste.
+''' if session_adjustment else ''}
 
 Please respond with ONLY the song title and artist in this exact format:
 "Song Title" by Artist Name
