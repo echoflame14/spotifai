@@ -402,6 +402,12 @@ let lastAIData = null; // Store AI interaction data globally
 function displayRecommendedTrack(track, reasoning) {
     const trackDiv = document.getElementById('recommendedTrack');
     
+    // Stop any currently playing preview when showing new recommendation
+    if (currentPreviewAudio) {
+        currentPreviewAudio.pause();
+        currentPreviewAudio = null;
+    }
+    
     console.log('AI Recommendation received:', track);
     console.log('AI Reasoning:', reasoning);
     
@@ -497,6 +503,74 @@ function playRecommendedTrack(trackUri) {
 // Store current recommendation ID for feedback and preview audio
 let currentRecommendationId = null;
 let currentPreviewAudio = null;
+
+function previewTrack(previewUrl, buttonElement) {
+    if (!previewUrl) {
+        showNotification('No preview available for this track', 'warning');
+        return;
+    }
+    
+    // Stop any currently playing preview
+    if (currentPreviewAudio) {
+        currentPreviewAudio.pause();
+        currentPreviewAudio = null;
+        // Reset all preview buttons
+        document.querySelectorAll('[onclick*="previewTrack"]').forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-headphones me-1"></i>Preview';
+            btn.classList.remove('btn-warning');
+            btn.classList.add('btn-outline-warning');
+        });
+    }
+    
+    // If clicking the same button while playing, just stop
+    if (buttonElement.innerHTML.includes('Stop')) {
+        return;
+    }
+    
+    try {
+        // Create and play new audio
+        currentPreviewAudio = new Audio(previewUrl);
+        currentPreviewAudio.volume = 0.7;
+        
+        // Update button to show it's playing
+        buttonElement.innerHTML = '<i class="fas fa-stop me-1"></i>Stop Preview';
+        buttonElement.classList.remove('btn-outline-warning');
+        buttonElement.classList.add('btn-warning');
+        
+        // Play the audio
+        currentPreviewAudio.play().then(() => {
+            showNotification('Playing 30-second preview', 'info');
+        }).catch(error => {
+            console.error('Preview playback failed:', error);
+            showNotification('Preview playback failed', 'error');
+            resetPreviewButton(buttonElement);
+        });
+        
+        // Reset button when audio ends
+        currentPreviewAudio.addEventListener('ended', () => {
+            resetPreviewButton(buttonElement);
+            currentPreviewAudio = null;
+        });
+        
+        // Reset button on error
+        currentPreviewAudio.addEventListener('error', () => {
+            showNotification('Preview failed to load', 'error');
+            resetPreviewButton(buttonElement);
+            currentPreviewAudio = null;
+        });
+        
+    } catch (error) {
+        console.error('Preview error:', error);
+        showNotification('Preview not available', 'error');
+        resetPreviewButton(buttonElement);
+    }
+}
+
+function resetPreviewButton(buttonElement) {
+    buttonElement.innerHTML = '<i class="fas fa-headphones me-1"></i>Preview';
+    buttonElement.classList.remove('btn-warning');
+    buttonElement.classList.add('btn-outline-warning');
+}
 
 function setupChatFeedback() {
     const submitBtn = document.getElementById('submitFeedback');

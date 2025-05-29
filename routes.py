@@ -900,7 +900,8 @@ Respond with only the number."""
                     'album': recommended_track['album']['name'],
                     'image': recommended_track['album']['images'][0]['url'] if recommended_track['album']['images'] else None,
                     'uri': recommended_track['uri'],
-                    'external_url': recommended_track['external_urls']['spotify']
+                    'external_url': recommended_track['external_urls']['spotify'],
+                    'preview_url': recommended_track.get('preview_url')
                 },
                 'ai_reasoning': recommendation_text,
                 'ai_input_data': prompt,
