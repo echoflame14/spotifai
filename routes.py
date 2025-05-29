@@ -473,19 +473,27 @@ Do not include any other text, explanations, or formatting."""
                         'spotify_uri': track['uri']
                     })
                 
+                # Extract the intended artist from the original recommendation
+                intended_artist = None
+                if " by " in recommendation_text:
+                    intended_artist = recommendation_text.replace('"', '').split(" by ", 1)[1].strip()
+                
                 track_selection_prompt = f"""
 You recommended: "{recommendation_text}"
 
-Here are the search results from Spotify:
+Here are the search results from Spotify for the song title "{song_title}":
 {json.dumps(track_options, indent=2)}
 
 Your original recommendation was "{recommendation_text}". 
 
-Look at the track_name and artist_name for each option. Which option number (1-{len(track_options)}) contains the exact song you intended to recommend?
+Look for the option that matches BOTH:
+1. track_name: "{song_title}" (or very close variation)
+2. artist_name: "{intended_artist}" (if specified)
 
-CRITICAL: If you recommended "The Drug In Me Is You" by Falling In Reverse, find the option where track_name is "The Drug In Me Is You" (not "Raised By Wolves" or any other song).
+Which option number (1-{len(track_options)}) contains the song by the correct artist that you intended to recommend?
 
-Respond with ONLY the option number (just the number, nothing else).
+If the exact artist is not found in the results, respond with "0".
+Otherwise, respond with ONLY the option number (just the number, nothing else).
 """
                 
                 selection_response = model.generate_content(track_selection_prompt)
@@ -497,7 +505,10 @@ Respond with ONLY the option number (just the number, nothing else).
                 recommended_track = None
                 try:
                     option_num = int(selected_option)
-                    if 1 <= option_num <= len(search_items):
+                    if option_num == 0:
+                        app.logger.warning(f"AI could not find intended artist '{intended_artist}' in search results, using first result")
+                        recommended_track = search_items[0]
+                    elif 1 <= option_num <= len(search_items):
                         recommended_track = search_items[option_num - 1]
                         app.logger.info(f"AI selected option {option_num}: {recommended_track['name']} by {recommended_track['artists'][0]['name']}")
                     else:
