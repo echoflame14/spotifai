@@ -1061,7 +1061,7 @@ def track_reasoning():
         
         # Create prompt for detailed track reasoning
         reasoning_prompt = f"""
-You are a music expert analyzing why a specific song recommendation would appeal to a user based on their listening history and preferences.
+You are a music expert explaining to a friend why they'll love a specific song recommendation based on their listening history.
 
 RECOMMENDED TRACK: "{recommendation.track_name}" by {recommendation.artist_name}
 
@@ -1074,21 +1074,9 @@ ORIGINAL AI REASONING:
 USER'S PSYCHOLOGICAL ANALYSIS:
 {recommendation.psychological_analysis}
 
-Please provide a detailed, engaging explanation of why this user would specifically enjoy this track. Focus on:
+Write ONE tight, conversational paragraph (4-6 sentences max) explaining why this user will love this track. Be enthusiastic and specific about musical connections to their taste. Mention 2-3 artists they already love and explain how this song relates. Keep it casual and engaging, like you're texting a friend about why they need to hear this song right now.
 
-1. **Musical Elements**: What specific aspects of this song (genre, tempo, vocals, instruments, production style) align with their taste?
-
-2. **Emotional Connection**: How does this track match their emotional listening patterns and current mood preferences?
-
-3. **Discovery Factor**: Why is this a good discovery that expands their taste while staying within their comfort zone?
-
-4. **Personal Relevance**: Based on their listening history, what makes this track personally meaningful or appealing?
-
-5. **Similar Tracks Connection**: How does this relate to tracks they already love, and what new elements does it introduce?
-
-Write in a conversational, enthusiastic tone as if you're a knowledgeable friend explaining why they'll love this song. Be specific about musical details and make connections to their established preferences.
-
-Limit response to 3-4 paragraphs maximum. Make it engaging and insightful.
+Start with something like "Okay, so..." or "Dude, you're gonna love this because..." and make it feel personal and exciting.
 """
         
         # Generate the reasoning
