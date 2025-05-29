@@ -441,8 +441,16 @@ Do not include any other text, explanations, or formatting."""
         app.logger.info(f"Raw AI response: {recommendation_text}")
         app.logger.info(f"AI recommended: {recommendation_text}")
         
-        # Search for the recommended track on Spotify with more results for better AI selection
-        search_results = spotify_client.search_tracks(recommendation_text, limit=10)
+        # Extract just the song title for a broader search
+        if " by " in recommendation_text:
+            song_title = recommendation_text.replace('"', '').split(" by ", 1)[0].strip()
+        else:
+            song_title = recommendation_text.replace('"', '').strip()
+        
+        app.logger.info(f"Searching for song title: '{song_title}'")
+        
+        # Search for the song title only to get more comprehensive results
+        search_results = spotify_client.search_tracks(song_title, limit=10)
         
         if search_results and search_results.get('tracks', {}).get('items'):
             search_items = search_results['tracks']['items']
