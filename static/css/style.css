@@ -279,6 +279,31 @@ html, body {
     color: var(--text-muted) !important;
 }
 
+/* Music Insights */
+.insight-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+    text-shadow: 0 0 10px rgba(29, 185, 84, 0.3);
+}
+
+.examples {
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.examples .badge {
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+    opacity: 0.9;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.examples .badge:hover {
+    opacity: 1;
+    background-color: rgba(29, 185, 84, 0.2) !important;
+}
+
 /* Features List */
 .features {
     text-align: left;

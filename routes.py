@@ -136,6 +136,68 @@ def callback():
         flash('Failed to authenticate with Spotify. Please try again.', 'error')
         return redirect(url_for('index'))
 
+def generate_music_insights(spotify_client):
+    """Generate music taste profile insights from user's Spotify data"""
+    try:
+        # Get basic music data
+        recent_tracks = spotify_client.get_recently_played(limit=20) or {'items': []}
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=10) or {'items': []}
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=10) or {'items': []}
+        
+        # Extract basic stats
+        recent_track_count = len(recent_tracks.get('items', []))
+        top_artists_count = len(top_artists_short.get('items', []))
+        
+        # Extract top genres from artists
+        genres = set()
+        for artist in top_artists_short.get('items', [])[:5]:
+            genres.update(artist.get('genres', []))
+        
+        # Get top artists names
+        top_artist_names = [artist['name'] for artist in top_artists_short.get('items', [])[:3]]
+        
+        # Get recent track info
+        recent_track_names = [item['track']['name'] for item in recent_tracks.get('items', [])[:3]]
+        
+        return {
+            'recent_tracks': {
+                'count': recent_track_count,
+                'examples': recent_track_names,
+                'description': f"Analyzed {recent_track_count} recent listening sessions"
+            },
+            'top_artists': {
+                'count': top_artists_count,
+                'examples': top_artist_names,
+                'description': f"Identified {len(top_artist_names)} core artists in your rotation"
+            },
+            'genres': {
+                'count': len(genres),
+                'examples': list(genres)[:3],
+                'description': f"Discovered {len(genres)} distinct musical genres in your taste"
+            },
+            'analysis_ready': True
+        }
+    except Exception as e:
+        app.logger.error(f"Error generating music insights: {e}")
+        return {
+            'recent_tracks': {
+                'count': 0,
+                'examples': [],
+                'description': "Analyzing your listening patterns..."
+            },
+            'top_artists': {
+                'count': 0,
+                'examples': [],
+                'description': "Understanding your artist preferences..."
+            },
+            'genres': {
+                'count': 0,
+                'examples': [],
+                'description': "Mapping your musical landscape..."
+            },
+            'analysis_ready': False
+        }
+
 @app.route('/dashboard')
 def dashboard():
     """Main dashboard showing user's music"""
@@ -163,10 +225,14 @@ def dashboard():
     # Get playback state
     playback_state = spotify_client.get_playback_state()
     
+    # Generate music taste profile insights
+    music_insights = generate_music_insights(spotify_client)
+    
     return render_template('dashboard.html', 
                          user=user, 
                          current_track=current_track,
-                         playback_state=playback_state)
+                         playback_state=playback_state,
+                         music_insights=music_insights)
 
 @app.route('/play', methods=['GET', 'POST'])
 def play():

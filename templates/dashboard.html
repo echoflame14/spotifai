@@ -89,21 +89,57 @@
                                 <div class="stat-item text-center">
                                     <i class="fas fa-headphones text-spotify fa-2x mb-2"></i>
                                     <h6 class="text-white">Recent Tracks</h6>
-                                    <p class="text-muted small">Analyzing listening patterns</p>
+                                    {% if music_insights and music_insights.recent_tracks %}
+                                        <div class="insight-number text-spotify fw-bold">{{ music_insights.recent_tracks.count }}</div>
+                                        <p class="text-muted small">{{ music_insights.recent_tracks.description }}</p>
+                                        {% if music_insights.recent_tracks.examples %}
+                                            <div class="examples mt-2">
+                                                {% for track in music_insights.recent_tracks.examples[:2] %}
+                                                    <span class="badge bg-dark text-light small me-1">{{ track }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-muted small">Analyzing listening patterns</p>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="stat-item text-center">
                                     <i class="fas fa-heart text-spotify fa-2x mb-2"></i>
                                     <h6 class="text-white">Top Artists</h6>
-                                    <p class="text-muted small">Understanding preferences</p>
+                                    {% if music_insights and music_insights.top_artists %}
+                                        <div class="insight-number text-spotify fw-bold">{{ music_insights.top_artists.count }}</div>
+                                        <p class="text-muted small">{{ music_insights.top_artists.description }}</p>
+                                        {% if music_insights.top_artists.examples %}
+                                            <div class="examples mt-2">
+                                                {% for artist in music_insights.top_artists.examples[:2] %}
+                                                    <span class="badge bg-dark text-light small me-1">{{ artist }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-muted small">Understanding preferences</p>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="stat-item text-center">
                                     <i class="fas fa-brain text-spotify fa-2x mb-2"></i>
-                                    <h6 class="text-white">AI Analysis</h6>
-                                    <p class="text-muted small">Psychological insights</p>
+                                    <h6 class="text-white">Musical Genres</h6>
+                                    {% if music_insights and music_insights.genres %}
+                                        <div class="insight-number text-spotify fw-bold">{{ music_insights.genres.count }}</div>
+                                        <p class="text-muted small">{{ music_insights.genres.description }}</p>
+                                        {% if music_insights.genres.examples %}
+                                            <div class="examples mt-2">
+                                                {% for genre in music_insights.genres.examples[:2] %}
+                                                    <span class="badge bg-dark text-light small me-1">{{ genre }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="text-muted small">Mapping musical landscape</p>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
