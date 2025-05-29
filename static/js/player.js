@@ -733,12 +733,21 @@ function fetchFeedbackInsights() {
                 </div>
             `;
         } else {
-            contentDiv.innerHTML = `
-                <div class="text-center py-3">
-                    <i class="fas fa-info-circle text-warning me-2"></i>
-                    <span class="text-muted">${data.message || 'No feedback insights available yet'}</span>
-                </div>
-            `;
+            if (data.message && data.message.includes('Not authenticated')) {
+                contentDiv.innerHTML = `
+                    <div class="text-center py-3">
+                        <i class="fas fa-sign-in-alt text-warning me-2"></i>
+                        <span class="text-muted">Please refresh the page to load your feedback insights</span>
+                    </div>
+                `;
+            } else {
+                contentDiv.innerHTML = `
+                    <div class="text-center py-3">
+                        <i class="fas fa-info-circle text-warning me-2"></i>
+                        <span class="text-muted">${data.message || 'No feedback insights available yet'}</span>
+                    </div>
+                `;
+            }
         }
     })
     .catch(error => {
