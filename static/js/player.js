@@ -370,6 +370,7 @@ function handleAIRecommendation() {
             fetchTrackReasoning();
             
             // Show and load the "Learned from Feedback" section
+            showFeedbackLearningButton();
             showLearnedFeedback();
             fetchFeedbackInsights();
         } else {
@@ -686,6 +687,14 @@ function fetchTrackReasoning() {
             </div>
         `;
     });
+}
+
+// Show Feedback Learning Button
+function showFeedbackLearningButton() {
+    const feedbackButton = document.getElementById('feedbackLearningToggle');
+    if (feedbackButton) {
+        feedbackButton.style.display = 'inline-block';
+    }
 }
 
 // Show Learned from Feedback section
