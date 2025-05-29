@@ -457,15 +457,23 @@ Do not include any other text, explanations, or formatting."""
         # Try multiple search strategies for better results
         search_results = None
         
-        # Strategy 1: Search with both song and artist
+        # Strategy 1: Use Spotify's advanced search with track and artist fields
         if artist_name:
-            full_query = f"{song_title} {artist_name}"
-            app.logger.info(f"Trying search strategy 1: '{full_query}'")
-            search_results = spotify_client.search_tracks(full_query, limit=10)
+            # Use Spotify's field search syntax: track:"song name" artist:"artist name"
+            advanced_query = f'track:"{song_title}" artist:"{artist_name}"'
+            app.logger.info(f"Trying search strategy 1 (advanced): '{advanced_query}'")
+            search_results = spotify_client.search_tracks(advanced_query, limit=10)
         
-        # Strategy 2: If no results or poor results, try song title only
+        # Strategy 2: If no results, try simple concatenation
         if not search_results or not search_results.get('tracks', {}).get('items'):
-            app.logger.info(f"Trying search strategy 2: '{song_title}' only")
+            if artist_name:
+                simple_query = f"{song_title} {artist_name}"
+                app.logger.info(f"Trying search strategy 2 (simple): '{simple_query}'")
+                search_results = spotify_client.search_tracks(simple_query, limit=10)
+        
+        # Strategy 3: If still no results, try song title only
+        if not search_results or not search_results.get('tracks', {}).get('items'):
+            app.logger.info(f"Trying search strategy 3 (title only): '{song_title}'")
             search_results = spotify_client.search_tracks(song_title, limit=10)
         
         if search_results and search_results.get('tracks', {}).get('items'):
@@ -474,65 +482,71 @@ Do not include any other text, explanations, or formatting."""
             if len(search_items) == 1:
                 # Only one result, use it
                 recommended_track = search_items[0]
+                app.logger.info(f"Single result found: {recommended_track['name']} by {recommended_track['artists'][0]['name']}")
             else:
-                # Multiple results - let AI select the best match
-                app.logger.info(f"Multiple search results found, using AI to select best match...")
+                # Multiple results - use improved selection logic
+                app.logger.info(f"Multiple search results found ({len(search_items)}), using smart selection...")
                 
-                # Create a prompt for AI to select the best track
-                track_options = []
-                for i, track in enumerate(search_items[:10]):
-                    track_options.append({
-                        'option_number': i + 1,
-                        'track_name': track['name'],
-                        'artist_name': track['artists'][0]['name'],
-                        'album_name': track['album']['name'],
-                        'spotify_uri': track['uri']
-                    })
-                
-                # Use the already extracted artist_name from earlier
-                track_selection_prompt = f"""
-You recommended: "{recommendation_text}"
-
-Here are the search results from Spotify for the song title "{song_title}":
-{json.dumps(track_options, indent=2)}
-
-Your original recommendation was "{recommendation_text}". 
-
-Look for the option that matches BOTH:
-1. track_name: "{song_title}" (or very close variation)
-2. artist_name: "{artist_name}" (if specified)
-
-Which option number (1-{len(track_options)}) contains the song by the correct artist that you intended to recommend?
-
-If the exact artist is not found in the results, respond with "0".
-Otherwise, respond with ONLY the option number (just the number, nothing else).
-"""
-                
-                selection_response = model.generate_content(track_selection_prompt)
-                selected_option = selection_response.text.strip()
-                
-                app.logger.info(f"AI selection response: '{selected_option}'")
-                
-                # Parse the option number and get the track
                 recommended_track = None
-                try:
-                    option_num = int(selected_option)
-                    if option_num == 0:
-                        app.logger.warning(f"AI could not find intended artist '{artist_name}' in search results, using first result")
-                        recommended_track = search_items[0]
-                    elif 1 <= option_num <= len(search_items):
-                        recommended_track = search_items[option_num - 1]
-                        app.logger.info(f"AI selected option {option_num}: {recommended_track['name']} by {recommended_track['artists'][0]['name']}")
-                    else:
-                        app.logger.warning(f"AI selected invalid option {option_num}, using first result")
-                        recommended_track = search_items[0]
-                except ValueError:
-                    app.logger.warning(f"AI returned non-numeric response '{selected_option}', using first result")
-                    recommended_track = search_items[0]
                 
-                # If AI selection fails, use first result as fallback
+                # First, try exact matches
+                if artist_name:
+                    for track in search_items:
+                        track_name_lower = track['name'].lower()
+                        artist_name_lower = track['artists'][0]['name'].lower()
+                        song_title_lower = song_title.lower()
+                        target_artist_lower = artist_name.lower()
+                        
+                        # Check for exact or very close matches
+                        if (track_name_lower == song_title_lower or 
+                            song_title_lower in track_name_lower or
+                            track_name_lower in song_title_lower) and \
+                           (artist_name_lower == target_artist_lower or
+                            target_artist_lower in artist_name_lower or
+                            artist_name_lower in target_artist_lower):
+                            recommended_track = track
+                            app.logger.info(f"Found exact match: {track['name']} by {track['artists'][0]['name']}")
+                            break
+                
+                # If no exact match found, use AI selection as fallback
                 if not recommended_track:
-                    app.logger.warning("AI track selection failed, using first result")
+                    app.logger.info("No exact match found, using AI to select best option...")
+                    
+                    # Create a simplified prompt for AI selection
+                    track_options = []
+                    for i, track in enumerate(search_items[:5]):  # Limit to top 5 for better accuracy
+                        track_options.append(f"{i + 1}. \"{track['name']}\" by {track['artists'][0]['name']} (Album: {track['album']['name']})")
+                    
+                    track_selection_prompt = f"""You recommended: "{recommendation_text}"
+
+Search results:
+{chr(10).join(track_options)}
+
+Which option number (1-{len(track_options)}) best matches your recommendation "{song_title}" by "{artist_name}"?
+
+Respond with only the number."""
+                    
+                    try:
+                        selection_response = model.generate_content(track_selection_prompt)
+                        selected_option = selection_response.text.strip()
+                        app.logger.info(f"AI selection response: '{selected_option}'")
+                        
+                        # Parse the selection
+                        try:
+                            option_index = int(selected_option) - 1
+                            if 0 <= option_index < len(search_items):
+                                recommended_track = search_items[option_index]
+                                app.logger.info(f"AI selected option {selected_option}: {recommended_track['name']} by {recommended_track['artists'][0]['name']}")
+                            else:
+                                app.logger.warning(f"AI selected invalid option: {selected_option}")
+                        except ValueError:
+                            app.logger.warning(f"AI returned non-numeric selection: {selected_option}")
+                    except Exception as e:
+                        app.logger.error(f"Error in AI track selection: {e}")
+                
+                # Final fallback: use first result
+                if not recommended_track:
+                    app.logger.warning("All selection methods failed, using first result")
                     recommended_track = search_items[0]
             
             # Save recommendation to database
