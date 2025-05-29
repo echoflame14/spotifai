@@ -54,19 +54,77 @@
                 
                 <!-- How It Works -->
                 <div class="how-it-works mt-4">
-                    <h6 class="text-muted text-uppercase small mb-3">How It Works</h6>
-                    <div class="process-steps">
-                        <div class="step mb-2">
-                            <span class="step-number">1</span>
-                            <span class="text-muted small">Analyze your Spotify history</span>
+                    <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#technicalDetails" aria-expanded="false">
+                        <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
+                            How It Works
+                            <i class="fas fa-chevron-down small"></i>
+                        </h6>
+                    </button>
+                    
+                    <div class="collapse mt-3" id="technicalDetails">
+                        <div class="process-steps mb-4">
+                            <div class="step mb-2">
+                                <span class="step-number">1</span>
+                                <span class="text-muted small">Analyze your Spotify history</span>
+                            </div>
+                            <div class="step mb-2">
+                                <span class="step-number">2</span>
+                                <span class="text-muted small">Understand your preferences</span>
+                            </div>
+                            <div class="step mb-2">
+                                <span class="step-number">3</span>
+                                <span class="text-muted small">Recommend perfect matches</span>
+                            </div>
                         </div>
-                        <div class="step mb-2">
-                            <span class="step-number">2</span>
-                            <span class="text-muted small">Understand your preferences</span>
-                        </div>
-                        <div class="step mb-2">
-                            <span class="step-number">3</span>
-                            <span class="text-muted small">Recommend perfect matches</span>
+                        
+                        <!-- Technical Details -->
+                        <div class="technical-details p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+                            <h6 class="text-white mb-3">
+                                <i class="fas fa-cogs me-2"></i>
+                                Technical Implementation
+                            </h6>
+                            
+                            <div class="tech-section mb-3">
+                                <h6 class="text-spotify small mb-2">Data Collection</h6>
+                                <ul class="text-muted small mb-0 ps-3">
+                                    <li>Fetches 150+ recent tracks via Spotify Web API</li>
+                                    <li>Analyzes top tracks/artists across 3 time periods</li>
+                                    <li>Collects saved tracks, playlists, and genre data</li>
+                                    <li>Tracks recommendation history to prevent repetition</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="tech-section mb-3">
+                                <h6 class="text-spotify small mb-2">AI Analysis Engine</h6>
+                                <ul class="text-muted small mb-0 ps-3">
+                                    <li>Google Gemini 2.0 Flash Exp for psychological analysis</li>
+                                    <li>Processes listening patterns and musical evolution</li>
+                                    <li>Identifies genre preferences and mood patterns</li>
+                                    <li>Learns from user feedback to improve accuracy</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="tech-section mb-3">
+                                <h6 class="text-spotify small mb-2">Recommendation Logic</h6>
+                                <ul class="text-muted small mb-0 ps-3">
+                                    <li>Avoids recently played and recommended tracks</li>
+                                    <li>Balances familiar artists with new discoveries</li>
+                                    <li>Uses multi-strategy Spotify search validation</li>
+                                    <li>Stores recommendations with AI reasoning</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="tech-section">
+                                <h6 class="text-spotify small mb-2">Technology Stack</h6>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="badge bg-secondary">Python Flask</span>
+                                    <span class="badge bg-secondary">Spotify Web API</span>
+                                    <span class="badge bg-secondary">Google Gemini AI</span>
+                                    <span class="badge bg-secondary">PostgreSQL</span>
+                                    <span class="badge bg-secondary">OAuth 2.0</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
