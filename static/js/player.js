@@ -335,7 +335,6 @@ function handleAIRecommendation() {
                 <span class="visually-hidden">Loading...</span>
             </div>
             <p class="text-white mt-3">AI is analyzing your music taste...</p>
-            <p class="text-muted small">Check browser console for detailed logs</p>
         </div>
     `;
     
