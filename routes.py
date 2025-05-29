@@ -427,11 +427,56 @@ Do not include any other text, explanations, or formatting."""
         app.logger.info(f"Raw AI response: {recommendation_text}")
         app.logger.info(f"AI recommended: {recommendation_text}")
         
-        # Search for the recommended track on Spotify
-        search_results = spotify_client.search_tracks(recommendation_text)
+        # Search for the recommended track on Spotify with more results for better AI selection
+        search_results = spotify_client.search_tracks(recommendation_text, limit=10)
         
         if search_results and search_results.get('tracks', {}).get('items'):
-            recommended_track = search_results['tracks']['items'][0]
+            search_items = search_results['tracks']['items']
+            
+            if len(search_items) == 1:
+                # Only one result, use it
+                recommended_track = search_items[0]
+            else:
+                # Multiple results - use AI to pick the best match
+                app.logger.info(f"Multiple search results found, using AI to select best match...")
+                
+                # Create a prompt for AI to select the best track
+                track_selection_prompt = f"""
+You recommended: "{recommendation_text}"
+
+Spotify search returned these tracks:
+{json.dumps([{
+    'name': track['name'],
+    'artist': track['artists'][0]['name'],
+    'album': track['album']['name'],
+    'popularity': track.get('popularity', 0),
+    'uri': track['uri']
+} for track in search_items[:10]], indent=2)}
+
+Which track BEST matches your original recommendation of "{recommendation_text}"? 
+Consider:
+1. Exact or closest title match
+2. Correct artist
+3. Most likely to be the intended song
+
+Respond with ONLY the exact track URI (spotify:track:xxxxx) of the best match.
+"""
+                
+                selection_response = model.generate_content(track_selection_prompt)
+                selected_uri = selection_response.text.strip()
+                
+                # Find the track with the selected URI
+                recommended_track = None
+                for track in search_items:
+                    if track['uri'] in selected_uri:
+                        recommended_track = track
+                        app.logger.info(f"AI selected track: {track['name']} by {track['artists'][0]['name']}")
+                        break
+                
+                # Fallback to first result if AI selection fails
+                if not recommended_track:
+                    app.logger.warning("AI track selection failed, using first result")
+                    recommended_track = search_items[0]
             
             # Save recommendation to database
             from models import Recommendation
