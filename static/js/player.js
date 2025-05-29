@@ -989,6 +989,21 @@ function setupPlaylistCreation() {
         console.log('Create playlist confirm clicked');
         handlePlaylistCreation();
     });
+    
+    // Clean up when modal is hidden (for any reason)
+    modal.addEventListener('hidden.bs.modal', function() {
+        console.log('Modal hidden, cleaning up...');
+        // Force cleanup of any remaining modal artifacts
+        setTimeout(() => {
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }, 50);
+    });
 }
 
 function handlePlaylistCreation() {
