@@ -368,6 +368,10 @@ function handleAIRecommendation() {
             // Show and immediately load the "Why This Track?" section
             showWhyThisTrack();
             fetchTrackReasoning();
+            
+            // Show and load the "Learned from Feedback" section
+            showLearnedFeedback();
+            fetchFeedbackInsights();
         } else {
             showRecommendationError(data.message);
         }
@@ -571,6 +575,12 @@ function getNextRecommendation() {
         whySection.style.display = 'none';
     }
     
+    // Hide learned feedback section
+    const learnedSection = document.getElementById('learnedFeedback');
+    if (learnedSection) {
+        learnedSection.style.display = 'none';
+    }
+    
     // Clear previous reasoning content
     const contentDiv = document.getElementById('trackReasoningContent');
     if (contentDiv) {
@@ -578,6 +588,17 @@ function getNextRecommendation() {
             <div class="d-flex align-items-center justify-content-center py-3">
                 <div class="spinner-border spinner-border-sm text-spotify me-2" role="status"></div>
                 <span class="text-muted small">Analyzing why you'll love this track...</span>
+            </div>
+        `;
+    }
+    
+    // Clear previous feedback insights content
+    const feedbackContentDiv = document.getElementById('feedbackLearningContent');
+    if (feedbackContentDiv) {
+        feedbackContentDiv.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center py-3">
+                <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                <span class="text-muted small">Loading feedback insights...</span>
             </div>
         `;
     }
@@ -662,6 +683,63 @@ function fetchTrackReasoning() {
             <div class="text-center py-3">
                 <i class="fas fa-exclamation-triangle text-warning me-2"></i>
                 <span class="text-muted">Failed to load reasoning. Please try again.</span>
+            </div>
+        `;
+    });
+}
+
+// Show Learned from Feedback section
+function showLearnedFeedback() {
+    const learnedSection = document.getElementById('learnedFeedback');
+    if (learnedSection) {
+        learnedSection.style.display = 'block';
+    }
+}
+
+// Fetch feedback insights from backend
+function fetchFeedbackInsights() {
+    const contentDiv = document.getElementById('feedbackLearningContent');
+    
+    fetch('/feedback-insights', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            contentDiv.innerHTML = `
+                <div class="feedback-insights-content">
+                    <h6 class="text-white mb-3">
+                        <i class="fas fa-brain text-warning me-2"></i>
+                        What I've Learned About Your Taste
+                    </h6>
+                    <div class="insights-text text-light" style="line-height: 1.6;">
+                        ${data.insights.replace(/\n/g, '<br><br>')}
+                    </div>
+                    ${data.feedback_count ? `
+                        <div class="mt-3">
+                            <small class="text-muted">Based on ${data.feedback_count} feedback entries</small>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            contentDiv.innerHTML = `
+                <div class="text-center py-3">
+                    <i class="fas fa-info-circle text-warning me-2"></i>
+                    <span class="text-muted">${data.message || 'No feedback insights available yet'}</span>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching feedback insights:', error);
+        contentDiv.innerHTML = `
+            <div class="text-center py-3">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                <span class="text-muted">Failed to load insights. Please try again.</span>
             </div>
         `;
     });

@@ -1102,6 +1102,86 @@ Start with something like "Okay, so..." or "Dude, you're gonna love this because
             'message': f'Failed to generate reasoning: {str(e)}'
         })
 
+@app.route('/feedback-insights', methods=['POST'])
+def feedback_insights():
+    """Generate insights from user's historical feedback"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    try:
+        user_id = session['user_id']
+        
+        # Get all user's feedback entries
+        from models import UserFeedback, Recommendation
+        feedback_entries = UserFeedback.query.filter_by(user_id=user_id).order_by(UserFeedback.created_at.desc()).limit(10).all()
+        
+        if not feedback_entries:
+            return jsonify({
+                'success': True,
+                'insights': 'No feedback yet! Start giving feedback on recommendations to help me learn your preferences.'
+            })
+        
+        # Check if Gemini API key is available
+        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_api_key:
+            return jsonify({
+                'success': False, 
+                'message': 'AI analysis not available - API key required'
+            }), 400
+        
+        # Configure Gemini for feedback analysis
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        
+        # Prepare feedback data for analysis
+        feedback_data = []
+        for feedback in feedback_entries:
+            recommendation = Recommendation.query.get(feedback.recommendation_id)
+            if recommendation:
+                feedback_data.append({
+                    'track': f"{recommendation.track_name} by {recommendation.artist_name}",
+                    'feedback': feedback.feedback_text,
+                    'sentiment': feedback.sentiment,
+                    'ai_analysis': feedback.ai_processed_feedback
+                })
+        
+        # Create prompt for feedback insights
+        insights_prompt = f"""
+You are analyzing a user's music feedback to understand their preferences and what the AI system has learned about them.
+
+FEEDBACK HISTORY:
+{feedback_data}
+
+Generate a conversational summary of what has been learned about this user's music preferences. Write 2-3 sentences that explain:
+
+1. Key patterns in their likes/dislikes
+2. What genres, artists, or musical elements they gravitate toward or avoid
+3. How their feedback is helping improve future recommendations
+
+Write in a friendly, casual tone as if explaining to the user what you've learned about their taste. Start with something like "Based on your feedback, I've learned that..." or "Your feedback shows that..."
+
+Keep it concise and insightful - focus on actionable insights that show the AI is adapting to their preferences.
+"""
+        
+        # Generate the insights
+        response = model.generate_content(insights_prompt)
+        insights_text = response.text.strip()
+        
+        app.logger.info(f"Generated feedback insights for user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'insights': insights_text,
+            'feedback_count': len(feedback_entries)
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Feedback insights failed: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to generate insights: {str(e)}'
+        })
+
 
 @app.route('/api/current-track')
 def api_current_track():
