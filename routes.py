@@ -460,17 +460,35 @@ Do not include any other text, explanations, or formatting."""
                     song_title = song_title.strip()
                     artist_name = artist_name.strip()
                     
-                    # Look for exact matches
+                    # Look for exact matches first, then close matches
                     exact_match = None
+                    close_match = None
+                    
                     for track in search_items:
-                        if (track['name'].lower() == song_title.lower() and 
-                            track['artists'][0]['name'].lower() == artist_name.lower()):
+                        track_name_lower = track['name'].lower()
+                        artist_name_lower = track['artists'][0]['name'].lower()
+                        song_title_lower = song_title.lower()
+                        target_artist_lower = artist_name.lower()
+                        
+                        # Exact match
+                        if (track_name_lower == song_title_lower and 
+                            artist_name_lower == target_artist_lower):
                             exact_match = track
                             app.logger.info(f"Found exact match: {track['name']} by {track['artists'][0]['name']}")
                             break
+                        
+                        # Close match: song title is contained in track name and artist matches
+                        # This handles remixes, live versions, etc.
+                        if (song_title_lower in track_name_lower and 
+                            artist_name_lower == target_artist_lower and not close_match):
+                            close_match = track
+                            app.logger.info(f"Found close match: {track['name']} by {track['artists'][0]['name']}")
                     
-                    if exact_match:
-                        recommended_track = exact_match
+                    # Prefer exact match, but use close match if available
+                    best_match = exact_match or close_match
+                    
+                    if best_match:
+                        recommended_track = best_match
                     else:
                         # Fall back to AI selection
                         app.logger.info(f"No exact match found, using AI to select best match...")
