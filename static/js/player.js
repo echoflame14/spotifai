@@ -419,6 +419,9 @@ function displayRecommendedTrack(track, reasoning) {
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
                     <i class="fas fa-play me-1"></i>Play
                 </button>
+                <button class="btn btn-outline-warning me-2" onclick="previewTrack('${track.preview_url}', this)" ${!track.preview_url ? 'disabled title="No preview available"' : ''}>
+                    <i class="fas fa-headphones me-1"></i>Preview
+                </button>
                 <button class="btn btn-outline-light me-2" onclick="getNextRecommendation()">
                     <i class="fas fa-forward me-1"></i>Next Rec
                 </button>
@@ -491,8 +494,9 @@ function playRecommendedTrack(trackUri) {
     });
 }
 
-// Store current recommendation ID for feedback
+// Store current recommendation ID for feedback and preview audio
 let currentRecommendationId = null;
+let currentPreviewAudio = null;
 
 function setupChatFeedback() {
     const submitBtn = document.getElementById('submitFeedback');
