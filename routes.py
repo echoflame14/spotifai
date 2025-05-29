@@ -1315,6 +1315,7 @@ def create_ai_playlist():
 USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
 {user_analysis}
 
+PLAYLIST TITLE: {playlist_name}
 PLAYLIST DESCRIPTION AND ADDITIONAL GUIDANCE:
 {playlist_description}
 
@@ -1324,7 +1325,7 @@ REQUIREMENTS:
 3. Variety is important - don't repeat artists unless the user heavily favors them
 4. Consider the user's taste evolution and current preferences
 5. Include both familiar genres and potential discoveries
-6. IMPORTANT: Pay special attention to the playlist description above and adjust your recommendations to match that mood, theme, or style while still respecting the user's musical taste
+6. IMPORTANT: Pay special attention to both the playlist title and description above. Adjust your recommendations to match that mood, theme, genre, or style while still respecting the user's musical taste
 7. Format each song as: "Song Title" by Artist Name
 
 Please respond with ONLY the song list, one song per line, in this exact format:
