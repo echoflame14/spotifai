@@ -105,3 +105,35 @@ class SpotifyClient:
     def get_playlist_tracks(self, playlist_id, limit=50):
         """Get tracks from a playlist"""
         return self._make_request('GET', f'/playlists/{playlist_id}/tracks?limit={limit}')
+    
+    def get_recently_played(self, limit=20):
+        """Get user's recently played tracks"""
+        return self._make_request('GET', f'/me/player/recently-played?limit={limit}')
+    
+    def get_top_tracks(self, time_range='medium_term', limit=20):
+        """Get user's top tracks (short_term, medium_term, long_term)"""
+        return self._make_request('GET', f'/me/top/tracks?time_range={time_range}&limit={limit}')
+    
+    def get_top_artists(self, time_range='medium_term', limit=20):
+        """Get user's top artists (short_term, medium_term, long_term)"""
+        return self._make_request('GET', f'/me/top/artists?time_range={time_range}&limit={limit}')
+    
+    def get_saved_tracks(self, limit=20):
+        """Get user's saved (liked) tracks"""
+        return self._make_request('GET', f'/me/tracks?limit={limit}')
+    
+    def search_tracks(self, query, limit=1):
+        """Search for tracks"""
+        from urllib.parse import quote
+        encoded_query = quote(query)
+        return self._make_request('GET', f'/search?q={encoded_query}&type=track&limit={limit}')
+    
+    def play_track(self, track_uri, device_id=None):
+        """Play a specific track"""
+        endpoint = '/me/player/play'
+        if device_id:
+            endpoint += f'?device_id={device_id}'
+        
+        data = {'uris': [track_uri]}
+        result = self._make_request('PUT', endpoint, json=data)
+        return result is not None

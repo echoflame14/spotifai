@@ -155,9 +155,6 @@ def dashboard():
     
     spotify_client = SpotifyClient(user.access_token)
     
-    # Get user's playlists
-    playlists = spotify_client.get_user_playlists() or []
-    
     # Get currently playing track
     current_track = spotify_client.get_current_track()
     
@@ -166,7 +163,6 @@ def dashboard():
     
     return render_template('dashboard.html', 
                          user=user, 
-                         playlists=playlists, 
                          current_track=current_track,
                          playback_state=playback_state)
 
@@ -209,6 +205,131 @@ def pause():
         flash('Failed to pause playback', 'error')
     
     return redirect(url_for('dashboard'))
+
+@app.route('/ai-recommendation', methods=['POST'])
+def ai_recommendation():
+    """Get AI-powered music recommendation"""
+    from flask import jsonify
+    import google.generativeai as genai
+    
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    try:
+        # Check if Gemini API key is available
+        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_api_key:
+            return jsonify({
+                'success': False, 
+                'message': 'Gemini API key not configured. Please provide your API key.'
+            }), 400
+        
+        spotify_client = SpotifyClient(user.access_token)
+        
+        # Collect user's music data
+        app.logger.info("Collecting user music data for AI recommendation...")
+        
+        recent_tracks = spotify_client.get_recently_played(limit=10) or {'items': []}
+        top_tracks = spotify_client.get_top_tracks(time_range='medium_term', limit=10) or {'items': []}
+        top_artists = spotify_client.get_top_artists(time_range='medium_term', limit=10) or {'items': []}
+        saved_tracks = spotify_client.get_saved_tracks(limit=10) or {'items': []}
+        
+        # Prepare data for AI
+        music_data = {
+            'recent_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name']} 
+                            for track in recent_tracks.get('items', [])],
+            'top_tracks': [{'name': track['name'], 'artist': track['artists'][0]['name']} 
+                         for track in top_tracks.get('items', [])],
+            'top_artists': [artist['name'] for artist in top_artists.get('items', [])],
+            'saved_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name']} 
+                           for track in saved_tracks.get('items', [])]
+        }
+        
+        # Configure Gemini
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Create prompt for AI
+        prompt = f"""Based on this user's Spotify listening data, recommend ONE specific song that they would love:
+
+Recent tracks: {music_data['recent_tracks'][:5]}
+Top tracks: {music_data['top_tracks'][:5]}  
+Top artists: {music_data['top_artists'][:5]}
+Saved tracks: {music_data['saved_tracks'][:5]}
+
+Please respond with ONLY the song title and artist in this exact format:
+"Song Title" by Artist Name
+
+Do not include any other text, explanations, or formatting."""
+        
+        # Get AI recommendation
+        app.logger.info("Requesting AI recommendation from Gemini...")
+        response = model.generate_content(prompt)
+        recommendation_text = response.text.strip()
+        
+        app.logger.info(f"AI recommended: {recommendation_text}")
+        
+        # Search for the recommended track on Spotify
+        search_results = spotify_client.search_tracks(recommendation_text)
+        
+        if search_results and search_results.get('tracks', {}).get('items'):
+            recommended_track = search_results['tracks']['items'][0]
+            
+            return jsonify({
+                'success': True,
+                'track': {
+                    'name': recommended_track['name'],
+                    'artist': recommended_track['artists'][0]['name'],
+                    'album': recommended_track['album']['name'],
+                    'image': recommended_track['album']['images'][0]['url'] if recommended_track['album']['images'] else None,
+                    'uri': recommended_track['uri'],
+                    'external_url': recommended_track['external_urls']['spotify']
+                },
+                'ai_reasoning': recommendation_text
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Could not find the recommended track: {recommendation_text}'
+            })
+            
+    except Exception as e:
+        app.logger.error(f"AI recommendation failed: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'AI recommendation failed: {str(e)}'
+        })
+
+@app.route('/play-recommendation', methods=['POST'])
+def play_recommendation():
+    """Play the AI recommended track"""
+    from flask import jsonify
+    
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    track_uri = request.json.get('track_uri')
+    if not track_uri:
+        return jsonify({'success': False, 'message': 'Track URI required'}), 400
+    
+    spotify_client = SpotifyClient(user.access_token)
+    success = spotify_client.play_track(track_uri)
+    
+    if success:
+        return jsonify({'success': True, 'message': 'Playing recommended track'})
+    else:
+        return jsonify({
+            'success': False, 
+            'message': 'Failed to play track. Make sure Spotify is open on a device.'
+        })
 
 @app.route('/logout')
 def logout():

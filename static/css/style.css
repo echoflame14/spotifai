@@ -413,3 +413,59 @@ html, body {
     color: #007aff;
     border-left: 4px solid #007aff;
 }
+
+/* AI Recommendation Styles */
+.btn-gradient-spotify {
+    background: linear-gradient(135deg, var(--spotify-green), #1ed760);
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 50px;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(29, 185, 84, 0.3);
+}
+
+.btn-gradient-spotify:hover {
+    background: linear-gradient(135deg, #1ed760, #1db954);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+    color: white;
+}
+
+.btn-gradient-spotify:active {
+    transform: translateY(0);
+}
+
+.ai-recommendations {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.1), rgba(30, 215, 96, 0.05));
+    border-radius: 12px;
+    border: 1px solid rgba(29, 185, 84, 0.2);
+}
+
+.recommendation-result {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.recommended-track-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: var(--spotify-gray);
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.recommended-track-item:hover {
+    background: rgba(29, 185, 84, 0.1);
+}
+
+.recommendation-loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.recommendation-loading .spinner-border {
+    color: var(--spotify-green);
+}

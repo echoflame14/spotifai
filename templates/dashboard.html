@@ -36,32 +36,16 @@
                     </div>
                 </div>
                 
-                <!-- Playlists -->
-                <div class="playlists">
-                    <h6 class="text-muted text-uppercase small mb-3">Your Playlists</h6>
-                    {% if playlists and playlists.get('items') %}
-                        <div class="playlist-list">
-                            {% for playlist in playlists.get('items', [])[:10] %}
-                                <div class="playlist-item mb-2">
-                                    <div class="d-flex align-items-center">
-                                        {% if playlist.images %}
-                                            <img src="{{ playlist.images[0].url }}" alt="{{ playlist.name }}" class="playlist-cover me-2">
-                                        {% else %}
-                                            <div class="playlist-cover-placeholder me-2">
-                                                <i class="fas fa-music"></i>
-                                            </div>
-                                        {% endif %}
-                                        <div class="flex-grow-1">
-                                            <div class="playlist-name">{{ playlist.name }}</div>
-                                            <div class="playlist-tracks">{{ playlist.tracks.total }} tracks</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted small">No playlists found. Create some playlists in Spotify to see them here.</p>
-                    {% endif %}
+                <!-- AI Recommendations -->
+                <div class="ai-recommendations">
+                    <h6 class="text-muted text-uppercase small mb-3">AI Recommendations</h6>
+                    <div class="d-grid gap-2">
+                        <button id="getRecommendation" class="btn btn-gradient-spotify">
+                            <i class="fas fa-robot me-2"></i>
+                            Get AI Recommendation
+                        </button>
+                    </div>
+                    <p class="text-muted small mt-2">Let AI analyze your music taste and recommend the perfect track!</p>
                 </div>
             </div>
         </div>
@@ -174,38 +158,20 @@
                 </div>
             </div>
             
-            <!-- Recent Playlists Grid -->
-            {% if playlists and playlists.get('items') %}
-                <div class="playlists-grid">
-                    <h5 class="text-white mb-3">Your Playlists</h5>
-                    <div class="row">
-                        {% for playlist in playlists.get('items', [])[:6] %}
-                            <div class="col-lg-4 col-md-6 mb-4">
-                                <div class="card bg-dark-card border-0 h-100 playlist-card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-start">
-                                            {% if playlist.images %}
-                                                <img src="{{ playlist.images[0].url }}" alt="{{ playlist.name }}" class="playlist-grid-cover me-3">
-                                            {% else %}
-                                                <div class="playlist-grid-cover-placeholder me-3">
-                                                    <i class="fas fa-music"></i>
-                                                </div>
-                                            {% endif %}
-                                            <div class="flex-grow-1">
-                                                <h6 class="card-title text-white mb-1">{{ playlist.name }}</h6>
-                                                <p class="card-text text-muted small mb-2">{{ playlist.tracks.total }} tracks</p>
-                                                {% if playlist.description %}
-                                                    <p class="card-text text-muted small">{{ playlist.description[:50] }}{% if playlist.description|length > 50 %}...{% endif %}</p>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
+            <!-- AI Recommendation Result -->
+            <div id="recommendationResult" class="recommendation-result mb-4" style="display: none;">
+                <div class="card bg-dark-card border-0">
+                    <div class="card-body">
+                        <h5 class="card-title text-white mb-3">
+                            <i class="fas fa-sparkles text-spotify me-2"></i>
+                            AI Recommendation
+                        </h5>
+                        <div id="recommendedTrack">
+                            <!-- Recommended track will be displayed here -->
+                        </div>
                     </div>
                 </div>
-            {% endif %}
+            </div>
         </div>
     </div>
 </div>

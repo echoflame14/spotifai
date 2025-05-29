@@ -44,6 +44,12 @@ function initializePlayer() {
         });
     });
 
+    // Add AI recommendation button handler
+    const aiButton = document.getElementById('getRecommendation');
+    if (aiButton) {
+        aiButton.addEventListener('click', handleAIRecommendation);
+    }
+
     // Auto-refresh current track info every 30 seconds
     if (document.querySelector('.now-playing')) {
         setInterval(refreshTrackInfo, 30000);
@@ -255,6 +261,127 @@ function addSmoothScrolling() {
 
 addSmoothScrolling();
 
+// AI Recommendation Functions
+function handleAIRecommendation() {
+    const button = document.getElementById('getRecommendation');
+    const resultDiv = document.getElementById('recommendationResult');
+    const trackDiv = document.getElementById('recommendedTrack');
+    
+    // Show loading state
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting AI Recommendation...';
+    button.disabled = true;
+    
+    // Show loading in result area
+    resultDiv.style.display = 'block';
+    trackDiv.innerHTML = `
+        <div class="recommendation-loading">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-white mt-3">AI is analyzing your music taste...</p>
+        </div>
+    `;
+    
+    // Make AI recommendation request
+    fetch('/ai-recommendation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayRecommendedTrack(data.track, data.ai_reasoning);
+        } else {
+            showRecommendationError(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('AI Recommendation Error:', error);
+        showRecommendationError('Failed to get AI recommendation. Please try again.');
+    })
+    .finally(() => {
+        // Restore button
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function displayRecommendedTrack(track, reasoning) {
+    const trackDiv = document.getElementById('recommendedTrack');
+    
+    trackDiv.innerHTML = `
+        <div class="recommended-track-item">
+            ${track.image ? `<img src="${track.image}" alt="${track.album}" class="album-cover me-3">` : 
+              '<div class="album-cover-placeholder me-3"><i class="fas fa-music"></i></div>'}
+            <div class="flex-grow-1">
+                <h6 class="text-white mb-1">${track.name}</h6>
+                <p class="text-muted mb-1">${track.artist}</p>
+                <p class="text-muted small mb-0">${track.album}</p>
+                <p class="text-spotify small mt-2"><i class="fas fa-robot me-1"></i>AI suggested: ${reasoning}</p>
+            </div>
+            <div>
+                <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
+                    <i class="fas fa-play me-1"></i>Play
+                </button>
+                <a href="${track.external_url}" target="_blank" class="btn btn-outline-spotify">
+                    <i class="fab fa-spotify me-1"></i>Open in Spotify
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+function showRecommendationError(message) {
+    const trackDiv = document.getElementById('recommendedTrack');
+    
+    trackDiv.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+            <h6 class="text-white mb-2">Recommendation Failed</h6>
+            <p class="text-muted">${message}</p>
+        </div>
+    `;
+}
+
+function playRecommendedTrack(trackUri) {
+    const button = event.target;
+    const originalHTML = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Playing...';
+    button.disabled = true;
+    
+    fetch('/play-recommendation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ track_uri: trackUri })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showNotification(data.message, data.success ? 'success' : 'error');
+        
+        if (data.success) {
+            // Refresh page after a short delay to show updated now playing
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        }
+    })
+    .catch(error => {
+        console.error('Play Error:', error);
+        showNotification('Failed to play recommended track', 'error');
+    })
+    .finally(() => {
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
 // Console welcome message
 console.log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
 console.log('%cUse spacebar to play/pause music', 'color: #b3b3b3; font-size: 12px;');
+console.log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
