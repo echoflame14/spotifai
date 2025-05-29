@@ -32,13 +32,14 @@ function initializePlayer() {
         });
     });
 
-    // Add loading states for control buttons
+    // Add AJAX handlers for control buttons
     const controlButtons = document.querySelectorAll('.btn-spotify, .btn-outline-spotify');
     controlButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            // Only add loading state for play/pause buttons
+            // Handle play/pause buttons with AJAX
             if (this.href && (this.href.includes('/play') || this.href.includes('/pause'))) {
-                addLoadingState(this);
+                e.preventDefault();
+                handlePlayPauseClick(this);
             }
         });
     });
@@ -147,6 +148,68 @@ document.addEventListener('keydown', function(e) {
 });
 
 // Add visual feedback for button interactions
+function handlePlayPauseClick(button) {
+    // Add loading state
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+    button.disabled = true;
+    
+    // Determine the action based on the URL
+    const action = button.href.includes('/play') ? 'play' : 'pause';
+    
+    // Make AJAX request
+    fetch(`/${action}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Show success/error message
+        showNotification(data.message, data.success ? 'success' : 'error');
+        
+        // Refresh page content after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to control playback', 'error');
+    })
+    .finally(() => {
+        // Restore button
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '9999';
+    notification.style.minWidth = '300px';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
 function addButtonFeedback() {
     const buttons = document.querySelectorAll('.btn');
     buttons.forEach(button => {

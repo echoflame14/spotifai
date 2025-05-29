@@ -163,45 +163,45 @@ def dashboard():
                          current_track=current_track,
                          playback_state=playback_state)
 
-@app.route('/play')
+@app.route('/play', methods=['POST'])
 def play():
     """Resume playback"""
+    from flask import jsonify
+    
     if 'user_id' not in session:
-        return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
     user = User.query.get(session['user_id'])
     if not user:
-        return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': 'User not found'}), 404
     
     spotify_client = SpotifyClient(user.access_token)
     success = spotify_client.play()
     
     if success:
-        flash('Playback resumed', 'success')
+        return jsonify({'success': True, 'message': 'Playback resumed'})
     else:
-        flash('Failed to resume playback. Make sure Spotify is open on a device.', 'error')
-    
-    return redirect(url_for('dashboard'))
+        return jsonify({'success': False, 'message': 'Failed to resume playback. Make sure Spotify is open on a device.'})
 
-@app.route('/pause')
+@app.route('/pause', methods=['POST'])
 def pause():
     """Pause playback"""
+    from flask import jsonify
+    
     if 'user_id' not in session:
-        return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
     user = User.query.get(session['user_id'])
     if not user:
-        return redirect(url_for('index'))
+        return jsonify({'success': False, 'message': 'User not found'}), 404
     
     spotify_client = SpotifyClient(user.access_token)
     success = spotify_client.pause()
     
     if success:
-        flash('Playback paused', 'success')
+        return jsonify({'success': True, 'message': 'Playback paused'})
     else:
-        flash('Failed to pause playback', 'error')
-    
-    return redirect(url_for('dashboard'))
+        return jsonify({'success': False, 'message': 'Failed to pause playback'})
 
 @app.route('/logout')
 def logout():
