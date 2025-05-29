@@ -31,6 +31,11 @@ def login():
     # Define required scopes
     scope = 'user-read-private user-read-email playlist-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing'
     
+    # Debug: Log the parameters being used
+    app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
+    app.logger.info(f"Redirect URI: {SPOTIFY_REDIRECT_URI}")
+    app.logger.info(f"State: {state}")
+    
     # Build authorization URL
     auth_params = {
         'response_type': 'code',
@@ -41,6 +46,8 @@ def login():
     }
     
     auth_url = 'https://accounts.spotify.com/authorize?' + urlencode(auth_params)
+    app.logger.info(f"Authorization URL: {auth_url}")
+    
     return redirect(auth_url)
 
 @app.route('/callback')
