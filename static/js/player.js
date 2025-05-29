@@ -573,11 +573,7 @@ function getNextRecommendation() {
         whySection.style.display = 'none';
     }
     
-    // Hide learned feedback section in center column
-    const feedbackSection = document.getElementById('feedbackLearningSection');
-    if (feedbackSection) {
-        feedbackSection.style.display = 'none';
-    }
+
     
     // Clear previous reasoning content
     const contentDiv = document.getElementById('trackReasoningContent');
