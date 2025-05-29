@@ -57,6 +57,8 @@ def login():
     # Debug: Log the parameters being used
     app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
     app.logger.info(f"Redirect URI: {redirect_uri}")
+    app.logger.info(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
+    app.logger.info(f"Request Host: {request.host}")
     app.logger.info(f"State: {state}")
     
     # Build authorization URL
