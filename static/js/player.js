@@ -365,8 +365,9 @@ function handleAIRecommendation() {
             
             displayRecommendedTrack(data.track, data.ai_reasoning);
             
-            // Show the "Why This Track?" section
+            // Show and immediately load the "Why This Track?" section
             showWhyThisTrack();
+            fetchTrackReasoning();
         } else {
             showRecommendationError(data.message);
         }
@@ -564,10 +565,27 @@ function getNextRecommendation() {
         chatFeedback.style.display = 'none';
     }
     
-    // Hide why this track section
+    // Hide why this track section and clear content
     const whySection = document.getElementById('whyThisTrack');
     if (whySection) {
         whySection.style.display = 'none';
+    }
+    
+    // Clear previous reasoning content
+    const contentDiv = document.getElementById('trackReasoningContent');
+    if (contentDiv) {
+        contentDiv.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center py-3">
+                <div class="spinner-border spinner-border-sm text-spotify me-2" role="status"></div>
+                <span class="text-muted small">Analyzing why you'll love this track...</span>
+            </div>
+        `;
+    }
+    
+    // Reset the reasoning loaded flag
+    const collapseElement = document.getElementById('trackReasoningCollapse');
+    if (collapseElement) {
+        collapseElement.classList.remove('reasoning-loaded');
     }
     
     // Clear feedback status
@@ -586,14 +604,12 @@ function showWhyThisTrack() {
     if (whySection) {
         whySection.style.display = 'block';
         
-        // Add event listener for when the collapse is opened
+        // Auto-expand the section to show the reasoning immediately
         const collapseElement = document.getElementById('trackReasoningCollapse');
-        if (collapseElement) {
-            collapseElement.addEventListener('shown.bs.collapse', function () {
-                if (!this.classList.contains('reasoning-loaded')) {
-                    fetchTrackReasoning();
-                    this.classList.add('reasoning-loaded');
-                }
+        if (collapseElement && !collapseElement.classList.contains('show')) {
+            // Use Bootstrap's collapse API to show it
+            const bsCollapse = new bootstrap.Collapse(collapseElement, {
+                show: true
             });
         }
     }
