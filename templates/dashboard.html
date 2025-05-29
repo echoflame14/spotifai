@@ -39,9 +39,9 @@
                 <!-- Playlists -->
                 <div class="playlists">
                     <h6 class="text-muted text-uppercase small mb-3">Your Playlists</h6>
-                    {% if playlists and playlists.items %}
+                    {% if playlists and playlists.get('items') %}
                         <div class="playlist-list">
-                            {% for playlist in playlists.items[:10] %}
+                            {% for playlist in playlists.get('items', [])[:10] %}
                                 <div class="playlist-item mb-2">
                                     <div class="d-flex align-items-center">
                                         {% if playlist.images %}
@@ -175,11 +175,11 @@
             </div>
             
             <!-- Recent Playlists Grid -->
-            {% if playlists and playlists.items %}
+            {% if playlists and playlists.get('items') %}
                 <div class="playlists-grid">
                     <h5 class="text-white mb-3">Your Playlists</h5>
                     <div class="row">
-                        {% for playlist in playlists.items[:6] %}
+                        {% for playlist in playlists.get('items', [])[:6] %}
                             <div class="col-lg-4 col-md-6 mb-4">
                                 <div class="card bg-dark-card border-0 h-100 playlist-card">
                                     <div class="card-body">
