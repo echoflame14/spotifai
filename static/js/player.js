@@ -428,7 +428,7 @@ function playRecommendedTrack(trackUri) {
     button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Playing...';
     button.disabled = true;
     
-    fetch('/play-recommendation', {
+    fetch('/play_recommendation', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -440,9 +440,9 @@ function playRecommendedTrack(trackUri) {
         showNotification(data.message, data.success ? 'success' : 'error');
         
         if (data.success) {
-            // Refresh page after a short delay to show updated now playing
+            // Just refresh the track info without reloading the page
             setTimeout(() => {
-                window.location.reload();
+                refreshTrackInfo();
             }, 1500);
         }
     })
