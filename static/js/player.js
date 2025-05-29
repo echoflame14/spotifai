@@ -761,6 +761,18 @@ function fetchFeedbackInsights() {
     });
 }
 
+// Setup feedback learning button click handler
+document.addEventListener('DOMContentLoaded', function() {
+    const feedbackCollapse = document.getElementById('feedbackLearningCollapse');
+    
+    if (feedbackCollapse) {
+        feedbackCollapse.addEventListener('show.bs.collapse', function() {
+            // Load feedback insights when the section is opened
+            fetchFeedbackInsights();
+        });
+    }
+});
+
 // Console welcome message
 console.log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
 console.log('%cUse spacebar to play/pause music', 'color: #b3b3b3; font-size: 12px;');
