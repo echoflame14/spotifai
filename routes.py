@@ -303,8 +303,43 @@ def ai_recommendation():
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Create comprehensive prompt for AI
-        prompt = f"""Analyze this comprehensive Spotify listening data and recommend ONE specific song that perfectly matches this user's taste:
+        # First, analyze the user's music patterns and psychology
+        app.logger.info("Performing psychological and pattern analysis...")
+        
+        analysis_prompt = f"""Analyze this comprehensive Spotify data to understand the user's musical psychology and patterns:
+
+RECENT LISTENING: {music_data['recent_tracks']}
+TOP TRACKS (All periods): {music_data['top_tracks_last_month']} | {music_data['top_tracks_6_months']} | {music_data['top_tracks_all_time']}
+TOP ARTISTS (All periods): {music_data['top_artists_last_month']} | {music_data['top_artists_6_months']} | {music_data['top_artists_all_time']}
+SAVED TRACKS: {music_data['saved_tracks']}
+GENRES: {music_data['favorite_genres']}
+PLAYLISTS: {music_data['playlist_names']}
+
+Provide a detailed psychological and musical analysis covering:
+1. Musical evolution over time (long-term vs recent preferences)
+2. Emotional themes and psychological patterns in their music choices
+3. Genre diversity vs consistency patterns
+4. Energy levels and moods reflected in their music
+5. Any recurring lyrical or musical themes
+6. Social vs introspective music preferences
+7. Relationship between playlist names and actual listening behavior
+8. Overall musical personality profile
+
+Format your response as structured insights, not recommendations."""
+
+        # Get psychological analysis from AI
+        analysis_response = model.generate_content(analysis_prompt)
+        user_analysis = analysis_response.text.strip()
+        
+        app.logger.info(f"User psychological analysis: {user_analysis}")
+        
+        # Create comprehensive prompt for AI recommendation
+        prompt = f"""Based on this comprehensive Spotify listening data AND psychological analysis, recommend ONE specific song that perfectly matches this user's taste:
+
+USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
+{user_analysis}
+
+RAW LISTENING DATA:
 
 RECENT LISTENING HISTORY (Last 50 tracks):
 {music_data['recent_tracks']}
@@ -340,9 +375,9 @@ Please respond with ONLY the song title and artist in this exact format:
 
 Do not include any other text, explanations, or formatting."""
         
-        # Get AI recommendation
-        app.logger.info("Requesting AI recommendation from Gemini...")
-        app.logger.info(f"Prompt sent to AI: {prompt}")
+        # Get AI recommendation based on psychological analysis
+        app.logger.info("Requesting psychologically-informed AI recommendation from Gemini...")
+        app.logger.info(f"Full prompt sent to AI: {prompt}")
         response = model.generate_content(prompt)
         recommendation_text = response.text.strip()
         
@@ -367,7 +402,8 @@ Do not include any other text, explanations, or formatting."""
                 },
                 'ai_reasoning': recommendation_text,
                 'ai_input_data': prompt,
-                'ai_output_data': recommendation_text
+                'ai_output_data': recommendation_text,
+                'psychological_analysis': user_analysis
             })
         else:
             return jsonify({

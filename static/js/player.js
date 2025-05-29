@@ -303,7 +303,8 @@ function handleAIRecommendation() {
             // Store AI interaction data globally
             lastAIData = {
                 input: data.ai_input_data,
-                output: data.ai_output_data
+                output: data.ai_output_data,
+                analysis: data.psychological_analysis
             };
             displayRecommendedTrack(data.track, data.ai_reasoning);
         } else {
@@ -348,6 +349,14 @@ function displayRecommendedTrack(track, reasoning) {
                     <div class="collapse mt-2" id="aiDataCollapse">
                         <div class="card bg-dark text-light small">
                             <div class="card-header">
+                                <strong>Psychological Analysis of Your Music Taste:</strong>
+                            </div>
+                            <div class="card-body">
+                                <pre class="text-wrap" id="aiAnalysisData" style="white-space: pre-wrap; font-size: 11px;"></pre>
+                            </div>
+                        </div>
+                        <div class="card bg-dark text-light small mt-2">
+                            <div class="card-header">
                                 <strong>Data Sent to Google Gemini:</strong>
                             </div>
                             <div class="card-body">
@@ -383,6 +392,7 @@ function displayRecommendedTrack(track, reasoning) {
     
     // Populate AI data if available
     if (lastAIData) {
+        document.getElementById('aiAnalysisData').textContent = lastAIData.analysis || 'No psychological analysis available';
         document.getElementById('aiInputData').textContent = lastAIData.input || 'No input data available';
         document.getElementById('aiOutputData').textContent = lastAIData.output || 'No output data available';
     }
