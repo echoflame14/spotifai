@@ -1031,9 +1031,24 @@ function handlePlaylistCreation() {
         
         if (data.success) {
             showNotification(`Successfully created playlist "${data.playlist_name}" with ${data.tracks_added} songs!`, 'success');
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('createPlaylistModal'));
-            modal.hide();
+            // Close modal properly
+            const modalElement = document.getElementById('createPlaylistModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Clean up any remaining backdrop
+            setTimeout(() => {
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }, 150);
+            
             // Reset form
             document.getElementById('playlistName').value = '';
             document.getElementById('playlistDescription').value = '';
