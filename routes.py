@@ -298,7 +298,9 @@ Do not include any other text, explanations, or formatting."""
                     'uri': recommended_track['uri'],
                     'external_url': recommended_track['external_urls']['spotify']
                 },
-                'ai_reasoning': recommendation_text
+                'ai_reasoning': recommendation_text,
+                'ai_input_data': prompt,
+                'ai_output_data': recommendation_text
             })
         else:
             return jsonify({

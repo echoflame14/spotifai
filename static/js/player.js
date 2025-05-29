@@ -300,6 +300,11 @@ function handleAIRecommendation() {
     .then(data => {
         console.log('📥 AI recommendation response data:', data);
         if (data.success) {
+            // Store AI interaction data globally
+            lastAIData = {
+                input: data.ai_input_data,
+                output: data.ai_output_data
+            };
             displayRecommendedTrack(data.track, data.ai_reasoning);
         } else {
             showRecommendationError(data.message);
@@ -316,6 +321,8 @@ function handleAIRecommendation() {
     });
 }
 
+let lastAIData = null; // Store AI interaction data globally
+
 function displayRecommendedTrack(track, reasoning) {
     const trackDiv = document.getElementById('recommendedTrack');
     
@@ -331,6 +338,33 @@ function displayRecommendedTrack(track, reasoning) {
                 <p class="text-muted mb-1">${track.artist}</p>
                 <p class="text-muted small mb-0">${track.album}</p>
                 <p class="text-spotify small mt-2"><i class="fas fa-robot me-1"></i>AI suggested: ${reasoning}</p>
+                
+                <!-- AI Data Transparency Section -->
+                <div class="ai-transparency mt-3">
+                    <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#aiDataCollapse" aria-expanded="false">
+                        <i class="fas fa-code me-1"></i>Show AI Input/Output Data
+                    </button>
+                    <div class="collapse mt-2" id="aiDataCollapse">
+                        <div class="card bg-dark text-light small">
+                            <div class="card-header">
+                                <strong>Data Sent to Google Gemini:</strong>
+                            </div>
+                            <div class="card-body">
+                                <pre class="text-wrap" id="aiInputData" style="white-space: pre-wrap; font-size: 11px;"></pre>
+                            </div>
+                        </div>
+                        <div class="card bg-dark text-light small mt-2">
+                            <div class="card-header">
+                                <strong>Response from Google Gemini:</strong>
+                            </div>
+                            <div class="card-body">
+                                <pre class="text-wrap" id="aiOutputData" style="white-space: pre-wrap; font-size: 11px;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="alert alert-info small mt-2">
                     <i class="fas fa-info-circle me-1"></i>
                     <strong>Note:</strong> To play tracks, you need Spotify Premium and an active Spotify app open on any device.
@@ -346,6 +380,12 @@ function displayRecommendedTrack(track, reasoning) {
             </div>
         </div>
     `;
+    
+    // Populate AI data if available
+    if (lastAIData) {
+        document.getElementById('aiInputData').textContent = lastAIData.input || 'No input data available';
+        document.getElementById('aiOutputData').textContent = lastAIData.output || 'No output data available';
+    }
 }
 
 function showRecommendationError(message) {
