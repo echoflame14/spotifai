@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Spotify Clone{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-3 col-md-4 sidebar">
+            <div class="sidebar-content">
+                <!-- User Profile -->
+                <div class="user-profile mb-4">
+                    {% if user.image_url %}
+                        <img src="{{ user.image_url }}" alt="{{ user.display_name }}" class="profile-image rounded-circle mb-2">
+                    {% else %}
+                        <div class="profile-image-placeholder rounded-circle mb-2">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                    <h5 class="text-white">{{ user.display_name or 'Spotify User' }}</h5>
+                    {% if user.email %}
+                        <p class="text-muted small">{{ user.email }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions mb-4">
+                    <h6 class="text-muted text-uppercase small mb-3">Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('play') }}" class="btn btn-outline-spotify btn-sm">
+                            <i class="fas fa-play me-1"></i> Play
+                        </a>
+                        <a href="{{ url_for('pause') }}" class="btn btn-outline-spotify btn-sm">
+                            <i class="fas fa-pause me-1"></i> Pause
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Playlists -->
+                <div class="playlists">
+                    <h6 class="text-muted text-uppercase small mb-3">Your Playlists</h6>
+                    {% if playlists and playlists.items %}
+                        <div class="playlist-list">
+                            {% for playlist in playlists.items[:10] %}
+                                <div class="playlist-item mb-2">
+                                    <div class="d-flex align-items-center">
+                                        {% if playlist.images %}
+                                            <img src="{{ playlist.images[0].url }}" alt="{{ playlist.name }}" class="playlist-cover me-2">
+                                        {% else %}
+                                            <div class="playlist-cover-placeholder me-2">
+                                                <i class="fas fa-music"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div class="flex-grow-1">
+                                            <div class="playlist-name">{{ playlist.name }}</div>
+                                            <div class="playlist-tracks">{{ playlist.tracks.total }} tracks</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted small">No playlists found. Create some playlists in Spotify to see them here.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-9 col-md-8 main-content">
+            <!-- Now Playing -->
+            {% if current_track and current_track.item %}
+                <div class="now-playing mb-4">
+                    <div class="card bg-dark-card border-0">
+                        <div class="card-body">
+                            <h5 class="card-title text-white mb-3">
+                                <i class="fas fa-music text-spotify me-2"></i>
+                                Now Playing
+                            </h5>
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    {% if current_track.item.album.images %}
+                                        <img src="{{ current_track.item.album.images[0].url }}" alt="{{ current_track.item.album.name }}" class="album-cover">
+                                    {% else %}
+                                        <div class="album-cover-placeholder">
+                                            <i class="fas fa-music"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col">
+                                    <h6 class="text-white mb-1">{{ current_track.item.name }}</h6>
+                                    <p class="text-muted mb-1">
+                                        {% for artist in current_track.item.artists %}
+                                            {{ artist.name }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    </p>
+                                    <p class="text-muted small mb-0">{{ current_track.item.album.name }}</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="player-controls">
+                                        <a href="{{ url_for('pause' if playback_state and playback_state.is_playing else 'play') }}" 
+                                           class="btn btn-spotify btn-lg rounded-circle">
+                                            <i class="fas fa-{{ 'pause' if playback_state and playback_state.is_playing else 'play' }}"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            {% if playback_state and playback_state.progress_ms and current_track.item.duration_ms %}
+                                <div class="progress mt-3" style="height: 4px;">
+                                    <div class="progress-bar bg-spotify" 
+                                         style="width: {{ (playback_state.progress_ms / current_track.item.duration_ms * 100) | round(1) }}%">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small class="text-muted">{{ (playback_state.progress_ms / 1000 / 60) | int }}:{{ '%02d' | format(((playback_state.progress_ms / 1000) % 60) | int) }}</small>
+                                    <small class="text-muted">{{ (current_track.item.duration_ms / 1000 / 60) | int }}:{{ '%02d' | format(((current_track.item.duration_ms / 1000) % 60) | int) }}</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="no-track mb-4">
+                    <div class="card bg-dark-card border-0">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-music fa-3x text-muted mb-3"></i>
+                            <h5 class="text-white mb-2">No Music Playing</h5>
+                            <p class="text-muted mb-3">Start playing music on Spotify to see it here.</p>
+                            <p class="text-muted small">Make sure Spotify is open on one of your devices.</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Playback Controls -->
+            <div class="playback-controls mb-4">
+                <div class="card bg-dark-card border-0">
+                    <div class="card-body">
+                        <h5 class="card-title text-white mb-3">
+                            <i class="fas fa-sliders-h text-spotify me-2"></i>
+                            Playback Controls
+                        </h5>
+                        <div class="row">
+                            <div class="col-auto">
+                                <a href="{{ url_for('play') }}" class="btn btn-spotify me-2">
+                                    <i class="fas fa-play me-1"></i> Play
+                                </a>
+                                <a href="{{ url_for('pause') }}" class="btn btn-outline-spotify">
+                                    <i class="fas fa-pause me-1"></i> Pause
+                                </a>
+                            </div>
+                        </div>
+                        
+                        {% if playback_state %}
+                            <div class="mt-3">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <small class="text-muted">Status:</small>
+                                    </div>
+                                    <div class="col">
+                                        <span class="badge bg-{{ 'success' if playback_state.is_playing else 'secondary' }}">
+                                            {{ 'Playing' if playback_state.is_playing else 'Paused' }}
+                                        </span>
+                                        {% if playback_state.device %}
+                                            <span class="text-muted ms-2">on {{ playback_state.device.name }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Playlists Grid -->
+            {% if playlists and playlists.items %}
+                <div class="playlists-grid">
+                    <h5 class="text-white mb-3">Your Playlists</h5>
+                    <div class="row">
+                        {% for playlist in playlists.items[:6] %}
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="card bg-dark-card border-0 h-100 playlist-card">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-start">
+                                            {% if playlist.images %}
+                                                <img src="{{ playlist.images[0].url }}" alt="{{ playlist.name }}" class="playlist-grid-cover me-3">
+                                            {% else %}
+                                                <div class="playlist-grid-cover-placeholder me-3">
+                                                    <i class="fas fa-music"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div class="flex-grow-1">
+                                                <h6 class="card-title text-white mb-1">{{ playlist.name }}</h6>
+                                                <p class="card-text text-muted small mb-2">{{ playlist.tracks.total }} tracks</p>
+                                                {% if playlist.description %}
+                                                    <p class="card-text text-muted small">{{ playlist.description[:50] }}{% if playlist.description|length > 50 %}...{% endif %}</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}

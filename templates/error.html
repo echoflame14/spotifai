@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error_title }} - Spotify Clone{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="error-container text-center py-5">
+                <div class="error-icon mb-4">
+                    <i class="fas fa-exclamation-triangle fa-4x text-warning"></i>
+                </div>
+                
+                <h1 class="error-title text-white mb-3">{{ error_title or 'Oops!' }}</h1>
+                
+                <p class="error-message text-muted mb-4">
+                    {{ error_message or 'Something went wrong. Please try again later.' }}
+                </p>
+                
+                <div class="error-actions">
+                    <a href="{{ url_for('index') }}" class="btn btn-spotify me-2">
+                        <i class="fas fa-home me-1"></i>
+                        Go Home
+                    </a>
+                    
+                    <button onclick="window.history.back()" class="btn btn-outline-light">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Go Back
+                    </button>
+                </div>
+                
+                <div class="mt-5">
+                    <img src="{{ url_for('static', filename='images/spotify-logo.svg') }}" alt="Spotify" height="32" class="opacity-50">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

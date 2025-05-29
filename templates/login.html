@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Spotify Clone{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        <!-- Left side - Hero image -->
+        <div class="col-lg-6 d-none d-lg-block p-0">
+            <div class="login-hero">
+                <div class="hero-overlay">
+                    <div class="hero-content">
+                        <h1 class="display-4 fw-bold text-white mb-4">
+                            Music for everyone.
+                        </h1>
+                        <p class="lead text-white mb-0">
+                            Connect with Spotify and control your music from anywhere.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - Login form -->
+        <div class="col-lg-6 d-flex align-items-center justify-content-center">
+            <div class="login-form-container">
+                <div class="text-center mb-5">
+                    <img src="{{ url_for('static', filename='images/spotify-logo.svg') }}" alt="Spotify" height="48" class="mb-3">
+                    <h2 class="fw-bold text-white mb-2">Welcome to Spotify Clone</h2>
+                    <p class="text-muted">Connect your Spotify account to get started</p>
+                </div>
+                
+                <div class="card bg-dark-card border-0 shadow-lg">
+                    <div class="card-body p-5">
+                        <div class="text-center">
+                            <i class="fab fa-spotify spotify-icon mb-4"></i>
+                            <h4 class="text-white mb-4">Connect with Spotify</h4>
+                            <p class="text-muted mb-4">
+                                You'll be redirected to Spotify to authorize this application. 
+                                We'll only access what's necessary to provide you with the best music experience.
+                            </p>
+                            
+                            <a href="{{ url_for('login') }}" class="btn btn-spotify btn-lg w-100 mb-3">
+                                <i class="fab fa-spotify me-2"></i>
+                                Connect with Spotify
+                            </a>
+                            
+                            <div class="features mt-4">
+                                <div class="row text-start">
+                                    <div class="col-12 mb-2">
+                                        <i class="fas fa-play-circle text-spotify me-2"></i>
+                                        <span class="text-light">Control your music playback</span>
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <i class="fas fa-list text-spotify me-2"></i>
+                                        <span class="text-light">View your playlists</span>
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <i class="fas fa-music text-spotify me-2"></i>
+                                        <span class="text-light">See what's currently playing</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        By connecting, you agree to our terms of service and privacy policy.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
