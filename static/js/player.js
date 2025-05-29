@@ -24,6 +24,9 @@ function initializeAIRecommender() {
         aiButton.addEventListener('click', handleAIRecommendation);
     }
     
+    // Setup playlist creation
+    setupPlaylistCreation();
+    
     // Setup session preferences
     setupSessionPreferences();
 
