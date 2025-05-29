@@ -47,6 +47,46 @@ html, body {
     transition: all 0.2s ease;
 }
 
+/* Preview Button Styling */
+.preview-btn {
+    border-radius: 20px !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1.5px solid var(--spotify-light-gray) !important;
+    color: var(--spotify-light-gray) !important;
+}
+
+.preview-btn:hover {
+    background-color: var(--spotify-light-gray) !important;
+    color: var(--spotify-black) !important;
+    border-color: var(--spotify-light-gray) !important;
+    transform: translateY(-1px);
+}
+
+.preview-btn.btn-success {
+    background-color: var(--spotify-green) !important;
+    border-color: var(--spotify-green) !important;
+    color: var(--spotify-white) !important;
+}
+
+.preview-btn.btn-success:hover {
+    background-color: #159f46 !important;
+    border-color: #159f46 !important;
+    color: var(--spotify-white) !important;
+}
+
+.preview-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.preview-btn:disabled:hover {
+    background-color: transparent !important;
+    color: var(--spotify-light-gray) !important;
+    border-color: var(--spotify-light-gray) !important;
+}
+
 .btn-spotify:hover {
     background-color: #1ed760;
     border-color: #1ed760;

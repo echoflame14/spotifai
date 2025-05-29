@@ -425,8 +425,8 @@ function displayRecommendedTrack(track, reasoning) {
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
                     <i class="fas fa-play me-1"></i>Play
                 </button>
-                <button class="btn btn-outline-warning me-2" onclick="previewTrack('${track.preview_url}', this)" ${!track.preview_url ? 'disabled title="No preview available"' : ''}>
-                    <i class="fas fa-headphones me-1"></i>Preview
+                <button class="btn btn-outline-secondary me-2 preview-btn" onclick="previewTrack(${track.preview_url ? `'${track.preview_url}'` : 'null'}, this)" ${!track.preview_url ? 'disabled title="No preview available"' : ''}>
+                    <i class="fas fa-play-circle me-1"></i>Preview
                 </button>
                 <button class="btn btn-outline-light me-2" onclick="getNextRecommendation()">
                     <i class="fas fa-forward me-1"></i>Next Rec
@@ -515,10 +515,10 @@ function previewTrack(previewUrl, buttonElement) {
         currentPreviewAudio.pause();
         currentPreviewAudio = null;
         // Reset all preview buttons
-        document.querySelectorAll('[onclick*="previewTrack"]').forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-headphones me-1"></i>Preview';
-            btn.classList.remove('btn-warning');
-            btn.classList.add('btn-outline-warning');
+        document.querySelectorAll('.preview-btn').forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-play-circle me-1"></i>Preview';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
         });
     }
     
@@ -533,9 +533,9 @@ function previewTrack(previewUrl, buttonElement) {
         currentPreviewAudio.volume = 0.7;
         
         // Update button to show it's playing
-        buttonElement.innerHTML = '<i class="fas fa-stop me-1"></i>Stop Preview';
-        buttonElement.classList.remove('btn-outline-warning');
-        buttonElement.classList.add('btn-warning');
+        buttonElement.innerHTML = '<i class="fas fa-stop me-1"></i>Stop';
+        buttonElement.classList.remove('btn-outline-secondary');
+        buttonElement.classList.add('btn-success');
         
         // Play the audio
         currentPreviewAudio.play().then(() => {
@@ -567,9 +567,9 @@ function previewTrack(previewUrl, buttonElement) {
 }
 
 function resetPreviewButton(buttonElement) {
-    buttonElement.innerHTML = '<i class="fas fa-headphones me-1"></i>Preview';
-    buttonElement.classList.remove('btn-warning');
-    buttonElement.classList.add('btn-outline-warning');
+    buttonElement.innerHTML = '<i class="fas fa-play-circle me-1"></i>Preview';
+    buttonElement.classList.remove('btn-success');
+    buttonElement.classList.add('btn-outline-secondary');
 }
 
 function setupChatFeedback() {
