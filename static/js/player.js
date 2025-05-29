@@ -369,9 +369,7 @@ function handleAIRecommendation() {
             showWhyThisTrack();
             fetchTrackReasoning();
             
-            // Show and load the "Learned from Feedback" section
-            showFeedbackLearningButton();
-            showLearnedFeedback();
+            // Load the "Learned from Feedback" section content
             fetchFeedbackInsights();
         } else {
             showRecommendationError(data.message);
