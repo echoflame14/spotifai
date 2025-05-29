@@ -230,43 +230,110 @@ def ai_recommendation():
         
         spotify_client = SpotifyClient(user.access_token)
         
-        # Collect user's music data
-        app.logger.info("Collecting user music data for AI recommendation...")
+        # Collect comprehensive user music data
+        app.logger.info("Collecting comprehensive user music data for AI recommendation...")
         
-        recent_tracks = spotify_client.get_recently_played(limit=10) or {'items': []}
-        top_tracks = spotify_client.get_top_tracks(time_range='medium_term', limit=10) or {'items': []}
-        top_artists = spotify_client.get_top_artists(time_range='medium_term', limit=10) or {'items': []}
-        saved_tracks = spotify_client.get_saved_tracks(limit=10) or {'items': []}
+        # Get recent listening history (50 tracks)
+        recent_tracks = spotify_client.get_recently_played(limit=50) or {'items': []}
         
-        # Prepare data for AI
+        # Get top tracks across different time ranges
+        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=20) or {'items': []}
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=20) or {'items': []}
+        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=20) or {'items': []}
+        
+        # Get top artists across different time ranges
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=20) or {'items': []}
+        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=20) or {'items': []}
+        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=20) or {'items': []}
+        
+        # Get saved (liked) tracks
+        saved_tracks = spotify_client.get_saved_tracks(limit=50) or {'items': []}
+        
+        # Get user's playlists for additional context
+        playlists = spotify_client.get_user_playlists(limit=20) or {'items': []}
+        
+        # Prepare comprehensive data for AI
         music_data = {
-            'recent_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name']} 
+            'recent_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name'], 
+                             'album': track['track']['album']['name'], 'genres': track['track'].get('genres', [])} 
                             for track in recent_tracks.get('items', [])],
-            'top_tracks': [{'name': track['name'], 'artist': track['artists'][0]['name']} 
-                         for track in top_tracks.get('items', [])],
-            'top_artists': [artist['name'] for artist in top_artists.get('items', [])],
-            'saved_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name']} 
-                           for track in saved_tracks.get('items', [])]
+            'top_tracks_last_month': [{'name': track['name'], 'artist': track['artists'][0]['name'], 
+                                     'album': track['album']['name'], 'popularity': track.get('popularity', 0)} 
+                                    for track in top_tracks_short.get('items', [])],
+            'top_tracks_6_months': [{'name': track['name'], 'artist': track['artists'][0]['name'], 
+                                   'album': track['album']['name'], 'popularity': track.get('popularity', 0)} 
+                                  for track in top_tracks_medium.get('items', [])],
+            'top_tracks_all_time': [{'name': track['name'], 'artist': track['artists'][0]['name'], 
+                                   'album': track['album']['name'], 'popularity': track.get('popularity', 0)} 
+                                  for track in top_tracks_long.get('items', [])],
+            'top_artists_last_month': [{'name': artist['name'], 'genres': artist.get('genres', []), 
+                                      'popularity': artist.get('popularity', 0)} 
+                                     for artist in top_artists_short.get('items', [])],
+            'top_artists_6_months': [{'name': artist['name'], 'genres': artist.get('genres', []), 
+                                    'popularity': artist.get('popularity', 0)} 
+                                   for artist in top_artists_medium.get('items', [])],
+            'top_artists_all_time': [{'name': artist['name'], 'genres': artist.get('genres', []), 
+                                    'popularity': artist.get('popularity', 0)} 
+                                   for artist in top_artists_long.get('items', [])],
+            'saved_tracks': [{'name': track['track']['name'], 'artist': track['track']['artists'][0]['name'], 
+                            'album': track['track']['album']['name'], 'popularity': track['track'].get('popularity', 0)} 
+                           for track in saved_tracks.get('items', [])],
+            'playlist_names': [playlist['name'] for playlist in playlists.get('items', []) if playlist.get('name')],
+            'total_playlists': len(playlists.get('items', []))
         }
         
+        # Extract all unique genres for better context
+        all_genres = set()
+        for artist_list in [music_data['top_artists_last_month'], music_data['top_artists_6_months'], music_data['top_artists_all_time']]:
+            for artist in artist_list:
+                all_genres.update(artist.get('genres', []))
+        music_data['favorite_genres'] = list(all_genres)
+        
         # Log the collected data for transparency
-        app.logger.info(f"Data being sent to AI: {music_data}")
-        app.logger.info(f"Recent tracks count: {len(music_data['recent_tracks'])}")
-        app.logger.info(f"Top tracks count: {len(music_data['top_tracks'])}")
-        app.logger.info(f"Top artists count: {len(music_data['top_artists'])}")
-        app.logger.info(f"Saved tracks count: {len(music_data['saved_tracks'])}")
+        app.logger.info(f"Comprehensive data collected:")
+        app.logger.info(f"Recent tracks: {len(music_data['recent_tracks'])}")
+        app.logger.info(f"Top tracks (short/medium/long): {len(music_data['top_tracks_last_month'])}/{len(music_data['top_tracks_6_months'])}/{len(music_data['top_tracks_all_time'])}")
+        app.logger.info(f"Top artists (short/medium/long): {len(music_data['top_artists_last_month'])}/{len(music_data['top_artists_6_months'])}/{len(music_data['top_artists_all_time'])}")
+        app.logger.info(f"Saved tracks: {len(music_data['saved_tracks'])}")
+        app.logger.info(f"Playlists: {len(music_data['playlist_names'])}")
+        app.logger.info(f"Unique genres: {len(music_data['favorite_genres'])}")
+        app.logger.info(f"Full data being sent to AI: {music_data}")
         
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Create prompt for AI
-        prompt = f"""Based on this user's Spotify listening data, recommend ONE specific song that they would love:
+        # Create comprehensive prompt for AI
+        prompt = f"""Analyze this comprehensive Spotify listening data and recommend ONE specific song that perfectly matches this user's taste:
 
-Recent tracks: {music_data['recent_tracks'][:5]}
-Top tracks: {music_data['top_tracks'][:5]}  
-Top artists: {music_data['top_artists'][:5]}
-Saved tracks: {music_data['saved_tracks'][:5]}
+RECENT LISTENING HISTORY (Last 50 tracks):
+{music_data['recent_tracks']}
+
+TOP TRACKS BY TIME PERIOD:
+Last Month: {music_data['top_tracks_last_month']}
+Last 6 Months: {music_data['top_tracks_6_months']}
+All Time: {music_data['top_tracks_all_time']}
+
+TOP ARTISTS BY TIME PERIOD:
+Last Month: {music_data['top_artists_last_month']}
+Last 6 Months: {music_data['top_artists_6_months']}
+All Time: {music_data['top_artists_all_time']}
+
+SAVED/LIKED TRACKS (Last 50):
+{music_data['saved_tracks']}
+
+MUSIC PREFERENCES:
+Favorite Genres: {music_data['favorite_genres']}
+Playlist Names: {music_data['playlist_names']}
+Total Playlists: {music_data['total_playlists']}
+
+ANALYSIS INSTRUCTIONS:
+1. Consider the user's listening patterns across all time periods
+2. Identify recurring artists, genres, and musical styles
+3. Note any evolution in taste from all-time to recent preferences
+4. Factor in both popular and niche tracks they enjoy
+5. Consider the diversity vs consistency in their taste
+6. Recommend a song that bridges their established preferences with potential new discovery
 
 Please respond with ONLY the song title and artist in this exact format:
 "Song Title" by Artist Name
