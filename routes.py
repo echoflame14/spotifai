@@ -291,7 +291,7 @@ def generate_ai_music_analysis(music_data, gemini_api_key):
         import google.generativeai as genai
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create insightful, data-driven prompt for music analysis
         prompt = f"""
@@ -581,7 +581,7 @@ def ai_recommendation():
         
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # First, analyze the user's music patterns and psychology
         app.logger.info("Performing psychological and pattern analysis...")
@@ -991,7 +991,7 @@ def chat_feedback():
         
         # Configure Gemini for feedback analysis
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create prompt for analyzing user feedback
         feedback_analysis_prompt = f"""
@@ -1086,7 +1086,7 @@ def track_reasoning():
         
         # Configure Gemini for reasoning analysis
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create prompt for detailed track reasoning
         reasoning_prompt = f"""
@@ -1158,7 +1158,7 @@ def feedback_insights():
         
         # Configure Gemini for feedback analysis
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Prepare feedback data for analysis
         feedback_data = []
