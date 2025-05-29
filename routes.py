@@ -443,16 +443,30 @@ Do not include any other text, explanations, or formatting."""
         app.logger.info(f"Raw AI response: {recommendation_text}")
         app.logger.info(f"AI recommended: {recommendation_text}")
         
-        # Extract just the song title for a broader search
+        # Extract song title and artist for better search
         if " by " in recommendation_text:
-            song_title = recommendation_text.replace('"', '').split(" by ", 1)[0].strip()
+            parts = recommendation_text.replace('"', '').split(" by ", 1)
+            song_title = parts[0].strip()
+            artist_name = parts[1].strip()
         else:
             song_title = recommendation_text.replace('"', '').strip()
+            artist_name = None
         
-        app.logger.info(f"Searching for song title: '{song_title}'")
+        app.logger.info(f"Searching for: '{song_title}' by '{artist_name}'")
         
-        # Search for the song title only to get more comprehensive results
-        search_results = spotify_client.search_tracks(song_title, limit=10)
+        # Try multiple search strategies for better results
+        search_results = None
+        
+        # Strategy 1: Search with both song and artist
+        if artist_name:
+            full_query = f"{song_title} {artist_name}"
+            app.logger.info(f"Trying search strategy 1: '{full_query}'")
+            search_results = spotify_client.search_tracks(full_query, limit=10)
+        
+        # Strategy 2: If no results or poor results, try song title only
+        if not search_results or not search_results.get('tracks', {}).get('items'):
+            app.logger.info(f"Trying search strategy 2: '{song_title}' only")
+            search_results = spotify_client.search_tracks(song_title, limit=10)
         
         if search_results and search_results.get('tracks', {}).get('items'):
             search_items = search_results['tracks']['items']
@@ -475,11 +489,7 @@ Do not include any other text, explanations, or formatting."""
                         'spotify_uri': track['uri']
                     })
                 
-                # Extract the intended artist from the original recommendation
-                intended_artist = None
-                if " by " in recommendation_text:
-                    intended_artist = recommendation_text.replace('"', '').split(" by ", 1)[1].strip()
-                
+                # Use the already extracted artist_name from earlier
                 track_selection_prompt = f"""
 You recommended: "{recommendation_text}"
 
@@ -490,7 +500,7 @@ Your original recommendation was "{recommendation_text}".
 
 Look for the option that matches BOTH:
 1. track_name: "{song_title}" (or very close variation)
-2. artist_name: "{intended_artist}" (if specified)
+2. artist_name: "{artist_name}" (if specified)
 
 Which option number (1-{len(track_options)}) contains the song by the correct artist that you intended to recommend?
 
@@ -508,7 +518,7 @@ Otherwise, respond with ONLY the option number (just the number, nothing else).
                 try:
                     option_num = int(selected_option)
                     if option_num == 0:
-                        app.logger.warning(f"AI could not find intended artist '{intended_artist}' in search results, using first result")
+                        app.logger.warning(f"AI could not find intended artist '{artist_name}' in search results, using first result")
                         recommended_track = search_items[0]
                     elif 1 <= option_num <= len(search_items):
                         recommended_track = search_items[option_num - 1]
