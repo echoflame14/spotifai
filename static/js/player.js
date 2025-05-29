@@ -347,6 +347,9 @@ function handleAIRecommendation() {
         headers: {
             'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+            session_adjustment: sessionAdjustment
+        })
     })
     .then(response => {
         console.log('📡 AI recommendation response status:', response.status);
@@ -770,6 +773,68 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Session preferences functionality
+let sessionAdjustment = null;
+
+function setupSessionPreferences() {
+    const applyButton = document.getElementById('applySessionAdjustment');
+    const clearButton = document.getElementById('clearSessionAdjustment');
+    const textArea = document.getElementById('sessionAdjustmentText');
+    
+    if (applyButton) {
+        applyButton.addEventListener('click', function() {
+            const adjustment = textArea.value.trim();
+            if (adjustment) {
+                applySessionAdjustment(adjustment);
+            }
+        });
+    }
+    
+    if (clearButton) {
+        clearButton.addEventListener('click', function() {
+            clearSessionAdjustment();
+        });
+    }
+    
+    // Enable pressing Enter to apply adjustment
+    if (textArea) {
+        textArea.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const adjustment = textArea.value.trim();
+                if (adjustment) {
+                    applySessionAdjustment(adjustment);
+                }
+            }
+        });
+    }
+}
+
+function applySessionAdjustment(adjustment) {
+    sessionAdjustment = adjustment;
+    
+    const statusDiv = document.getElementById('sessionAdjustmentStatus');
+    const messageSpan = document.getElementById('sessionAdjustmentMessage');
+    
+    statusDiv.style.display = 'block';
+    statusDiv.className = 'alert alert-success';
+    messageSpan.textContent = `Session preference applied: "${adjustment}"`;
+    
+    console.log('🎛️ Session adjustment applied:', adjustment);
+}
+
+function clearSessionAdjustment() {
+    sessionAdjustment = null;
+    
+    const textArea = document.getElementById('sessionAdjustmentText');
+    const statusDiv = document.getElementById('sessionAdjustmentStatus');
+    
+    textArea.value = '';
+    statusDiv.style.display = 'none';
+    
+    console.log('🎛️ Session adjustment cleared');
+}
 
 // Console welcome message
 console.log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
