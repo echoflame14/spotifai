@@ -14,6 +14,24 @@ import google.generativeai as genai
 # Spotify OAuth configuration
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '3eab9e9e7ff444e8b0a9d1c18468b555')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
+# Dynamic redirect URI based on request
+def get_redirect_uri():
+    """Get the appropriate redirect URI based on the current request"""
+    if request:
+        # Always use HTTPS for OAuth security, especially on mobile
+        scheme = 'https'
+        host = request.host
+        
+        # Handle different Replit domains and mobile access
+        if 'replit.dev' in host or 'repl.co' in host:
+            return f"{scheme}://{host}/callback"
+        else:
+            # For custom domains or other hosts
+            return f"{scheme}://{host}/callback"
+    else:
+        # Fallback to environment variable
+        return os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
+
 SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
 
 @app.route('/')
@@ -33,9 +51,12 @@ def login():
     # Define required scopes including permissions for AI recommendations
     scope = 'user-read-private user-read-email playlist-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-top-read user-library-read'
     
+    # Get dynamic redirect URI for mobile compatibility
+    redirect_uri = get_redirect_uri()
+    
     # Debug: Log the parameters being used
     app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
-    app.logger.info(f"Redirect URI: {SPOTIFY_REDIRECT_URI}")
+    app.logger.info(f"Redirect URI: {redirect_uri}")
     app.logger.info(f"State: {state}")
     
     # Build authorization URL
@@ -43,7 +64,7 @@ def login():
         'response_type': 'code',
         'client_id': SPOTIFY_CLIENT_ID,
         'scope': scope,
-        'redirect_uri': SPOTIFY_REDIRECT_URI,
+        'redirect_uri': redirect_uri,
         'state': state
     }
     
@@ -82,10 +103,13 @@ def callback():
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     
+    # Use the same dynamic redirect URI for consistency
+    redirect_uri = get_redirect_uri()
+    
     data = {
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': SPOTIFY_REDIRECT_URI
+        'redirect_uri': redirect_uri
     }
     
     try:
