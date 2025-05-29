@@ -599,7 +599,14 @@ Format your response as structured insights, not recommendations."""
         app.logger.info(f"User psychological analysis: {user_analysis}")
         
         # Create comprehensive prompt for AI recommendation
-        prompt = f"""Based on this comprehensive Spotify listening data AND psychological analysis, recommend ONE specific song that perfectly matches this user's taste:
+        session_instruction = f"""
+
+🎯 CRITICAL SESSION PREFERENCE OVERRIDE:
+The user has specifically requested: "{session_adjustment}"
+This is a TEMPORARY SESSION PREFERENCE that must be prioritized above all other considerations.
+You MUST recommend a song that fits this exact request while still considering their taste.""" if session_adjustment else ""
+
+        prompt = f"""Based on this comprehensive Spotify listening data AND psychological analysis, recommend ONE specific song that perfectly matches this user's taste:{session_instruction}
 
 USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
 {user_analysis}
@@ -648,10 +655,7 @@ CRITICAL REQUIREMENTS:
 4. Choose a song that matches their taste but is a fresh discovery
 5. Avoid overplayed mainstream hits they've likely heard before
 
-{f'''SESSION PREFERENCE ADJUSTMENT (TEMPORARY FOR THIS SESSION ONLY):
-The user has requested: "{session_adjustment}"
-Please factor this temporary preference into your recommendation while still respecting their core musical taste.
-''' if session_adjustment else ''}
+
 
 Please respond with ONLY the song title and artist in this exact format:
 "Song Title" by Artist Name
