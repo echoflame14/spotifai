@@ -16,21 +16,10 @@ SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '3eab9e9e7ff444e8b0a9d1c
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
 # Dynamic redirect URI based on request
 def get_redirect_uri():
-    """Get the appropriate redirect URI based on the current request"""
-    if request:
-        # Always use HTTPS for OAuth security, especially on mobile
-        scheme = 'https'
-        host = request.host
-        
-        # Handle different Replit domains and mobile access
-        if 'replit.dev' in host or 'repl.co' in host:
-            return f"{scheme}://{host}/callback"
-        else:
-            # For custom domains or other hosts
-            return f"{scheme}://{host}/callback"
-    else:
-        # Fallback to environment variable
-        return os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
+    """Get the appropriate redirect URI - use consistent URL for all devices"""
+    # Always use the same registered redirect URI for consistency
+    # This ensures it works on both desktop and mobile
+    return os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
 
 SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
 
