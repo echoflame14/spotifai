@@ -207,6 +207,26 @@
                             <!-- Recommended track will be displayed here -->
                         </div>
                         
+                        <!-- Why This Track Section -->
+                        <div id="whyThisTrack" class="why-this-track mt-3" style="display: none;">
+                            <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#trackReasoningCollapse" aria-expanded="false">
+                                <h6 class="text-muted small mb-0 d-flex align-items-center justify-content-between">
+                                    <span><i class="fas fa-lightbulb me-2"></i>Why This Track?</span>
+                                    <i class="fas fa-chevron-down small"></i>
+                                </h6>
+                            </button>
+                            
+                            <div class="collapse mt-3" id="trackReasoningCollapse">
+                                <div id="trackReasoningContent" class="p-3 rounded" style="background: rgba(29, 185, 84, 0.05); border: 1px solid rgba(29, 185, 84, 0.2);">
+                                    <div class="d-flex align-items-center justify-content-center py-3">
+                                        <div class="spinner-border spinner-border-sm text-spotify me-2" role="status"></div>
+                                        <span class="text-muted small">Analyzing why you'll love this track...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Chat Feedback Section -->
                         <div id="chatFeedback" class="chat-feedback mt-4" style="display: none;">
                             <hr class="border-secondary">

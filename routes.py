@@ -1024,6 +1024,96 @@ Provide a structured analysis in JSON format:
         app.logger.error(f"Error processing chat feedback: {str(e)}")
         return jsonify({'success': False, 'message': 'Error processing feedback'}), 500
 
+@app.route('/track-reasoning', methods=['POST'])
+def track_reasoning():
+    """Generate detailed reasoning for why a track was recommended"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        recommendation_id = data.get('recommendation_id')
+        
+        if not recommendation_id:
+            return jsonify({'success': False, 'message': 'Recommendation ID required'}), 400
+        
+        user_id = session['user_id']
+        user = User.query.get(user_id)
+        
+        # Get the recommendation from database
+        from models import Recommendation
+        recommendation = Recommendation.query.filter_by(id=recommendation_id, user_id=user_id).first()
+        
+        if not recommendation:
+            return jsonify({'success': False, 'message': 'Recommendation not found'}), 404
+        
+        # Check if Gemini API key is available
+        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_api_key:
+            return jsonify({
+                'success': False, 
+                'message': 'AI analysis not available - API key required'
+            }), 400
+        
+        # Configure Gemini for reasoning analysis
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        
+        # Create prompt for detailed track reasoning
+        reasoning_prompt = f"""
+You are a music expert analyzing why a specific song recommendation would appeal to a user based on their listening history and preferences.
+
+RECOMMENDED TRACK: "{recommendation.track_name}" by {recommendation.artist_name}
+
+USER'S LISTENING DATA SNAPSHOT:
+{recommendation.listening_data_snapshot}
+
+ORIGINAL AI REASONING:
+{recommendation.ai_reasoning}
+
+USER'S PSYCHOLOGICAL ANALYSIS:
+{recommendation.psychological_analysis}
+
+Please provide a detailed, engaging explanation of why this user would specifically enjoy this track. Focus on:
+
+1. **Musical Elements**: What specific aspects of this song (genre, tempo, vocals, instruments, production style) align with their taste?
+
+2. **Emotional Connection**: How does this track match their emotional listening patterns and current mood preferences?
+
+3. **Discovery Factor**: Why is this a good discovery that expands their taste while staying within their comfort zone?
+
+4. **Personal Relevance**: Based on their listening history, what makes this track personally meaningful or appealing?
+
+5. **Similar Tracks Connection**: How does this relate to tracks they already love, and what new elements does it introduce?
+
+Write in a conversational, enthusiastic tone as if you're a knowledgeable friend explaining why they'll love this song. Be specific about musical details and make connections to their established preferences.
+
+Limit response to 3-4 paragraphs maximum. Make it engaging and insightful.
+"""
+        
+        # Generate the reasoning
+        response = model.generate_content(reasoning_prompt)
+        reasoning_text = response.text.strip()
+        
+        app.logger.info(f"Generated track reasoning for recommendation {recommendation_id}")
+        
+        return jsonify({
+            'success': True,
+            'reasoning': reasoning_text,
+            'track_info': {
+                'name': recommendation.track_name,
+                'artist': recommendation.artist_name,
+                'album': recommendation.album_name
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Track reasoning failed: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to generate reasoning: {str(e)}'
+        })
+
 
 @app.route('/api/current-track')
 def api_current_track():

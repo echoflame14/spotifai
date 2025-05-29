@@ -364,6 +364,9 @@ function handleAIRecommendation() {
             currentRecommendationId = data.recommendation_id;
             
             displayRecommendedTrack(data.track, data.ai_reasoning);
+            
+            // Show the "Why This Track?" section
+            showWhyThisTrack();
         } else {
             showRecommendationError(data.message);
         }
