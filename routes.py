@@ -427,6 +427,8 @@ ANALYSIS INSTRUCTIONS:
 5. Consider the diversity vs consistency in their taste
 6. Recommend a song that bridges their established preferences with potential new discovery
 
+CRITICAL: DO NOT recommend any song that appears in the "RECENT LISTENING HISTORY" section above. The user has already played these tracks recently. Find something new that matches their taste but hasn't been played recently.
+
 Please respond with ONLY the song title and artist in this exact format:
 "Song Title" by Artist Name
 
