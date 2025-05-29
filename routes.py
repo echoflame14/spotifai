@@ -459,6 +459,19 @@ def ai_recommendation():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
+    # Rate limiting: prevent too many AI recommendation requests
+    import time
+    current_time = time.time()
+    last_recommendation_time = session.get('last_recommendation_time', 0)
+    
+    # Require at least 10 seconds between AI recommendation requests
+    if current_time - last_recommendation_time < 10:
+        remaining_time = int(10 - (current_time - last_recommendation_time))
+        return jsonify({
+            'success': False, 
+            'message': f'Please wait {remaining_time} seconds before requesting another recommendation.'
+        }), 429
+    
     user = User.query.get(session['user_id'])
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
@@ -909,6 +922,9 @@ Respond with only the number."""
             
             # Store recommendation ID in session for feedback
             session['current_recommendation_id'] = recommendation.id
+            
+            # Update the rate limiting timestamp for successful recommendations
+            session['last_recommendation_time'] = current_time
             
             return jsonify({
                 'success': True,
