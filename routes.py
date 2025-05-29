@@ -463,6 +463,23 @@ Do not include any other text, explanations, or formatting."""
             advanced_query = f'track:"{song_title}" artist:"{artist_name}"'
             app.logger.info(f"Trying search strategy 1 (advanced): '{advanced_query}'")
             search_results = spotify_client.search_tracks(advanced_query, limit=10)
+            
+            # Check if we got good results
+            if search_results and search_results.get('tracks', {}).get('items'):
+                items = search_results['tracks']['items']
+                # Filter results to only include tracks by the target artist
+                filtered_items = []
+                for item in items:
+                    if any(artist_name.lower() in artist['name'].lower() or 
+                          artist['name'].lower() in artist_name.lower() 
+                          for artist in item['artists']):
+                        filtered_items.append(item)
+                
+                if filtered_items:
+                    search_results['tracks']['items'] = filtered_items
+                    app.logger.info(f"Advanced search found {len(filtered_items)} tracks by {artist_name}")
+                else:
+                    search_results = None
         
         # Strategy 2: If no results, try simple concatenation
         if not search_results or not search_results.get('tracks', {}).get('items'):
@@ -471,9 +488,16 @@ Do not include any other text, explanations, or formatting."""
                 app.logger.info(f"Trying search strategy 2 (simple): '{simple_query}'")
                 search_results = spotify_client.search_tracks(simple_query, limit=10)
         
-        # Strategy 3: If still no results, try song title only
+        # Strategy 3: If still no results, try artist name only to find any songs by that artist
         if not search_results or not search_results.get('tracks', {}).get('items'):
-            app.logger.info(f"Trying search strategy 3 (title only): '{song_title}'")
+            if artist_name:
+                artist_query = f'artist:"{artist_name}"'
+                app.logger.info(f"Trying search strategy 3 (artist only): '{artist_query}'")
+                search_results = spotify_client.search_tracks(artist_query, limit=20)
+        
+        # Strategy 4: Last resort - try song title only
+        if not search_results or not search_results.get('tracks', {}).get('items'):
+            app.logger.info(f"Trying search strategy 4 (title only): '{song_title}'")
             search_results = spotify_client.search_tracks(song_title, limit=10)
         
         if search_results and search_results.get('tracks', {}).get('items'):
@@ -517,12 +541,13 @@ Do not include any other text, explanations, or formatting."""
                     for i, track in enumerate(search_items[:5]):  # Limit to top 5 for better accuracy
                         track_options.append(f"{i + 1}. \"{track['name']}\" by {track['artists'][0]['name']} (Album: {track['album']['name']})")
                     
-                    track_selection_prompt = f"""You recommended: "{recommendation_text}"
+                    track_selection_prompt = f"""You originally recommended: "{recommendation_text}"
 
-Search results:
+However, that exact song may not exist on Spotify. Here are the closest matches found:
+
 {chr(10).join(track_options)}
 
-Which option number (1-{len(track_options)}) best matches your recommendation "{song_title}" by "{artist_name}"?
+Which option number (1-{len(track_options)}) is the best alternative that matches the style and feel you intended with "{song_title}" by "{artist_name}"?
 
 Respond with only the number."""
                     
@@ -551,13 +576,19 @@ Respond with only the number."""
             
             # Save recommendation to database
             from models import Recommendation
+            
+            # Create a detailed reasoning that includes original intent if different
+            detailed_reasoning = recommendation_text
+            if recommended_track['name'].lower() != song_title.lower():
+                detailed_reasoning = f"Originally recommended: \"{recommendation_text}\"\nSelected alternative: \"{recommended_track['name']}\" by {recommended_track['artists'][0]['name']} (closest match on Spotify)"
+            
             recommendation = Recommendation(
                 user_id=user.id,
                 track_name=recommended_track['name'],
                 artist_name=recommended_track['artists'][0]['name'],
                 track_uri=recommended_track['uri'],
                 album_name=recommended_track['album']['name'],
-                ai_reasoning=recommendation_text,
+                ai_reasoning=detailed_reasoning,
                 psychological_analysis=user_analysis,
                 listening_data_snapshot=json.dumps(music_data)
             )
