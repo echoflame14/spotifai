@@ -1,0 +1,97 @@
+OAuth Authorization Code Flow with Spotify
+Alejandro Padilla Flores
+Alejandro Padilla Flores
+
+Follow
+3 min read
+·
+Feb 21, 2024
+
+
+
+By Alejandro Padilla Flores
+
+My dog ‘Patitas’ is tired to always listening to the same type of music on Alexa, so he is interested in changing it, but unfortunately his barks cannot be interpreted by Alexa.
+
+After a long walk to reflection, he discovered that Alexa is using Spotify to reproduce the music, so he thought “if I have a valid token I can make call to the API to change the song”, I’m know my dogs is a very weir, you only see him:
+
+
+As you have seen, he is ready to program, and he already opened his laptop with windows ( As I previouly commented, he is a very weir dog), but he doesn’t know how to do the implicit grant flow, after all he is only a dog.
+
+For that reason I create this tutorial to help him, so will need top following the next steps to get a valid token. for this tutorial will use javascript and express On this case the user need a way to start the process,
+
+1- Client Identifier and redirection URL
+In this case the user needs a way to start the process, so let’s create endpoint to do it, in resume the user need to make a call to https://accounts.spotify.com/authorize with the following information as query parameter:
+
+client id
+response type
+redirect uri
+state
+scopes
+Note: To get the client id, you will need to go to Spotify developers and create a new app
+
+
+Let’s create our /login endpoint:
+
+app.get('/login', (req, res) => {
+  var state = generateRandomString(16);
+  var scope = 'app-remote-control'
+
+  res.redirect('https://accounts.spotify.com/authorize?' +
+    querystring.stringify({
+      response_type: 'code',
+      client_id: client_id,
+      scope: scope,
+      redirect_uri: redirect_uri,
+      state: state
+    }));
+})
+2- User authenticates
+After to call our /login endpoint, Spotify will redirect us to the Spotify login page, so we need to enter our credentials and accept the access request.
+
+
+3- Authorization Code
+Once we accepted the access request, Spotify will redirect the flow to our redirect_uri that we sent previously, with the following information
+
+state
+authorization code
+4- Authorization Code and Redirection URL
+At this point, we receive the authorization code at our redirect_uri and the state provided earlier, allowing us to start creating our call to get our token.
+
+app.get('/callback', async  (req,res) => {
+  var code = req.query.code || null;
+  var state = req.query.state || null;
+
+  if (state === null || state !== previosState) {
+    res.redirect('/#' +
+      querystring.stringify({
+        error: 'state_mismatch'
+      }));
+  } else {
+    var authOptions = {
+      url: 'https://accounts.spotify.com/api/token',
+      method: 'post',
+      data: {
+        code: code,
+        redirect_uri: redirect_uri,
+        grant_type: 'authorization_code'
+      },
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64'))
+      },
+    };
+  }
+5- Access token
+And finally we can sent the request to get our token
+
+
+ try {
+    const response = await axios(authOptions);
+    console.log(response.data);
+    // Handle successful authentication here
+  } catch (error) {
+    console.error('Error exchanging code for token:', error.response);
+    // Handle error
+  }
+Now “Patitas” can change the song using the token
