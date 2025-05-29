@@ -451,50 +451,11 @@ Do not include any other text, explanations, or formatting."""
                 # Only one result, use it
                 recommended_track = search_items[0]
             else:
-                # Multiple results - try direct string matching first
-                app.logger.info(f"Multiple search results found, trying direct match first...")
+                # Multiple results - let AI select the best match
+                app.logger.info(f"Multiple search results found, using AI to select best match...")
                 
-                # Parse the recommendation text to extract song title and artist
-                if " by " in recommendation_text:
-                    song_title, artist_name = recommendation_text.replace('"', '').split(" by ", 1)
-                    song_title = song_title.strip()
-                    artist_name = artist_name.strip()
-                    
-                    # Look for exact matches first, then close matches
-                    exact_match = None
-                    close_match = None
-                    
-                    for track in search_items:
-                        track_name_lower = track['name'].lower()
-                        artist_name_lower = track['artists'][0]['name'].lower()
-                        song_title_lower = song_title.lower()
-                        target_artist_lower = artist_name.lower()
-                        
-                        # Exact match
-                        if (track_name_lower == song_title_lower and 
-                            artist_name_lower == target_artist_lower):
-                            exact_match = track
-                            app.logger.info(f"Found exact match: {track['name']} by {track['artists'][0]['name']}")
-                            break
-                        
-                        # Close match: song title is contained in track name and artist matches
-                        # This handles remixes, live versions, etc.
-                        if (song_title_lower in track_name_lower and 
-                            artist_name_lower == target_artist_lower and not close_match):
-                            close_match = track
-                            app.logger.info(f"Found close match: {track['name']} by {track['artists'][0]['name']}")
-                    
-                    # Prefer exact match, but use close match if available
-                    best_match = exact_match or close_match
-                    
-                    if best_match:
-                        recommended_track = best_match
-                    else:
-                        # Fall back to AI selection
-                        app.logger.info(f"No exact match found, using AI to select best match...")
-                        
-                        # Create a prompt for AI to select the best track
-                        track_selection_prompt = f"""
+                # Create a prompt for AI to select the best track
+                track_selection_prompt = f"""
 You recommended: "{recommendation_text}"
 
 Here are the available tracks from Spotify:
@@ -505,34 +466,31 @@ Here are the available tracks from Spotify:
     'spotify_uri': track['uri']
 } for track in search_items[:10]], indent=2)}
 
-Your recommendation was "{recommendation_text}". Which Spotify URI matches this EXACTLY?
+Your recommendation was "{recommendation_text}". Which Spotify URI best matches your intended recommendation?
 
-CRITICAL: Look for the exact song title and artist match. If "{recommendation_text}" contains both song and artist, find the track where:
-- The track_name matches the song title from your recommendation
-- The artist_name matches the artist from your recommendation
+Consider:
+1. If you meant the original version, prefer tracks without "(Remix)", "(Live)", or other modifiers
+2. If multiple versions exist, choose the most appropriate one for the user
+3. Match both the song title and artist from your recommendation
 
-Return ONLY the spotify_uri (spotify:track:xxxxx) of the exact match. Do not return anything else.
+Return ONLY the spotify_uri (spotify:track:xxxxx) of your chosen track.
 """
-                        
-                        selection_response = model.generate_content(track_selection_prompt)
-                        selected_uri = selection_response.text.strip()
-                        
-                        # Find the track with the selected URI
-                        recommended_track = None
-                        for track in search_items:
-                            if track['uri'] in selected_uri:
-                                recommended_track = track
-                                app.logger.info(f"AI selected track: {track['name']} by {track['artists'][0]['name']}")
-                                break
-                        
-                        # Fallback to first result if AI selection fails
-                        if not recommended_track:
-                            app.logger.warning("AI track selection failed, using first result")
-                            recommended_track = search_items[0]
-                else:
-                    # If we can't parse " by " format, use AI selection
-                    app.logger.info(f"Cannot parse recommendation format, using AI selection...")
-                    recommended_track = search_items[0]  # Simplified fallback
+                
+                selection_response = model.generate_content(track_selection_prompt)
+                selected_uri = selection_response.text.strip()
+                
+                # Find the track with the selected URI
+                recommended_track = None
+                for track in search_items:
+                    if track['uri'] in selected_uri:
+                        recommended_track = track
+                        app.logger.info(f"AI selected track: {track['name']} by {track['artists'][0]['name']}")
+                        break
+                
+                # If AI selection fails, use first result as fallback
+                if not recommended_track:
+                    app.logger.warning("AI track selection failed, using first result")
+                    recommended_track = search_items[0]
             
             # Save recommendation to database
             from models import Recommendation
