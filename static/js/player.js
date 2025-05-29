@@ -964,6 +964,91 @@ function setupAISettings() {
     });
 }
 
+function setupPlaylistCreation() {
+    const createPlaylistBtn = document.getElementById('createPlaylistBtn');
+    const modal = document.getElementById('createPlaylistModal');
+    const confirmBtn = document.getElementById('createPlaylistConfirm');
+    
+    if (!createPlaylistBtn || !modal || !confirmBtn) {
+        console.log('Playlist creation elements not found');
+        return;
+    }
+    
+    // Show modal when button is clicked
+    createPlaylistBtn.addEventListener('click', function() {
+        console.log('Create playlist button clicked');
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+    });
+    
+    // Handle playlist creation confirmation
+    confirmBtn.addEventListener('click', function() {
+        console.log('Create playlist confirm clicked');
+        handlePlaylistCreation();
+    });
+}
+
+function handlePlaylistCreation() {
+    const playlistName = document.getElementById('playlistName').value.trim() || 'AI Generated Playlist';
+    const playlistDescription = document.getElementById('playlistDescription').value.trim() || 'A personalized playlist created by AI based on your music taste';
+    const songCount = parseInt(document.getElementById('songCount').value);
+    const useSessionAdjustment = document.getElementById('useSessionAdjustment').checked;
+    const customApiKey = localStorage.getItem('gemini_api_key');
+    
+    console.log('Creating playlist:', { playlistName, songCount, useSessionAdjustment });
+    
+    if (!customApiKey) {
+        showNotification('Please add your Gemini API key in AI Settings to create playlists', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const confirmBtn = document.getElementById('createPlaylistConfirm');
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Playlist...';
+    confirmBtn.disabled = true;
+    
+    // Make API request to create playlist
+    fetch('/create-ai-playlist', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: playlistName,
+            description: playlistDescription,
+            song_count: songCount,
+            use_session_adjustment: useSessionAdjustment,
+            custom_gemini_key: customApiKey
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Playlist creation response:', data);
+        
+        if (data.success) {
+            showNotification(`Successfully created playlist "${data.playlist_name}" with ${data.tracks_added} songs!`, 'success');
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('createPlaylistModal'));
+            modal.hide();
+            // Reset form
+            document.getElementById('playlistName').value = '';
+            document.getElementById('playlistDescription').value = '';
+        } else {
+            showNotification(`Failed to create playlist: ${data.message}`, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error creating playlist:', error);
+        showNotification('Error creating playlist. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Reset button state
+        confirmBtn.innerHTML = originalText;
+        confirmBtn.disabled = false;
+    });
+}
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initializeAIRecommender();
