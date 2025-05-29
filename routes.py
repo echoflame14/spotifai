@@ -450,17 +450,21 @@ def ai_recommendation():
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
     try:
-        # Get session adjustment if provided
+        # Get session adjustment and custom API key if provided
         request_data = request.get_json() or {}
         session_adjustment = request_data.get('session_adjustment')
+        custom_gemini_key = request_data.get('custom_gemini_key')
         
-        # Check if Gemini API key is available
-        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        # Use custom API key if provided, otherwise fall back to environment key
+        gemini_api_key = custom_gemini_key or os.environ.get('GEMINI_API_KEY')
         if not gemini_api_key:
             return jsonify({
                 'success': False, 
                 'message': 'Gemini API key not configured. Please provide your API key.'
             }), 400
+            
+        # Determine which model to use based on API key source
+        model_name = 'gemini-2.0-flash-exp' if custom_gemini_key else 'gemini-1.5-flash'
         
         spotify_client = SpotifyClient(user.access_token)
         
@@ -579,9 +583,9 @@ def ai_recommendation():
         app.logger.info(f"Unique genres: {len(music_data['favorite_genres'])}")
         app.logger.info(f"Historical feedback entries: {len(feedback_insights)}")
         
-        # Configure Gemini
+        # Configure Gemini with appropriate model
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(model_name)
         
         # First, analyze the user's music patterns and psychology
         app.logger.info("Performing psychological and pattern analysis...")
@@ -678,7 +682,7 @@ Please respond with ONLY the song title and artist in this exact format:
 Do not include any other text, explanations, or formatting."""
         
         # Get AI recommendation based on psychological analysis
-        app.logger.info("Requesting psychologically-informed AI recommendation from Gemini...")
+        app.logger.info(f"Requesting psychologically-informed AI recommendation from Gemini ({model_name})...")
         app.logger.info(f"Full prompt sent to AI: {prompt}")
         response = model.generate_content(prompt)
         recommendation_text = response.text.strip()
