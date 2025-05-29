@@ -1274,6 +1274,137 @@ def api_current_track():
         'playback_state': playback_state
     })
 
+@app.route('/create-ai-playlist', methods=['POST'])
+def create_ai_playlist():
+    """Create an AI-generated playlist"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    try:
+        data = request.get_json()
+        playlist_name = data.get('name', 'AI Generated Playlist')
+        playlist_description = data.get('description', 'A personalized playlist created by AI')
+        song_count = int(data.get('song_count', 10))
+        use_session_adjustment = data.get('use_session_adjustment', False)
+        custom_gemini_key = data.get('custom_gemini_key')
+        
+        if not custom_gemini_key:
+            return jsonify({
+                'success': False,
+                'message': 'Personal Gemini API key required. Please add your API key in AI Settings to create playlists.'
+            })
+        
+        spotify_client = SpotifyClient(user.access_token)
+        
+        # Generate AI-powered track recommendations for the playlist
+        import google.generativeai as genai
+        genai.configure(api_key=custom_gemini_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Get user's music data for context
+        music_data = generate_music_insights(spotify_client)
+        user_analysis = music_data.get('ai_analysis', 'No analysis available')
+        
+        # Create prompt for generating multiple tracks
+        prompt = f"""Based on this user's comprehensive Spotify listening data and psychological analysis, recommend exactly {song_count} specific songs for a personalized playlist.
+
+USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
+{user_analysis}
+
+REQUIREMENTS:
+1. Recommend exactly {song_count} different songs
+2. Each song should be a real, existing track on Spotify
+3. Variety is important - don't repeat artists unless the user heavily favors them
+4. Consider the user's taste evolution and current preferences
+5. Include both familiar genres and potential discoveries
+6. Format each song as: "Song Title" by Artist Name
+
+Please respond with ONLY the song list, one song per line, in this exact format:
+"Song Title 1" by Artist Name 1
+"Song Title 2" by Artist Name 2
+...and so on.
+
+Do not include any other text, explanations, or formatting."""
+
+        response = model.generate_content(prompt)
+        ai_recommendations = response.text.strip()
+        
+        # Parse the AI response to extract individual tracks
+        track_lines = [line.strip() for line in ai_recommendations.split('\n') if line.strip()]
+        track_uris = []
+        successful_tracks = []
+        
+        app.logger.info(f"AI recommended {len(track_lines)} tracks for playlist")
+        
+        # Search for each recommended track on Spotify
+        for track_line in track_lines:
+            try:
+                # Parse "Song Title" by Artist Name format
+                if '" by ' in track_line:
+                    parts = track_line.split('" by ')
+                    if len(parts) == 2:
+                        song_title = parts[0].replace('"', '').strip()
+                        artist_name = parts[1].strip()
+                        
+                        # Search for the track
+                        search_query = f'track:"{song_title}" artist:"{artist_name}"'
+                        search_results = spotify_client.search_tracks(search_query, limit=1)
+                        
+                        if search_results and search_results.get('tracks', {}).get('items'):
+                            track = search_results['tracks']['items'][0]
+                            track_uris.append(track['uri'])
+                            successful_tracks.append(f"{track['name']} by {track['artists'][0]['name']}")
+                            app.logger.info(f"Found track: {track['name']} by {track['artists'][0]['name']}")
+                        else:
+                            app.logger.warning(f"Could not find track: {song_title} by {artist_name}")
+            except Exception as e:
+                app.logger.error(f"Error processing track line '{track_line}': {e}")
+                continue
+        
+        if not track_uris:
+            return jsonify({
+                'success': False,
+                'message': 'Could not find any of the AI-recommended tracks on Spotify'
+            })
+        
+        # Create the playlist
+        playlist_result = spotify_client.create_playlist(playlist_name, playlist_description)
+        
+        if not playlist_result:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to create playlist on Spotify'
+            })
+        
+        playlist_id = playlist_result['id']
+        
+        # Add tracks to the playlist
+        if track_uris:
+            add_result = spotify_client.add_tracks_to_playlist(playlist_id, track_uris)
+            if not add_result:
+                app.logger.warning("Failed to add some tracks to playlist")
+        
+        return jsonify({
+            'success': True,
+            'playlist_name': playlist_name,
+            'playlist_id': playlist_id,
+            'playlist_url': playlist_result['external_urls']['spotify'],
+            'tracks_added': len(track_uris),
+            'tracks_found': successful_tracks,
+            'total_requested': song_count
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Playlist creation failed: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to create playlist: {str(e)}'
+        })
+
 @app.route('/logout')
 def logout():
     """Log out user"""

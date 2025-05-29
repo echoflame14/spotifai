@@ -137,3 +137,27 @@ class SpotifyClient:
         data = {'uris': [track_uri]}
         result = self._make_request('PUT', endpoint, json=data)
         return result is not None
+    
+    def create_playlist(self, name, description="", public=False):
+        """Create a new playlist for the user"""
+        # First get user profile to get user ID
+        profile = self.get_user_profile()
+        if not profile:
+            return None
+        
+        user_id = profile['id']
+        data = {
+            'name': name,
+            'description': description,
+            'public': public
+        }
+        
+        return self._make_request('POST', f'/users/{user_id}/playlists', json=data)
+    
+    def add_tracks_to_playlist(self, playlist_id, track_uris):
+        """Add tracks to a playlist"""
+        data = {
+            'uris': track_uris
+        }
+        
+        return self._make_request('POST', f'/playlists/{playlist_id}/tracks', json=data)
