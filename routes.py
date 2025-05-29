@@ -1315,13 +1315,17 @@ def create_ai_playlist():
 USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
 {user_analysis}
 
+PLAYLIST DESCRIPTION AND ADDITIONAL GUIDANCE:
+{playlist_description}
+
 REQUIREMENTS:
 1. Recommend exactly {song_count} different songs
 2. Each song should be a real, existing track on Spotify
 3. Variety is important - don't repeat artists unless the user heavily favors them
 4. Consider the user's taste evolution and current preferences
 5. Include both familiar genres and potential discoveries
-6. Format each song as: "Song Title" by Artist Name
+6. IMPORTANT: Pay special attention to the playlist description above and adjust your recommendations to match that mood, theme, or style while still respecting the user's musical taste
+7. Format each song as: "Song Title" by Artist Name
 
 Please respond with ONLY the song list, one song per line, in this exact format:
 "Song Title 1" by Artist Name 1
