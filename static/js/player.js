@@ -267,6 +267,8 @@ function handleAIRecommendation() {
     const resultDiv = document.getElementById('recommendationResult');
     const trackDiv = document.getElementById('recommendedTrack');
     
+    console.log('🤖 Starting AI recommendation request...');
+    
     // Show loading state
     const originalHTML = button.innerHTML;
     button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting AI Recommendation...';
@@ -280,6 +282,7 @@ function handleAIRecommendation() {
                 <span class="visually-hidden">Loading...</span>
             </div>
             <p class="text-white mt-3">AI is analyzing your music taste...</p>
+            <p class="text-muted small">Check browser console for detailed logs</p>
         </div>
     `;
     
@@ -290,8 +293,12 @@ function handleAIRecommendation() {
             'Content-Type': 'application/json',
         },
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('📡 AI recommendation response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('📥 AI recommendation response data:', data);
         if (data.success) {
             displayRecommendedTrack(data.track, data.ai_reasoning);
         } else {
@@ -299,7 +306,7 @@ function handleAIRecommendation() {
         }
     })
     .catch(error => {
-        console.error('AI Recommendation Error:', error);
+        console.error('❌ AI Recommendation Error:', error);
         showRecommendationError('Failed to get AI recommendation. Please try again.');
     })
     .finally(() => {
@@ -312,6 +319,9 @@ function handleAIRecommendation() {
 function displayRecommendedTrack(track, reasoning) {
     const trackDiv = document.getElementById('recommendedTrack');
     
+    console.log('AI Recommendation received:', track);
+    console.log('AI Reasoning:', reasoning);
+    
     trackDiv.innerHTML = `
         <div class="recommended-track-item">
             ${track.image ? `<img src="${track.image}" alt="${track.album}" class="album-cover me-3">` : 
@@ -321,6 +331,10 @@ function displayRecommendedTrack(track, reasoning) {
                 <p class="text-muted mb-1">${track.artist}</p>
                 <p class="text-muted small mb-0">${track.album}</p>
                 <p class="text-spotify small mt-2"><i class="fas fa-robot me-1"></i>AI suggested: ${reasoning}</p>
+                <div class="alert alert-info small mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>Note:</strong> To play tracks, you need Spotify Premium and an active Spotify app open on any device.
+                </div>
             </div>
             <div>
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">

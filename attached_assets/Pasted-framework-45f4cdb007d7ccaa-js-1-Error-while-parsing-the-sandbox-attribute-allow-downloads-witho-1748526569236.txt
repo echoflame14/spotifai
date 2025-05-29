@@ -1,0 +1,187 @@
+framework-45f4cdb007d7ccaa.js:1  Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'battery'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'layout-animations'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'navigation-override'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'oversized-images'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'publickey-credentials'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'speaker-selection'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'unoptimized-images'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'unsized-media'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Unrecognized feature: 'pointer-lock'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+framework-45f4cdb007d7ccaa.js:1  Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
+framework-45f4cdb007d7ccaa.js:1  Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-45f4cdb007d7ccaa.js:1
+(anonymous) @ framework-45f4cdb007d7ccaa.js:1
+uD @ framework-45f4cdb007d7ccaa.js:1
+uI @ framework-45f4cdb007d7ccaa.js:1
+uM @ framework-45f4cdb007d7ccaa.js:1
+uS @ framework-45f4cdb007d7ccaa.js:1
+C @ framework-45f4cdb007d7ccaa.js:1
+z @ framework-45f4cdb007d7ccaa.js:1
+workspace_iframe.html:32  Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+workspace_iframe.html:32  Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+workspace_iframe.html:32  Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.html:32  Unrecognized feature: 'ambient-light-sensor'.
+workspace_iframe.html:32  Unrecognized feature: 'battery'.
+workspace_iframe.html:32  Unrecognized feature: 'battery'.
+workspace_iframe.html:32  Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.html:32  Unrecognized feature: 'execution-while-not-rendered'.
+workspace_iframe.html:32  Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.html:32  Unrecognized feature: 'execution-while-out-of-viewport'.
+workspace_iframe.html:32  Unrecognized feature: 'layout-animations'.
+workspace_iframe.html:32  Unrecognized feature: 'layout-animations'.
+workspace_iframe.html:32  Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.html:32  Unrecognized feature: 'legacy-image-formats'.
+workspace_iframe.html:32  Unrecognized feature: 'navigation-override'.
+workspace_iframe.html:32  Unrecognized feature: 'navigation-override'.
+workspace_iframe.html:32  Unrecognized feature: 'oversized-images'.
+workspace_iframe.html:32  Unrecognized feature: 'oversized-images'.
+workspace_iframe.html:32  Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.html:32  Unrecognized feature: 'publickey-credentials'.
+workspace_iframe.html:32  Unrecognized feature: 'speaker-selection'.
+workspace_iframe.html:32  Unrecognized feature: 'speaker-selection'.
+workspace_iframe.html:32  Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.html:32  Unrecognized feature: 'unoptimized-images'.
+workspace_iframe.html:32  Unrecognized feature: 'unsized-media'.
+workspace_iframe.html:32  Unrecognized feature: 'unsized-media'.
+workspace_iframe.html:32  Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.html:32  Allow attribute will take precedence over 'allowfullscreen'.
+workspace_iframe.html:32  Allow attribute will take precedence over 'allowpaymentrequest'.
+workspace_iframe.html:32  Allow attribute will take precedence over 'allowpaymentrequest'.
+workspace_iframe.html:32  Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Console.js:61 🎵 Spotify Clone Player Initialized
+Console.js:61 Use spacebar to play/pause music
+Console.js:61 AI recommendations powered by Google Gemini
+workspace_iframe.html?initialPath=%2F&id=%3Ariq%3A:142 
+            
+            
+            GET https://replit.com/public/js/beacon.js net::ERR_BLOCKED_BY_CLIENT
