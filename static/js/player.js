@@ -399,45 +399,6 @@ function displayRecommendedTrack(track, reasoning) {
                 <p class="text-muted mb-1">${track.artist}</p>
                 <p class="text-muted small mb-0">${track.album}</p>
                 <p class="text-spotify small mt-2"><i class="fas fa-robot me-1"></i>AI suggested: ${reasoning}</p>
-                
-                <!-- AI Data Transparency Section -->
-                <div class="ai-transparency mt-3">
-                    <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" 
-                            data-bs-target="#aiDataCollapse" aria-expanded="false">
-                        <i class="fas fa-code me-1"></i>Show AI Input/Output Data
-                    </button>
-                    <div class="collapse mt-2" id="aiDataCollapse">
-                        <div class="card bg-dark text-light small">
-                            <div class="card-header">
-                                <strong>Psychological Analysis of Your Music Taste:</strong>
-                            </div>
-                            <div class="card-body">
-                                <pre class="text-wrap" id="aiAnalysisData" style="white-space: pre-wrap; font-size: 11px;"></pre>
-                            </div>
-                        </div>
-                        <div class="card bg-dark text-light small mt-2">
-                            <div class="card-header">
-                                <strong>Data Sent to Google Gemini:</strong>
-                            </div>
-                            <div class="card-body">
-                                <pre class="text-wrap" id="aiInputData" style="white-space: pre-wrap; font-size: 11px;"></pre>
-                            </div>
-                        </div>
-                        <div class="card bg-dark text-light small mt-2">
-                            <div class="card-header">
-                                <strong>Response from Google Gemini:</strong>
-                            </div>
-                            <div class="card-body">
-                                <pre class="text-wrap" id="aiOutputData" style="white-space: pre-wrap; font-size: 11px;"></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="alert alert-info small mt-2">
-                    <i class="fas fa-info-circle me-1"></i>
-                    <strong>Note:</strong> To play tracks, you need Spotify Premium and an active Spotify app open on any device.
-                </div>
             </div>
             <div>
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">

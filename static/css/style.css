@@ -51,7 +51,74 @@ html, body {
     background-color: #1ed760;
     border-color: #1ed760;
     color: var(--spotify-white);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(29, 185, 84, 0.3);
+}
+
+/* Enhanced card styling */
+.bg-dark-card {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border: 1px solid rgba(29, 185, 84, 0.1);
+    transition: all 0.3s ease;
+}
+
+.bg-dark-card:hover {
+    border-color: rgba(29, 185, 84, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Track display improvements */
+.recommended-track-item {
+    background: rgba(29, 185, 84, 0.05);
+    border: 1px solid rgba(29, 185, 84, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.recommended-track-item:hover {
+    background: rgba(29, 185, 84, 0.08);
+    border-color: rgba(29, 185, 84, 0.3);
+}
+
+/* Album cover styling */
+.album-cover {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.album-cover:hover {
     transform: scale(1.05);
+}
+
+/* Why This Track section styling */
+.track-reasoning-content {
+    background: rgba(29, 185, 84, 0.05);
+    border: 1px solid rgba(29, 185, 84, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+/* AI transparency section improvements */
+#aiDataCollapse .card {
+    background: rgba(26, 26, 26, 0.8);
+    transition: all 0.3s ease;
+}
+
+#aiDataCollapse .card:hover {
+    border-color: rgba(29, 185, 84, 0.3);
+}
+
+#aiDataCollapse .card-body pre {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    padding: 8px;
 }
 
 .btn-outline-spotify {

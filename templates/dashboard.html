@@ -260,6 +260,57 @@
         </div>
     </div>
 </div>
+
+<!-- AI Data Transparency Section (Bottom of Page) -->
+<div class="container-fluid mt-5 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-3">
+                <button class="btn btn-link text-muted text-decoration-none btn-sm" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#aiDataCollapse" aria-expanded="false">
+                    <i class="fas fa-code me-1"></i>
+                    <small>View AI Processing Data</small>
+                    <i class="fas fa-chevron-down ms-1 small"></i>
+                </button>
+            </div>
+            
+            <div class="collapse" id="aiDataCollapse">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-dark border-secondary">
+                            <div class="card-header bg-dark border-secondary">
+                                <small class="text-muted">Psychological Analysis</small>
+                            </div>
+                            <div class="card-body p-2">
+                                <pre class="text-wrap text-muted small mb-0" id="aiAnalysisData" style="white-space: pre-wrap; font-size: 10px; max-height: 200px; overflow-y: auto;">No data available</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-dark border-secondary">
+                            <div class="card-header bg-dark border-secondary">
+                                <small class="text-muted">Input to Gemini AI</small>
+                            </div>
+                            <div class="card-body p-2">
+                                <pre class="text-wrap text-muted small mb-0" id="aiInputData" style="white-space: pre-wrap; font-size: 10px; max-height: 200px; overflow-y: auto;">No data available</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-dark border-secondary">
+                            <div class="card-header bg-dark border-secondary">
+                                <small class="text-muted">Response from Gemini AI</small>
+                            </div>
+                            <div class="card-body p-2">
+                                <pre class="text-wrap text-muted small mb-0" id="aiOutputData" style="white-space: pre-wrap; font-size: 10px; max-height: 200px; overflow-y: auto;">No data available</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
