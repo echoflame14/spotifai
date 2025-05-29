@@ -28,8 +28,8 @@ def login():
     state = secrets.token_urlsafe(16)
     session['oauth_state'] = state
     
-    # Define required scopes
-    scope = 'user-read-private user-read-email playlist-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing'
+    # Define required scopes including permissions for AI recommendations
+    scope = 'user-read-private user-read-email playlist-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-top-read user-library-read'
     
     # Debug: Log the parameters being used
     app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
@@ -249,6 +249,13 @@ def ai_recommendation():
                            for track in saved_tracks.get('items', [])]
         }
         
+        # Log the collected data for transparency
+        app.logger.info(f"Data being sent to AI: {music_data}")
+        app.logger.info(f"Recent tracks count: {len(music_data['recent_tracks'])}")
+        app.logger.info(f"Top tracks count: {len(music_data['top_tracks'])}")
+        app.logger.info(f"Top artists count: {len(music_data['top_artists'])}")
+        app.logger.info(f"Saved tracks count: {len(music_data['saved_tracks'])}")
+        
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
@@ -268,9 +275,11 @@ Do not include any other text, explanations, or formatting."""
         
         # Get AI recommendation
         app.logger.info("Requesting AI recommendation from Gemini...")
+        app.logger.info(f"Prompt sent to AI: {prompt}")
         response = model.generate_content(prompt)
         recommendation_text = response.text.strip()
         
+        app.logger.info(f"Raw AI response: {recommendation_text}")
         app.logger.info(f"AI recommended: {recommendation_text}")
         
         # Search for the recommended track on Spotify
@@ -321,6 +330,15 @@ def play_recommendation():
         return jsonify({'success': False, 'message': 'Track URI required'}), 400
     
     spotify_client = SpotifyClient(user.access_token)
+    
+    # Check for available devices first
+    devices = spotify_client.get_devices()
+    if not devices or not devices.get('devices'):
+        return jsonify({
+            'success': False, 
+            'message': 'No Spotify devices found. Please open the Spotify app on your phone, computer, or any device, then try again.'
+        })
+    
     success = spotify_client.play_track(track_uri)
     
     if success:
@@ -328,7 +346,7 @@ def play_recommendation():
     else:
         return jsonify({
             'success': False, 
-            'message': 'Failed to play track. Make sure Spotify is open on a device.'
+            'message': 'Failed to play track. Make sure you have Spotify Premium and an active device.'
         })
 
 @app.route('/logout')
