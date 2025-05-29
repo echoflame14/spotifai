@@ -361,7 +361,8 @@ html, body {
     background-color: rgba(29, 185, 84, 0.2) !important;
 }
 
-/* Music Taste Profile Overlay */
+/* Removed obsolete rules for .music-profile-toggle and .music-profile-overlay */
+/*
 .music-profile-toggle .btn {
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
@@ -401,14 +402,19 @@ html, body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(29, 185, 84, 0.2);
 }
+*/
 
-.music-profile-toggle .btn .fa-chevron-down {
+/* Keep the .fa-chevron-down animation logic, but generalize if needed. Currently, it relies on the class on the button itself. */
+/* If the `feedback-learning-section` button is the only one left with a `data-bs-toggle` for a chevron, this is fine. */
+/* Let's adjust this to target the shared class `feedback-learning-section` to ensure it applies to both. */
+.feedback-learning-section .btn[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.feedback-learning-section .btn .fa-chevron-down {
     transition: transform 0.3s ease;
 }
 
-.music-profile-toggle .btn[aria-expanded="true"] .fa-chevron-down {
-    transform: rotate(180deg);
-}
 
 /* Features List */
 .features {
@@ -444,15 +450,15 @@ html, body {
     .main-content {
         padding: 1rem;
     }
-    
+
     .login-form-container {
         padding: 1rem;
     }
-    
+
     .hero-content {
         padding: 1rem;
     }
-    
+
     .hero-content h1 {
         font-size: 2rem;
     }
@@ -464,13 +470,13 @@ html, body {
         width: 60px;
         height: 60px;
     }
-    
+
     .playlist-grid-cover,
     .playlist-grid-cover-placeholder {
         width: 50px;
         height: 50px;
     }
-    
+
     .player-controls .btn {
         width: 48px;
         height: 48px;

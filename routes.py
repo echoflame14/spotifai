@@ -1113,7 +1113,7 @@ def feedback_insights():
         
         # Get all user's feedback entries
         from models import UserFeedback, Recommendation
-        feedback_entries = UserFeedback.query.filter_by(user_id=user_id).order_by(UserFeedback.created_at.desc()).limit(10).all()
+        feedback_entries = UserFeedback.query.filter_by(user_id=user_id).order_by(UserFeedback.created_at.desc()).all()
         
         if not feedback_entries:
             return jsonify({
