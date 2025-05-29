@@ -163,45 +163,45 @@ def dashboard():
                          current_track=current_track,
                          playback_state=playback_state)
 
-@app.route('/play', methods=['POST'])
+@app.route('/play')
 def play():
     """Resume playback"""
-    from flask import jsonify
-    
     if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+        return redirect(url_for('index'))
     
     user = User.query.get(session['user_id'])
     if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
+        return redirect(url_for('index'))
     
     spotify_client = SpotifyClient(user.access_token)
     success = spotify_client.play()
     
     if success:
-        return jsonify({'success': True, 'message': 'Playback resumed'})
+        flash('Playback resumed', 'success')
     else:
-        return jsonify({'success': False, 'message': 'Failed to resume playback. Make sure Spotify is open on a device.'})
+        flash('Failed to resume playback. Make sure Spotify is open on a device.', 'error')
+    
+    return redirect(url_for('dashboard'))
 
-@app.route('/pause', methods=['POST'])
+@app.route('/pause')
 def pause():
     """Pause playback"""
-    from flask import jsonify
-    
     if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+        return redirect(url_for('index'))
     
     user = User.query.get(session['user_id'])
     if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
+        return redirect(url_for('index'))
     
     spotify_client = SpotifyClient(user.access_token)
     success = spotify_client.pause()
     
     if success:
-        return jsonify({'success': True, 'message': 'Playback paused'})
+        flash('Playback paused', 'success')
     else:
-        return jsonify({'success': False, 'message': 'Failed to pause playback'})
+        flash('Failed to pause playback', 'error')
+    
+    return redirect(url_for('dashboard'))
 
 @app.route('/logout')
 def logout():
