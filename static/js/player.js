@@ -407,11 +407,7 @@ let lastAIData = null; // Store AI interaction data globally
 function displayRecommendedTrack(track, reasoning) {
     const trackDiv = document.getElementById('recommendedTrack');
     
-    // Stop any currently playing preview when showing new recommendation
-    if (currentPreviewAudio) {
-        currentPreviewAudio.pause();
-        currentPreviewAudio = null;
-    }
+
     
     console.log('AI Recommendation received:', track);
     console.log('AI Reasoning:', reasoning);
