@@ -1280,6 +1280,8 @@ def create_ai_playlist():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
+    from models import Recommendation, UserFeedback
+    
     user = User.query.get(session['user_id'])
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
