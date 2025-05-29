@@ -351,6 +351,63 @@
         </div>
     </div>
 </div>
+
+<!-- Create AI Playlist Modal -->
+<div class="modal fade" id="createPlaylistModal" tabindex="-1" aria-labelledby="createPlaylistModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="createPlaylistModalLabel">
+                    <i class="fas fa-magic me-2 text-spotify"></i>Create AI Playlist
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="playlistName" class="form-label">Playlist Name</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" 
+                               id="playlistName" placeholder="AI Generated Playlist">
+                    </div>
+                    <div class="mb-3">
+                        <label for="playlistDescription" class="form-label">Description</label>
+                        <textarea class="form-control bg-dark text-white border-secondary" 
+                                  id="playlistDescription" rows="2" 
+                                  placeholder="A personalized playlist created by AI based on your music taste"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="songCount" class="form-label">Number of Songs</label>
+                        <select class="form-select bg-dark text-white border-secondary" id="songCount">
+                            <option value="5">5 songs</option>
+                            <option value="10" selected>10 songs</option>
+                            <option value="15">15 songs</option>
+                            <option value="20">20 songs</option>
+                            <option value="30">30 songs</option>
+                            <option value="50">50 songs</option>
+                        </select>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="useSessionAdjustment">
+                        <label class="form-check-label" for="useSessionAdjustment">
+                            Use current session preferences
+                            <small class="text-muted d-block">Apply any mood adjustments from this session</small>
+                        </label>
+                    </div>
+                    <div class="alert alert-info border-0" style="background-color: rgba(29, 185, 84, 0.1);">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>AI will analyze your listening history to create a personalized playlist that matches your taste.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-spotify" id="createPlaylistConfirm">
+                    <i class="fas fa-magic me-2"></i>Create Playlist
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
