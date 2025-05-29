@@ -143,11 +143,20 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- AI Personality Insights -->
+                        {% if music_insights and music_insights.personality_insights %}
+                            <div class="mt-4 p-3 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.2);">
+                                <h6 class="text-spotify mb-2">
+                                    <i class="fas fa-brain me-2"></i>
+                                    AI Personality Analysis
+                                </h6>
+                                <p class="text-light small mb-0">{{ music_insights.personality_insights }}</p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            
-
             
             <!-- AI Recommendation Result -->
             <div id="recommendationResult" class="recommendation-result mb-4" style="display: none;">

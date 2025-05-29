@@ -137,12 +137,84 @@ def callback():
         return redirect(url_for('index'))
 
 def generate_music_insights(spotify_client):
-    """Generate music taste profile insights from user's Spotify data"""
+    """Generate music taste profile insights from user's Spotify data using AI analysis"""
+    try:
+        # Check if Gemini API key is available
+        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_api_key:
+            # Return basic stats without AI analysis
+            return generate_basic_insights(spotify_client)
+        
+        # Get comprehensive music data
+        recent_tracks = spotify_client.get_recently_played(limit=30) or {'items': []}
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=15) or {'items': []}
+        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=15) or {'items': []}
+        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=15) or {'items': []}
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=15) or {'items': []}
+        
+        # Prepare data for AI analysis
+        music_data = {
+            'recent_tracks': [
+                {
+                    'name': item['track']['name'],
+                    'artist': item['track']['artists'][0]['name'],
+                    'genres': item['track']['artists'][0].get('genres', []) if len(item['track']['artists']) > 0 else []
+                }
+                for item in recent_tracks.get('items', [])[:20]
+            ],
+            'top_artists_recent': [
+                {
+                    'name': artist['name'],
+                    'genres': artist.get('genres', []),
+                    'popularity': artist.get('popularity', 0)
+                }
+                for artist in top_artists_short.get('items', [])[:10]
+            ],
+            'top_artists_overall': [
+                {
+                    'name': artist['name'],
+                    'genres': artist.get('genres', []),
+                    'popularity': artist.get('popularity', 0)
+                }
+                for artist in top_artists_medium.get('items', [])[:10]
+            ],
+            'top_tracks_recent': [
+                {
+                    'name': track['name'],
+                    'artist': track['artists'][0]['name'],
+                    'popularity': track.get('popularity', 0)
+                }
+                for track in top_tracks_short.get('items', [])[:10]
+            ],
+            'top_tracks_overall': [
+                {
+                    'name': track['name'],
+                    'artist': track['artists'][0]['name'],
+                    'popularity': track.get('popularity', 0)
+                }
+                for track in top_tracks_medium.get('items', [])[:10]
+            ]
+        }
+        
+        # Generate AI insights
+        ai_insights = generate_ai_music_analysis(music_data, gemini_api_key)
+        
+        if ai_insights:
+            return ai_insights
+        else:
+            # Fallback to basic insights if AI fails
+            return generate_basic_insights(spotify_client)
+            
+    except Exception as e:
+        app.logger.error(f"Error generating music insights: {e}")
+        return generate_basic_insights(spotify_client)
+
+def generate_basic_insights(spotify_client):
+    """Generate basic insights without AI analysis"""
     try:
         # Get basic music data
         recent_tracks = spotify_client.get_recently_played(limit=20) or {'items': []}
         top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=10) or {'items': []}
-        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=10) or {'items': []}
         
         # Extract basic stats
         recent_track_count = len(recent_tracks.get('items', []))
@@ -175,10 +247,10 @@ def generate_music_insights(spotify_client):
                 'examples': list(genres)[:3],
                 'description': f"Discovered {len(genres)} distinct musical genres in your taste"
             },
-            'analysis_ready': True
+            'analysis_ready': False
         }
     except Exception as e:
-        app.logger.error(f"Error generating music insights: {e}")
+        app.logger.error(f"Error generating basic insights: {e}")
         return {
             'recent_tracks': {
                 'count': 0,
@@ -197,6 +269,77 @@ def generate_music_insights(spotify_client):
             },
             'analysis_ready': False
         }
+
+def generate_ai_music_analysis(music_data, gemini_api_key):
+    """Use Gemini AI to generate detailed music taste insights"""
+    try:
+        import google.generativeai as genai
+        
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        
+        # Create comprehensive prompt for music analysis
+        prompt = f"""
+Analyze this user's Spotify listening data and provide detailed, personalized insights. Format your response as a JSON object with the structure shown below.
+
+MUSIC DATA:
+{json.dumps(music_data, indent=2)}
+
+Please provide insights in this exact JSON format:
+{{
+    "recent_tracks": {{
+        "count": [number of recent tracks],
+        "examples": [list of 2-3 most interesting recent track names],
+        "description": "[Detailed 1-2 sentence analysis of recent listening patterns, mentioning specific trends or notable choices]"
+    }},
+    "top_artists": {{
+        "count": [number of top artists],
+        "examples": [list of 2-3 most characteristic artist names],
+        "description": "[Detailed 1-2 sentence analysis of artist preferences, highlighting musical styles or themes]"
+    }},
+    "genres": {{
+        "count": [number of distinct genres],
+        "examples": [list of 2-3 most prominent genre names],
+        "description": "[Detailed 1-2 sentence analysis of genre diversity and musical taste evolution]"
+    }},
+    "analysis_ready": true,
+    "personality_insights": "[2-3 sentence psychological analysis of what their music choices reveal about their personality, mood patterns, or life phase]"
+}}
+
+Focus on:
+1. Identifying patterns and trends in their listening behavior
+2. Highlighting unique or interesting aspects of their taste
+3. Providing genuine insights rather than generic descriptions
+4. Making observations about musical evolution or consistency
+5. Connecting their choices to potential personality traits or moods
+
+Be specific, insightful, and personal while remaining positive and engaging.
+"""
+        
+        app.logger.info("Generating AI music taste analysis...")
+        response = model.generate_content(prompt)
+        
+        if response and response.text:
+            # Parse the JSON response
+            import json
+            import re
+            
+            # Extract JSON from the response
+            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+            if json_match:
+                insights_json = json.loads(json_match.group())
+                app.logger.info("AI music analysis generated successfully")
+                return insights_json
+            else:
+                app.logger.warning("Could not extract JSON from AI response")
+                return None
+        else:
+            app.logger.warning("Empty response from AI music analysis")
+            return None
+            
+    except Exception as e:
+        app.logger.error(f"Error in AI music analysis: {e}")
+        return None
 
 @app.route('/dashboard')
 def dashboard():
