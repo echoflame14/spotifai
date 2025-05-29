@@ -12,7 +12,7 @@ from spotify_client import SpotifyClient
 # Spotify OAuth configuration
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '3eab9e9e7ff444e8b0a9d1c18468b555')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://7ac45a76-6acd-4d01-a80b-27fa66c55eda-00-2r6v2m50v7a33.pike.replit.dev/callback')
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
 
 @app.route('/')
 def index():
