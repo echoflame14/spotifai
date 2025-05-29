@@ -1,13 +1,15 @@
 import os
 import secrets
 import base64
+import json
 from datetime import datetime, timedelta
-from flask import render_template, request, redirect, url_for, session, flash
+from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from urllib.parse import urlencode
 import requests
 from app import app, db
 from models import User
 from spotify_client import SpotifyClient
+import google.generativeai as genai
 
 # Spotify OAuth configuration
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '3eab9e9e7ff444e8b0a9d1c18468b555')

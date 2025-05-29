@@ -306,6 +306,10 @@ function handleAIRecommendation() {
                 output: data.ai_output_data,
                 analysis: data.psychological_analysis
             };
+            
+            // Store recommendation ID for feedback
+            currentRecommendationId = data.recommendation_id;
+            
             displayRecommendedTrack(data.track, data.ai_reasoning);
         } else {
             showRecommendationError(data.message);
