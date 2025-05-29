@@ -50,6 +50,26 @@
                             Finds songs that match your unique taste
                         </p>
                     </div>
+                    
+                    <!-- Learned from Feedback Section -->
+                    <div id="feedbackLearningSection" class="feedback-learning-section mt-3">
+                        <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" aria-expanded="false">
+                            <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
+                                <span><i class="fas fa-brain me-2"></i>Learned from Your Feedback</span>
+                                <i class="fas fa-chevron-down small"></i>
+                            </h6>
+                        </button>
+                        
+                        <div class="collapse mt-3" id="feedbackLearningCollapse">
+                            <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
+                                <div class="d-flex align-items-center justify-content-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                                    <span class="text-muted small">Loading feedback insights...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- How It Works -->
@@ -133,19 +153,12 @@
         
         <!-- Main Content -->
         <div class="col-lg-9 col-md-8 main-content">
-            <!-- Music Taste Profile and Feedback Learning Toggles -->
-            <div class="music-profile-toggle mb-3 d-flex gap-2 flex-wrap">
+            <!-- Music Taste Profile Toggle -->
+            <div class="music-profile-toggle mb-3">
                 <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" 
                         data-bs-target="#musicProfileCollapse" aria-expanded="false">
                     <i class="fas fa-user-music me-2"></i>
                     Your Music Taste Profile
-                    <i class="fas fa-chevron-down ms-2"></i>
-                </button>
-                <button id="feedbackLearningToggle" class="btn btn-outline-warning btn-sm" type="button" 
-                        data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" 
-                        aria-expanded="false">
-                    <i class="fas fa-brain me-2"></i>
-                    Learned from Your Feedback
                     <i class="fas fa-chevron-down ms-2"></i>
                 </button>
             </div>
@@ -202,31 +215,7 @@
                 </div>
             </div>
 
-            <!-- Collapsible Feedback Learning Overlay -->
-            <div class="collapse" id="feedbackLearningCollapse">
-                <div class="feedback-learning-overlay position-relative mb-4">
-                    <div class="card bg-dark-card border-0 shadow-lg" style="position: relative; z-index: 10;">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="card-title text-white mb-0">
-                                    <i class="fas fa-brain text-warning me-2"></i>
-                                    Learned from Your Feedback
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" 
-                                        data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse"></button>
-                            </div>
-                            <p class="text-muted">See how the AI has learned from your previous feedback to better understand your music preferences.</p>
-                            
-                            <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
-                                <div class="d-flex align-items-center justify-content-center py-3">
-                                    <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
-                                    <span class="text-muted small">Loading feedback insights...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
             
             <!-- AI Recommendation Result -->
             <div id="recommendationResult" class="recommendation-result mb-4" style="display: none;">
