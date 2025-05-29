@@ -83,75 +83,38 @@
                             <i class="fas fa-user-music text-spotify me-2"></i>
                             Your Music Taste Profile
                         </h5>
-                        <p class="text-muted">The AI analyzes your Spotify listening history, favorite tracks, and artists to understand your unique musical preferences and recommend songs you'll love.</p>
-                        <div class="row mt-3">
-                            <div class="col-md-4">
-                                <div class="stat-item text-center">
-                                    <i class="fas fa-headphones text-spotify fa-2x mb-2"></i>
-                                    <h6 class="text-white">Recent Tracks</h6>
-                                    {% if music_insights and music_insights.recent_tracks %}
-                                        <div class="insight-number text-spotify fw-bold">{{ music_insights.recent_tracks.count }}</div>
-                                        <p class="text-muted small">{{ music_insights.recent_tracks.description }}</p>
-                                        {% if music_insights.recent_tracks.examples %}
-                                            <div class="examples mt-2">
-                                                {% for track in music_insights.recent_tracks.examples[:2] %}
-                                                    <span class="badge bg-dark text-light small me-1">{{ track }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    {% else %}
-                                        <p class="text-muted small">Analyzing listening patterns</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="stat-item text-center">
-                                    <i class="fas fa-heart text-spotify fa-2x mb-2"></i>
-                                    <h6 class="text-white">Top Artists</h6>
-                                    {% if music_insights and music_insights.top_artists %}
-                                        <div class="insight-number text-spotify fw-bold">{{ music_insights.top_artists.count }}</div>
-                                        <p class="text-muted small">{{ music_insights.top_artists.description }}</p>
-                                        {% if music_insights.top_artists.examples %}
-                                            <div class="examples mt-2">
-                                                {% for artist in music_insights.top_artists.examples[:2] %}
-                                                    <span class="badge bg-dark text-light small me-1">{{ artist }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    {% else %}
-                                        <p class="text-muted small">Understanding preferences</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="stat-item text-center">
-                                    <i class="fas fa-brain text-spotify fa-2x mb-2"></i>
-                                    <h6 class="text-white">Musical Genres</h6>
-                                    {% if music_insights and music_insights.genres %}
-                                        <div class="insight-number text-spotify fw-bold">{{ music_insights.genres.count }}</div>
-                                        <p class="text-muted small">{{ music_insights.genres.description }}</p>
-                                        {% if music_insights.genres.examples %}
-                                            <div class="examples mt-2">
-                                                {% for genre in music_insights.genres.examples[:2] %}
-                                                    <span class="badge bg-dark text-light small me-1">{{ genre }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    {% else %}
-                                        <p class="text-muted small">Mapping musical landscape</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
+                        <p class="text-muted">The AI analyzes your Spotify listening history to roast your music taste and reveal what it says about your personality.</p>
                         
-                        <!-- AI Personality Insights -->
-                        {% if music_insights and music_insights.personality_insights %}
-                            <div class="mt-4 p-3 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.2);">
-                                <h6 class="text-spotify mb-2">
-                                    <i class="fas fa-brain me-2"></i>
-                                    AI Personality Analysis
-                                </h6>
-                                <p class="text-light small mb-0">{{ music_insights.personality_insights }}</p>
+                        {% if music_insights and music_insights.analysis_ready %}
+                            <!-- AI Taste Roast -->
+                            {% if music_insights.user_taste_roast %}
+                                <div class="mt-4 p-4 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.2);">
+                                    <h6 class="text-spotify mb-3">
+                                        <i class="fas fa-fire me-2"></i>
+                                        Musical Personality Analysis
+                                    </h6>
+                                    <p class="text-light mb-0" style="font-size: 1.1rem; line-height: 1.6;">{{ music_insights.user_taste_roast }}</p>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Recent Mood Analysis -->
+                            {% if music_insights.recent_mood_analysis %}
+                                <div class="mt-3 p-4 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+                                    <h6 class="text-white mb-3">
+                                        <i class="fas fa-mood-smile text-warning me-2"></i>
+                                        Recent Listening Vibes
+                                    </h6>
+                                    <p class="text-light mb-0" style="font-size: 1.1rem; line-height: 1.6;">{{ music_insights.recent_mood_analysis }}</p>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <!-- Loading state -->
+                            <div class="mt-4 p-4 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+                                <div class="text-center">
+                                    <i class="fas fa-brain text-spotify fa-2x mb-3"></i>
+                                    <h6 class="text-white mb-2">Analyzing Your Musical Soul...</h6>
+                                    <p class="text-muted small mb-0">The AI is judging your taste and preparing some commentary</p>
+                                </div>
                             </div>
                         {% endif %}
                     </div>

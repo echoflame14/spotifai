@@ -278,42 +278,32 @@ def generate_ai_music_analysis(music_data, gemini_api_key):
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
-        # Create comprehensive prompt for music analysis
+        # Create snarky, personality-focused prompt for music analysis
         prompt = f"""
-Analyze this user's Spotify listening data and provide detailed, personalized insights. Format your response as a JSON object with the structure shown below.
+Analyze this user's Spotify listening data and roast their music taste in a clever, witty way while providing genuine psychological insights. Be snarky but not mean - think of a music-savvy friend giving playful commentary.
 
 MUSIC DATA:
 {json.dumps(music_data, indent=2)}
 
-Please provide insights in this exact JSON format:
+Respond ONLY with a JSON object in this exact format:
 {{
-    "recent_tracks": {{
-        "count": [number of recent tracks],
-        "examples": [list of 2-3 most interesting recent track names],
-        "description": "[Detailed 1-2 sentence analysis of recent listening patterns, mentioning specific trends or notable choices]"
-    }},
-    "top_artists": {{
-        "count": [number of top artists],
-        "examples": [list of 2-3 most characteristic artist names],
-        "description": "[Detailed 1-2 sentence analysis of artist preferences, highlighting musical styles or themes]"
-    }},
-    "genres": {{
-        "count": [number of distinct genres],
-        "examples": [list of 2-3 most prominent genre names],
-        "description": "[Detailed 1-2 sentence analysis of genre diversity and musical taste evolution]"
-    }},
-    "analysis_ready": true,
-    "personality_insights": "[2-3 sentence psychological analysis of what their music choices reveal about their personality, mood patterns, or life phase]"
+    "user_taste_roast": "[2-3 sentences with witty commentary about their overall music preferences, personality traits revealed through their choices. Be clever and slightly sarcastic but not insulting. Focus on what their taste says about who they are]",
+    "recent_mood_analysis": "[1-2 sentences analyzing their recent listening patterns with personality. What mood have they been in? What life phase? Be observant and a bit cheeky]",
+    "analysis_ready": true
 }}
 
-Focus on:
-1. Identifying patterns and trends in their listening behavior
-2. Highlighting unique or interesting aspects of their taste
-3. Providing genuine insights rather than generic descriptions
-4. Making observations about musical evolution or consistency
-5. Connecting their choices to potential personality traits or moods
+Style guidelines:
+- Write like a snarky music critic who knows the user personally
+- Make observations about personality, not just music facts
+- Use phrases like "we can tell you like X which means you're probably Y"
+- Be witty about contradictions in their taste
+- Comment on their emotional state based on recent tracks
+- Keep it fun and engaging, not clinical
 
-Be specific, insightful, and personal while remaining positive and engaging.
+Examples of the tone:
+"We can tell you're someone who likes to think they're edgy but also secretly enjoys a good pop hook"
+"Your recent playlist suggests you've been having some feelings and decided the whole world needs to know about it"
+"You're clearly someone who discovered nu-metal in your teens and never quite grew out of it (not that we're judging)"
 """
         
         app.logger.info("Generating AI music taste analysis...")
@@ -321,7 +311,6 @@ Be specific, insightful, and personal while remaining positive and engaging.
         
         if response and response.text:
             # Parse the JSON response
-            import json
             import re
             
             # Extract JSON from the response
