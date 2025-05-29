@@ -309,6 +309,23 @@ def ai_recommendation():
                 all_genres.update(artist.get('genres', []))
         music_data['favorite_genres'] = list(all_genres)
         
+        # Get historical feedback to improve recommendations
+        from models import UserFeedback, Recommendation
+        past_feedback = db.session.query(UserFeedback, Recommendation).join(
+            Recommendation, UserFeedback.recommendation_id == Recommendation.id
+        ).filter(UserFeedback.user_id == user.id).order_by(UserFeedback.created_at.desc()).limit(10).all()
+        
+        feedback_insights = []
+        for feedback, rec in past_feedback:
+            feedback_insights.append({
+                'track': f"{rec.track_name} by {rec.artist_name}",
+                'sentiment': feedback.sentiment,
+                'feedback': feedback.feedback_text,
+                'ai_analysis': feedback.ai_processed_feedback
+            })
+        
+        music_data['feedback_history'] = feedback_insights
+        
         # Log the collected data for transparency
         app.logger.info(f"Comprehensive data collected:")
         app.logger.info(f"Recent tracks collected: {len(all_recent_tracks)} (requested 150)")
@@ -318,6 +335,7 @@ def ai_recommendation():
         app.logger.info(f"Saved tracks: {len(music_data['saved_tracks'])}")
         app.logger.info(f"Playlists: {len(music_data['playlist_names'])}")
         app.logger.info(f"Unique genres: {len(music_data['favorite_genres'])}")
+        app.logger.info(f"Historical feedback entries: {len(feedback_insights)}")
         
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
@@ -381,6 +399,9 @@ MUSIC PREFERENCES:
 Favorite Genres: {music_data['favorite_genres']}
 Playlist Names: {music_data['playlist_names']}
 Total Playlists: {music_data['total_playlists']}
+
+FEEDBACK HISTORY:
+{music_data['feedback_history']}
 
 ANALYSIS INSTRUCTIONS:
 1. Consider the user's listening patterns across all time periods
@@ -492,6 +513,102 @@ def play_recommendation():
             'success': False, 
             'message': 'Failed to play track. Make sure you have Spotify Premium and an active device.'
         })
+
+@app.route('/chat_feedback', methods=['POST'])
+def chat_feedback():
+    """Process user chat feedback on recommendations"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    try:
+        data = request.get_json()
+        feedback_text = data.get('feedback_text', '').strip()
+        recommendation_id = data.get('recommendation_id') or session.get('current_recommendation_id')
+        
+        if not feedback_text:
+            return jsonify({'success': False, 'message': 'Feedback text is required'}), 400
+        
+        if not recommendation_id:
+            return jsonify({'success': False, 'message': 'No active recommendation to provide feedback on'}), 400
+        
+        user_id = session['user_id']
+        
+        # Get the recommendation from database
+        from models import Recommendation, UserFeedback
+        recommendation = Recommendation.query.filter_by(id=recommendation_id, user_id=user_id).first()
+        
+        if not recommendation:
+            return jsonify({'success': False, 'message': 'Recommendation not found'}), 404
+        
+        # Use AI to analyze the feedback and extract insights
+        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_api_key:
+            return jsonify({'success': False, 'message': 'AI analysis not available'}), 500
+        
+        # Configure Gemini for feedback analysis
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Create prompt for analyzing user feedback
+        feedback_analysis_prompt = f"""
+Analyze this user feedback about a music recommendation and extract key insights:
+
+RECOMMENDED TRACK: "{recommendation.track_name}" by {recommendation.artist_name}
+ORIGINAL AI REASONING: {recommendation.ai_reasoning}
+USER FEEDBACK: "{feedback_text}"
+
+Please analyze:
+1. Sentiment (positive, negative, neutral)
+2. Specific reasons for the user's reaction
+3. What this reveals about their music preferences
+4. How future recommendations should be adjusted
+5. Key patterns or preferences to remember
+
+Provide a structured analysis in JSON format:
+{{
+    "sentiment": "positive/negative/neutral",
+    "key_insights": ["insight1", "insight2", "insight3"],
+    "preference_adjustments": ["adjustment1", "adjustment2"],
+    "recommendation_feedback": "summary of what worked or didn't work"
+}}
+"""
+        
+        # Get AI analysis of the feedback
+        response = model.generate_content(feedback_analysis_prompt)
+        ai_analysis = response.text.strip()
+        
+        # Extract sentiment from AI analysis (simplified)
+        sentiment = "neutral"
+        if "positive" in ai_analysis.lower():
+            sentiment = "positive"
+        elif "negative" in ai_analysis.lower():
+            sentiment = "negative"
+        
+        # Save feedback to database
+        feedback_entry = UserFeedback(
+            user_id=user_id,
+            recommendation_id=recommendation_id,
+            feedback_text=feedback_text,
+            sentiment=sentiment,
+            ai_processed_feedback=ai_analysis
+        )
+        db.session.add(feedback_entry)
+        db.session.commit()
+        
+        app.logger.info(f"Feedback saved for user {user_id} on recommendation {recommendation_id}: {sentiment}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Feedback received and analyzed!',
+            'sentiment': sentiment,
+            'ai_analysis': ai_analysis,
+            'feedback_id': feedback_entry.id
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error processing chat feedback: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error processing feedback'}), 500
+
 
 @app.route('/logout')
 def logout():

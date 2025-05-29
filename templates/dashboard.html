@@ -191,6 +191,34 @@
                         <div id="recommendedTrack">
                             <!-- Recommended track will be displayed here -->
                         </div>
+                        
+                        <!-- Chat Feedback Section -->
+                        <div id="chatFeedback" class="chat-feedback mt-4" style="display: none;">
+                            <hr class="border-secondary">
+                            <h6 class="text-white mb-3">
+                                <i class="fas fa-comments text-spotify me-2"></i>
+                                How did you like this recommendation?
+                            </h6>
+                            <div class="mb-3">
+                                <textarea id="feedbackText" class="form-control bg-dark text-white border-secondary" 
+                                          rows="3" placeholder="Tell me what you think about this recommendation... (e.g., 'I love this!', 'Not my style', 'Too aggressive', 'Perfect vibe')"></textarea>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button id="submitFeedback" class="btn btn-spotify">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    Send Feedback
+                                </button>
+                                <button id="quickPositive" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-thumbs-up me-1"></i>
+                                    Love it!
+                                </button>
+                                <button id="quickNegative" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-thumbs-down me-1"></i>
+                                    Not for me
+                                </button>
+                            </div>
+                            <div id="feedbackStatus" class="mt-2"></div>
+                        </div>
                     </div>
                 </div>
             </div>

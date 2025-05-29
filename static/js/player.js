@@ -396,6 +396,13 @@ function displayRecommendedTrack(track, reasoning) {
         document.getElementById('aiInputData').textContent = lastAIData.input || 'No input data available';
         document.getElementById('aiOutputData').textContent = lastAIData.output || 'No output data available';
     }
+    
+    // Show chat feedback section
+    const chatFeedback = document.getElementById('chatFeedback');
+    if (chatFeedback) {
+        chatFeedback.style.display = 'block';
+        setupChatFeedback();
+    }
 }
 
 function showRecommendationError(message) {
@@ -442,6 +449,85 @@ function playRecommendedTrack(trackUri) {
     .finally(() => {
         button.innerHTML = originalHTML;
         button.disabled = false;
+    });
+}
+
+// Store current recommendation ID for feedback
+let currentRecommendationId = null;
+
+function setupChatFeedback() {
+    const submitBtn = document.getElementById('submitFeedback');
+    const quickPositive = document.getElementById('quickPositive');
+    const quickNegative = document.getElementById('quickNegative');
+    const feedbackText = document.getElementById('feedbackText');
+    
+    if (submitBtn) {
+        submitBtn.onclick = () => submitFeedback();
+    }
+    
+    if (quickPositive) {
+        quickPositive.onclick = () => {
+            feedbackText.value = "I love this recommendation! It's exactly my style.";
+            submitFeedback();
+        };
+    }
+    
+    if (quickNegative) {
+        quickNegative.onclick = () => {
+            feedbackText.value = "This recommendation doesn't match my taste. Not my style.";
+            submitFeedback();
+        };
+    }
+}
+
+function submitFeedback() {
+    const feedbackText = document.getElementById('feedbackText');
+    const statusDiv = document.getElementById('feedbackStatus');
+    
+    if (!feedbackText.value.trim()) {
+        statusDiv.innerHTML = '<div class="alert alert-warning small mt-2">Please enter some feedback first.</div>';
+        return;
+    }
+    
+    // Show loading state
+    statusDiv.innerHTML = '<div class="alert alert-info small mt-2"><i class="fas fa-spinner fa-spin me-2"></i>Processing your feedback...</div>';
+    
+    fetch('/chat_feedback', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            feedback_text: feedbackText.value.trim(),
+            recommendation_id: currentRecommendationId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = `
+                <div class="alert alert-success small mt-2">
+                    <i class="fas fa-check me-2"></i>
+                    Thanks for your feedback! I've analyzed it and will use these insights for better recommendations.
+                    <br><small class="text-muted">Sentiment detected: ${data.sentiment}</small>
+                </div>
+            `;
+            feedbackText.value = '';
+            
+            // Hide feedback section after a delay
+            setTimeout(() => {
+                const chatFeedback = document.getElementById('chatFeedback');
+                if (chatFeedback) {
+                    chatFeedback.style.display = 'none';
+                }
+            }, 5000);
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-danger small mt-2">Error: ${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting feedback:', error);
+        statusDiv.innerHTML = '<div class="alert alert-danger small mt-2">Failed to submit feedback. Please try again.</div>';
     });
 }
 
