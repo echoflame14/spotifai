@@ -440,6 +440,9 @@ function displayRecommendedTrack(track, reasoning) {
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
                     <i class="fas fa-play me-1"></i>Play
                 </button>
+                <button class="btn btn-outline-light me-2" onclick="getNextRecommendation()">
+                    <i class="fas fa-forward me-1"></i>Next Rec
+                </button>
                 <a href="${track.external_url}" target="_blank" class="btn btn-outline-spotify">
                     <i class="fab fa-spotify me-1"></i>Open in Spotify
                 </a>
@@ -586,6 +589,25 @@ function submitFeedback() {
         console.error('Error submitting feedback:', error);
         statusDiv.innerHTML = '<div class="alert alert-danger small mt-2">Failed to submit feedback. Please try again.</div>';
     });
+}
+
+function getNextRecommendation() {
+    console.log('🔄 Getting next recommendation...');
+    
+    // Hide current chat feedback
+    const chatFeedback = document.getElementById('chatFeedback');
+    if (chatFeedback) {
+        chatFeedback.style.display = 'none';
+    }
+    
+    // Clear feedback status
+    const statusDiv = document.getElementById('feedbackStatus');
+    if (statusDiv) {
+        statusDiv.innerHTML = '';
+    }
+    
+    // Trigger a new recommendation
+    handleAIRecommendation();
 }
 
 // Console welcome message

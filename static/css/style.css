@@ -304,6 +304,55 @@ html, body {
     background-color: rgba(29, 185, 84, 0.2) !important;
 }
 
+/* Music Taste Profile Overlay */
+.music-profile-toggle .btn {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.music-profile-toggle .btn:hover {
+    border-color: var(--spotify-green);
+    color: var(--spotify-green);
+    background-color: rgba(29, 185, 84, 0.1);
+}
+
+.music-profile-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 1rem;
+    animation: fadeInOverlay 0.3s ease-out;
+}
+
+@keyframes fadeInOverlay {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.music-profile-overlay .card {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(29, 185, 84, 0.2);
+}
+
+.music-profile-toggle .btn .fa-chevron-down {
+    transition: transform 0.3s ease;
+}
+
+.music-profile-toggle .btn[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
 /* Features List */
 .features {
     text-align: left;
