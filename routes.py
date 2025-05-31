@@ -1877,12 +1877,31 @@ def ai_recommendation():
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
+    # Get request data safely
+    request_data = request.get_json() or {}
+    
+    # Get Gemini API key from request (optional for backward compatibility)
+    gemini_api_key = request_data.get('gemini_api_key') or request_data.get('custom_gemini_key')
+    
     # Get session adjustment if provided
-    session_adjustment = request.json.get('session_adjustment', '').strip() if request.json else ''
+    session_adjustment = request_data.get('session_adjustment', '').strip()
     if session_adjustment:
         session['session_adjustment'] = session_adjustment
     else:
         session_adjustment = session.get('session_adjustment', '')
+    
+    # Configure Gemini if API key is provided
+    if gemini_api_key:
+        genai.configure(api_key=gemini_api_key)
+        app.logger.info("STANDARD: Using provided Gemini API key for enhanced recommendations")
+    else:
+        app.logger.warning("STANDARD: No Gemini API key provided - using basic recommendations")
+        # Return a message asking for API key for full functionality
+        return jsonify({
+            'success': False, 
+            'message': 'Gemini API key required for AI recommendations. Please add your API key in the settings.',
+            'requires_api_key': True
+        }), 400
     
     # Rate limiting
     total_start_time = time.time()
@@ -1896,7 +1915,7 @@ def ai_recommendation():
     
     try:
         # Collect music data
-        app.logger.info("STANDARD: Starting standard AI recommendation...")
+        app.logger.info("STANDARD: Starting enhanced AI recommendation...")
         app.logger.info("STANDARD: Collecting music data...")
         data_collection_start = time.time()
         
@@ -1905,7 +1924,7 @@ def ai_recommendation():
         try:
             # Get user's current music context
             current_track = spotify_client.get_current_track()
-            recent_tracks = spotify_client.get_recent_tracks(limit=20)
+            recent_tracks = spotify_client.get_recently_played(limit=20)
             top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=10)
             top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=10)
             top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=10)
@@ -1952,7 +1971,8 @@ def ai_recommendation():
                 'top_tracks': {
                     'short_term': [],
                     'medium_term': []
-                }
+                },
+                'top_genres': []
             }
         
         data_collection_duration = time.time() - data_collection_start
@@ -2156,7 +2176,7 @@ CRITICAL REQUIREMENTS:
         
         # Log standard performance
         app.logger.info("=" * 60)
-        app.logger.info("STANDARD AI RECOMMENDATION PERFORMANCE SUMMARY")
+        app.logger.info("ENHANCED STANDARD AI RECOMMENDATION PERFORMANCE SUMMARY")
         app.logger.info("=" * 60)
         app.logger.info(f"Data Collection:     {data_collection_duration:.2f}s")
         app.logger.info(f"User Profile:        {profile_duration:.2f}s")
@@ -2165,7 +2185,7 @@ CRITICAL REQUIREMENTS:
         app.logger.info(f"Spotify Search:      {search_duration:.2f}s")
         app.logger.info(f"Database Save:       {save_duration:.2f}s")
         app.logger.info(f"Total Request Time:  {total_duration:.2f}s")
-        app.logger.info(f"Mode:                Standard (enhanced)")
+        app.logger.info(f"Mode:                Standard (enhanced with duplicate prevention)")
         app.logger.info(f"Model Used:          gemini-1.5-flash")
         app.logger.info(f"Duplicates Avoided:  {len(recent_recommendations)}")
         app.logger.info("=" * 60)
