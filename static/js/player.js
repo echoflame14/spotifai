@@ -608,6 +608,15 @@ function showMainSpinner() {
     if (overlay) {
         overlay.classList.add('show');
         
+        // Set immediate loading message while we fetch dynamic phrases
+        const titleElement = overlay.querySelector('.main-spinner-title');
+        const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
+        
+        if (titleElement && subtitleElement) {
+            titleElement.textContent = "AI Brain Booting Up";
+            subtitleElement.innerHTML = "Teaching our robot your musical secrets<span class='main-spinner-dots'></span>";
+        }
+        
         // Add click-to-dismiss functionality (click outside the spinner content)
         overlay.onclick = function(e) {
             if (e.target === overlay) {
@@ -631,11 +640,13 @@ function showMainSpinner() {
             }
         };
         
-        // Try to get dynamic loading phrases from Gemini
+        // Try to get dynamic loading phrases from Gemini immediately
         generateDynamicLoadingPhrases().then(phrases => {
             if (phrases && phrases.length === 2) {
+                log('Using dynamic AI-generated loading phrases');
                 setupLoadingPhrases(overlay, phrases);
             } else {
+                log('Using funny fallback phrases');
                 // Use fallback phrases if API fails
                 const fallbackPhrases = [
                     {
@@ -770,8 +781,8 @@ function hideMainSpinner() {
         const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
         
         if (titleElement && subtitleElement) {
-            titleElement.textContent = "Generating AI Recommendation";
-            subtitleElement.innerHTML = "Our AI is analyzing your music taste to find the perfect song<span class='main-spinner-dots'></span>";
+            titleElement.textContent = "Loading Your Experience...";
+            subtitleElement.innerHTML = "Preparing personalized content<span class='main-spinner-dots'></span>";
         }
         
         log('Main spinner overlay hidden');
