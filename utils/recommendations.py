@@ -768,6 +768,17 @@ def create_enhanced_recommendation_prompt(music_data, psychological_profile, ses
     shuffle_text = "Shuffle ON" if shuffle_state else "Sequential"
     repeat_text = f"Repeat: {repeat_state}"
     
+    # Create simple CSV of recent tracks instead of verbose listening patterns
+    recent_tracks_csv = "Track Name,Artist,Album,Popularity\n"
+    for item in music_data['recent_tracks'][:50]:  # Get up to 50 tracks
+        track = item.get('track', {})
+        if track:
+            track_name = track.get('name', 'Unknown').replace(',', ';')  # Replace commas to avoid CSV issues
+            artist = track.get('artists', [{}])[0].get('name', 'Unknown').replace(',', ';')
+            album = track.get('album', {}).get('name', 'Unknown').replace(',', ';')
+            popularity = track.get('popularity', 0)
+            recent_tracks_csv += f"{track_name},{artist},{album},{popularity}\n"
+    
     return f"""
 Based on this user's COMPREHENSIVE music data and psychological analysis, recommend ONE specific song that perfectly matches their sophisticated musical taste and current context.
 
@@ -791,12 +802,8 @@ GENRE LANDSCAPE WITH FREQUENCY:
 AUDIO CHARACTERISTICS PROFILE:
 {json.dumps(audio_insights, indent=2)}
 
-LISTENING BEHAVIOR INSIGHTS:
-- Recent tracks analyzed: {music_data['recent_tracks_count']}
-- Library size: {music_data['saved_tracks_count']} saved tracks, {music_data['playlist_count']} playlists
-- Musical sophistication: {len(music_data['audio_features'])} tracks analyzed for audio features
-- Genre diversity: {len(music_data['top_genres'])} distinct genres
-- Listening patterns: {json.dumps(music_data['listening_patterns'], indent=2)}
+RECENT TRACKS DATA (CSV FORMAT):
+{recent_tracks_csv}
 
 SESSION CONTEXT:
 {f"User adjustment: {session_adjustment}" if session_adjustment else "No specific session adjustment"}
