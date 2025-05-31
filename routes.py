@@ -17,20 +17,32 @@ SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
 # Dynamic redirect URI based on request
 def get_redirect_uri():
     """Get the appropriate redirect URI - use consistent URL for all devices"""
-    # Use environment variable or construct from request
-    redirect_uri = os.environ.get('SPOTIFY_REDIRECT_URI')
-    if redirect_uri:
-        return redirect_uri
+    # Force Railway URL for production
+    railway_url = 'https://spotifai.up.railway.app/callback'
     
-    # If no environment variable, construct from request (for Railway)
+    # Use environment variable if explicitly set
+    env_redirect_uri = os.environ.get('SPOTIFY_REDIRECT_URI')
+    if env_redirect_uri:
+        app.logger.info(f"Using environment SPOTIFY_REDIRECT_URI: {env_redirect_uri}")
+        return env_redirect_uri
+    
+    # For Railway deployment, always use the Railway URL
     from flask import request
-    if request:
-        scheme = request.scheme
-        host = request.host
-        return f"{scheme}://{host}/callback"
+    if request and request.host:
+        if 'railway.app' in request.host:
+            app.logger.info(f"Detected Railway deployment, using: {railway_url}")
+            return railway_url
+        else:
+            # Dynamic detection for other platforms
+            scheme = request.scheme
+            host = request.host
+            dynamic_uri = f"{scheme}://{host}/callback"
+            app.logger.info(f"Using dynamic URI: {dynamic_uri}")
+            return dynamic_uri
     
-    # Fallback for Railway deployment
-    return 'https://spotifai.up.railway.app/callback'
+    # Default fallback for Railway
+    app.logger.info(f"Using Railway fallback: {railway_url}")
+    return railway_url
 
 SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://spotifai.up.railway.app/callback')
 
@@ -55,11 +67,15 @@ def login():
     redirect_uri = get_redirect_uri()
     
     # Debug: Log the parameters being used
+    app.logger.info(f"=== OAUTH DEBUG INFO ===")
     app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
     app.logger.info(f"Redirect URI: {redirect_uri}")
     app.logger.info(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
     app.logger.info(f"Request Host: {request.host}")
+    app.logger.info(f"Request URL: {request.url}")
     app.logger.info(f"State: {state}")
+    app.logger.info(f"Environment SPOTIFY_REDIRECT_URI: {os.environ.get('SPOTIFY_REDIRECT_URI', 'NOT SET')}")
+    app.logger.info(f"========================")
     
     # Build authorization URL
     auth_params = {
@@ -71,7 +87,7 @@ def login():
     }
     
     auth_url = 'https://accounts.spotify.com/authorize?' + urlencode(auth_params)
-    app.logger.info(f"Authorization URL: {auth_url}")
+    app.logger.info(f"Full Authorization URL: {auth_url}")
     
     return redirect(auth_url)
 
