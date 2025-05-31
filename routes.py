@@ -628,17 +628,11 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
         
         # Use the most advanced model available
         try:
-            # Try the advanced model first
-            try:
-                model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
-                app.logger.info("Gemini 2.5 Flash Preview model initialized successfully")
-            except Exception as advanced_model_error:
-                app.logger.warning(f"Advanced model failed, trying fallback: {advanced_model_error}")
-                # Fallback to stable model
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                app.logger.info("Gemini 1.5 Flash model initialized successfully as fallback")
+            # Use stable 1.5 Flash model for better reliability
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            app.logger.info("Gemini 1.5 Flash model initialized successfully for psychological analysis")
         except Exception as model_error:
-            app.logger.error(f"Failed to initialize any Gemini model: {model_error}")
+            app.logger.error(f"Failed to initialize Gemini model: {model_error}")
             return None
         
         # Create an extremely detailed prompt for comprehensive analysis
@@ -925,7 +919,7 @@ def generate_ai_music_analysis(music_data, gemini_api_key):
             pass  # Ignore errors when clearing
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create comprehensive prompt for musical analysis that matches frontend expectations
         prompt = f"""
@@ -1354,7 +1348,7 @@ def process_feedback_insights(feedbacks, gemini_api_key=None):
             pass  # Ignore errors when clearing
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         chunk_insights = []
         feedbacks_to_process = feedbacks[:max_feedbacks_to_process]
@@ -1700,7 +1694,7 @@ def create_ai_playlist():
             pass  # Ignore errors when clearing
         
         genai.configure(api_key=custom_gemini_key)
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Get optimized user data for context - reduce API calls for stability
         app.logger.info("Collecting optimized user music data for AI playlist creation...")
