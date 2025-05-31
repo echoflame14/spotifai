@@ -542,13 +542,13 @@ Timestamp: ${new Date().toLocaleString()}`;
                 showPerformanceBanner(data.performance_stats, data.performance_stats.mode || 'standard');
             }
             
-            // Display the recommended track immediately with placeholder reasoning
+            // Display the recommended track immediately
             displayRecommendedTrack(data.track, data.ai_reasoning, data.recommendation_id);
             
-            // If reasoning generation is required, start it now
-            if (data.requires_reasoning_generation && data.recommendation_id) {
-                log('Starting conversational reasoning generation...');
-                generateConversationalReasoning(data.recommendation_id, customGeminiKey);
+            // Show chat feedback section
+            const chatFeedback = document.getElementById('chatFeedback');
+            if (chatFeedback) {
+                chatFeedback.style.display = 'block';
             }
         } else {
             log('Recommendation failed:', data.message, 'error');
@@ -575,98 +575,6 @@ Timestamp: ${new Date().toLocaleString()}`;
             currentDiscoverBtn.classList.remove('loading');
         }
         log('Loading state removed from discover button');
-    });
-}
-
-function generateConversationalReasoning(recommendationId, geminiApiKey) {
-    log('Generating conversational reasoning for recommendation:', recommendationId);
-    
-    // Show spinner in the reasoning section
-    const reasoningElement = document.querySelector('.ai-reasoning-text');
-    if (reasoningElement) {
-        reasoningElement.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Crafting your personalized explanation...';
-    }
-    
-    // Update AI Input Data to show reasoning generation
-    const inputElement = document.getElementById('aiInputData');
-    if (inputElement && lastAIData) {
-        const currentContent = inputElement.textContent;
-        inputElement.textContent = currentContent + `\n\nGenerating conversational reasoning...
-Recommendation ID: ${recommendationId}
-Timestamp: ${new Date().toLocaleString()}`;
-    }
-    
-    // Make request to generate reasoning
-    fetch('/api/generate-conversational-reasoning', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            recommendation_id: recommendationId,
-            gemini_api_key: geminiApiKey
-        })
-    })
-    .then(response => {
-        log('Reasoning generation response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        log('Reasoning generation response:', data);
-        
-        if (data.success) {
-            log('Reasoning generated successfully in', data.generation_time + 's');
-            
-            // Update the reasoning text
-            if (reasoningElement) {
-                reasoningElement.innerHTML = data.ai_reasoning;
-            }
-            
-            // Update AI Output Data with the new reasoning
-            const outputElement = document.getElementById('aiOutputData');
-            if (outputElement && lastAIData) {
-                const currentContent = outputElement.textContent;
-                outputElement.textContent = currentContent + `\n\nConversational Reasoning Generated:
-"${data.ai_reasoning}"
-Generation Time: ${data.generation_time}s
-Timestamp: ${new Date().toLocaleString()}`;
-            }
-            
-            // Show a subtle notification
-            showNotification('✨ Personalized explanation ready!', 'success');
-        } else {
-            log('Reasoning generation failed:', data.message, 'error');
-            
-            // Show fallback message
-            if (reasoningElement) {
-                reasoningElement.innerHTML = 'This track was selected based on your unique music taste and listening patterns.';
-            }
-            
-            // Update AI Output Data with error
-            const outputElement = document.getElementById('aiOutputData');
-            if (outputElement) {
-                const currentContent = outputElement.textContent;
-                outputElement.textContent = currentContent + `\n\nReasoning Generation Failed: ${data.message}`;
-            }
-        }
-    })
-    .catch(error => {
-        log('Reasoning generation request failed:', error.message, 'error');
-        
-        // Show fallback message
-        if (reasoningElement) {
-            reasoningElement.innerHTML = 'This track was selected based on your unique music taste and listening patterns.';
-        }
-        
-        // Update AI Output Data with error
-        const outputElement = document.getElementById('aiOutputData');
-        if (outputElement) {
-            const currentContent = outputElement.textContent;
-            outputElement.textContent = currentContent + `\n\nReasoning Generation Error: ${error.message}`;
-        }
     });
 }
 
@@ -745,12 +653,11 @@ function displayRecommendedTrack(track, reasoning, recommendationId) {
     }
     
     log('AI Recommendation received:', track);
-    log('AI Reasoning:', reasoning);
     
     // Show the recommendation result section
     recommendationResult.style.display = 'block';
     
-    // Set the recommendation ID on the container for the track reasoning function
+    // Set the recommendation ID on the container
     if (recommendationId) {
         recommendationResult.dataset.recommendationId = recommendationId;
         localStorage.setItem('currentRecommendationId', recommendationId);
@@ -768,10 +675,6 @@ function displayRecommendedTrack(track, reasoning, recommendationId) {
                 <h6 class="text-white mb-1">${track.name}</h6>
                 <p class="text-muted mb-1">${track.artist}</p>
                 <p class="text-muted small mb-0">${track.album}</p>
-                <p class="text-spotify small mt-2">
-                    <i class="fas fa-robot me-1"></i>why this song?: 
-                    <span class="ai-reasoning-text">${reasoning}</span>
-                </p>
             </div>
             <div>
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
@@ -963,187 +866,19 @@ function getNextRecommendation() {
 
 // Show Feedback Learning Button
 function showFeedbackLearningButton() {
-    const feedbackButton = document.getElementById('feedbackLearningToggle');
-    if (feedbackButton) {
-        feedbackButton.style.display = 'inline-block';
-    }
+    // Feature removed - no longer showing feedback learning button
 }
 
 // Show Learned from Feedback section
 function showLearnedFeedback() {
-    const learnedSection = document.getElementById('learnedFeedback');
-    if (learnedSection) {
-        learnedSection.style.display = 'block';
-    }
+    // Feature removed - no longer showing learned feedback insights
 }
 
 // Fetch feedback insights from backend
 async function fetchFeedbackInsights() {
-    const contentDiv = document.getElementById('feedbackInsightsContent');
-    if (!contentDiv) {
-        log('Feedback insights content div not found - this is expected if the section is not visible');
-        return;
-    }
-
-    // Show loading state
-    contentDiv.innerHTML = `
-        <div class="d-flex align-items-center justify-content-center py-4">
-            <div class="spinner-border spinner-border-sm text-warning me-3" role="status"></div>
-            <span class="text-muted">Analyzing your feedback patterns and generating detailed insights...</span>
-        </div>
-    `;
-
-    try {
-        // Check if we have a Gemini API key for AI-powered insights
-        const customGeminiKey = localStorage.getItem('gemini_api_key');
-        
-        let response;
-        if (customGeminiKey) {
-            // Use POST with API key for AI-powered insights
-            log('Fetching ultra-detailed AI-powered feedback insights...');
-            response = await fetch('/feedback-insights', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    custom_gemini_key: customGeminiKey
-                })
-            });
-        } else {
-            // Use GET for enhanced basic insights
-            log('Fetching enhanced basic feedback insights...');
-            response = await fetch('/feedback-insights');
-        }
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        
-        if (data.insights) {
-            // Enhanced formatting for ultra-detailed insights
-            const insightType = data.ai_powered ? 
-                '<div class="badge bg-gradient" style="background: linear-gradient(45deg, #1db954, #1ed760); color: white; font-weight: bold;"><i class="fas fa-sparkles me-1"></i>Ultra-Detailed AI Analysis</div>' : 
-                '<div class="badge bg-secondary"><i class="fas fa-chart-bar me-1"></i>Enhanced Statistical Analysis</div>';
-            
-            // Process the insights for better formatting
-            const formattedInsights = formatDetailedInsights(data.insights, data.ai_powered);
-            
-            contentDiv.innerHTML = `
-                <div class="detailed-insights-container">
-                    <div class="mb-3 d-flex align-items-center justify-content-between">
-                        ${insightType}
-                        <small class="text-muted"><i class="fas fa-clock me-1"></i>Updated now</small>
-                    </div>
-                    
-                    <div class="insights-content" style="line-height: 1.6; color: #e9ecef;">
-                        ${formattedInsights}
-                    </div>
-                    
-                    ${!data.ai_powered ? `
-                        <div class="mt-4 p-3 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.3);">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-info-circle text-spotify me-2"></i>
-                                <small class="text-spotify">
-                                    <strong>Unlock AI-Powered Insights:</strong> Add your Gemini API key in AI Settings for ultra-detailed psychological analysis, personalized recommendations, and comprehensive musical preference mapping!
-                                </small>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="mt-4 p-3 rounded" style="background: rgba(29, 185, 84, 0.05); border: 1px solid rgba(29, 185, 84, 0.2);">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-brain text-spotify me-2"></i>
-                                <small class="text-spotify">
-                                    <strong>Continuous Learning:</strong> Your feedback helps the AI understand your evolving musical taste and improve future recommendations with each interaction.
-                                </small>
-                            </div>
-                        </div>
-                    `}
-                </div>
-            `;
-            
-            log(`Ultra-detailed feedback insights loaded successfully (${data.ai_powered ? 'AI-powered' : 'enhanced basic'}) - ${data.insights.length} characters`);
-        } else {
-            contentDiv.innerHTML = `
-                <div class="text-center py-4">
-                    <div class="text-muted mb-3">
-                        <i class="fas fa-music fa-2x mb-3 opacity-50"></i>
-                        <h6 class="text-white">No Feedback Data Available</h6>
-                        <p class="mb-0">Start providing feedback on recommendations to unlock detailed insights about your musical preferences and taste patterns!</p>
-                    </div>
-                    <small class="text-muted">
-                        Rate songs using the feedback section after getting recommendations to begin building your personalized insight profile.
-                    </small>
-                </div>
-            `;
-        }
-    } catch (error) {
-        log('Error fetching feedback insights:', error, 'error');
-        contentDiv.innerHTML = `
-            <div class="text-center py-4">
-                <div class="text-danger mb-3">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
-                    <h6>Failed to Load Insights</h6>
-                    <p class="mb-3">Unable to analyze your feedback patterns at this time.</p>
-                    <button class="btn btn-outline-light btn-sm" onclick="fetchFeedbackInsights()">
-                        <i class="fas fa-redo me-1"></i>Try Again
-                    </button>
-                </div>
-            </div>
-        `;
-    }
+    // Feature removed - no longer fetching feedback insights
+    return null;
 }
-
-function formatDetailedInsights(insights, isAIPowered) {
-    // Format insights text for better visual presentation
-    
-    if (!insights) return insights;
-    
-    // If it's AI-powered insights, format as comprehensive analysis
-    if (isAIPowered) {
-        // Split into paragraphs and format markdown-style headers
-        let formatted = insights
-            // Format bold markdown-style headers
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-spotify">$1</strong>')
-            // Format numbered/bullet sections
-            .replace(/^(\d+\.\s*\*\*.*?\*\*:)/gm, '<h6 class="text-white mt-4 mb-2">$1</h6>')
-            // Format sub-bullets with better spacing
-            .replace(/^\s*-\s*(.+)/gm, '<div class="ms-3 mb-2"><i class="fas fa-angle-right text-spotify me-2"></i>$1</div>')
-            // Add proper paragraph breaks
-            .replace(/\n\n/g, '</p><p class="mb-3">')
-            // Format specific insights sections
-            .replace(/(MUSICAL TASTE PATTERNS|BEHAVIORAL & LISTENING|RECOMMENDATION SYSTEM|LEARNING INSIGHTS|PSYCHOLOGICAL MUSIC|FORWARD-LOOKING)/g, '<strong class="text-warning">$1</strong>');
-        
-        return `<div class="ultra-detailed-insights"><p class="mb-3">${formatted}</p></div>`;
-    } else {
-        // Enhanced basic insights formatting
-        let formatted = insights
-            // Format bold sections for enhanced basic insights
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-spotify">$1</strong>')
-            // Add proper spacing between sections
-            .replace(/(\.\s)([A-Z*])/g, '$1</p><p class="mb-3">$2')
-            // Highlight percentages and numbers
-            .replace(/(\d+\.?\d*%)/g, '<span class="text-warning fw-bold">$1</span>')
-            .replace(/(\d+ out of \d+)/g, '<span class="text-info fw-bold">$1</span>')
-            // Format artist names in parentheses
-            .replace(/\((\d+ times?)\)/g, '<small class="text-muted">($1)</small>');
-        
-        return `<div class="enhanced-basic-insights"><p class="mb-3">${formatted}</p></div>`;
-    }
-}
-
-// Setup feedback learning button click handler
-document.addEventListener('DOMContentLoaded', function() {
-    const feedbackCollapse = document.getElementById('feedbackLearningCollapse');
-    
-    if (feedbackCollapse) {
-        feedbackCollapse.addEventListener('show.bs.collapse', function() {
-            // Load feedback insights when the section is opened
-            fetchFeedbackInsights();
-        });
-    }
-});
 
 // Session preferences functionality
 function setupSessionPreferences() {
