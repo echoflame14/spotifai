@@ -1143,126 +1143,182 @@ function clearSessionAdjustment() {
 function setupAISettings() {
     log('Setting up AI settings...');
     
-    // Always ensure Lightning mode is enabled by default
-    if (!localStorage.getItem('ai_performance_mode')) {
-        localStorage.setItem('ai_performance_mode', 'lightning');
-        log('Initialized Lightning mode to: lightning (default)');
-    } else {
-        log('Lightning mode setting:', localStorage.getItem('ai_performance_mode'));
+    // Handle API key saving
+    const saveApiKeyBtn = document.getElementById('saveApiKey');
+    if (saveApiKeyBtn) {
+        saveApiKeyBtn.addEventListener('click', function() {
+            const apiKeyInput = document.getElementById('geminiApiKey');
+            if (apiKeyInput) {
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    localStorage.setItem('gemini_api_key', apiKey);
+                    showNotification('Gemini API key saved successfully!', 'success');
+                    
+                    // Update AI recommendation button state
+                    updateAIButtonState();
+                    
+                    // Log this for debugging
+                    log('Gemini API key saved to localStorage');
+                } else {
+                    showNotification('Please enter a valid API key', 'error');
+                }
+            }
+        });
     }
     
-    const apiKeyInput = document.getElementById('geminiApiKey');
-    const saveKeyBtn = document.getElementById('saveApiKey');
-    const clearKeyBtn = document.getElementById('clearApiKey');
-    
-    if (!apiKeyInput || !saveKeyBtn || !clearKeyBtn) {
-        log('Required AI settings elements not found:', {
-            apiKeyInput: !!apiKeyInput,
-            saveKeyBtn: !!saveKeyBtn,
-            clearKeyBtn: !!clearKeyBtn
-        }, 'warn');
-        
-        // Still try to setup performance toggle even if main AI settings aren't found
-        setupPerformanceToggle();
-        log('Lightning mode enabled by default even without full AI settings UI');
-        return;
-    }
-
-    // Load saved API key
-    const savedKey = localStorage.getItem('gemini_api_key');
-    log('Saved API key present:', !!savedKey);
-    
-    if (savedKey) {
-        apiKeyInput.value = savedKey;
-        clearKeyBtn.style.display = 'block';
-        log('Loaded saved API key');
-    }
-
-    // Handle input changes
-    apiKeyInput.addEventListener('input', function() {
-        log('API key input changed');
-        clearKeyBtn.style.display = this.value ? 'block' : 'none';
-    });
-
-    // Handle save button click
-    saveKeyBtn.addEventListener('click', function() {
-        log('Save API key button clicked');
-        const apiKey = apiKeyInput.value.trim();
-        
-        if (!apiKey) {
-            log('Attempted to save empty API key', 'warn');
-            showNotification('Please enter a valid API key', 'error');
-            return;
-        }
-
-        try {
-            localStorage.setItem('gemini_api_key', apiKey);
-            log('API key saved successfully');
-            showNotification('API key saved successfully', 'success');
-            clearKeyBtn.style.display = 'block';
-            
-            // Update AI transparency sections to show API key is available
-            const analysisElement = document.getElementById('aiAnalysisData');
-            const inputElement = document.getElementById('aiInputData');
-            const outputElement = document.getElementById('aiOutputData');
-            
-            if (analysisElement) {
-                analysisElement.textContent = 'AI capabilities enabled - make a recommendation to see analysis data';
-            }
-            if (inputElement) {
-                inputElement.textContent = 'AI capabilities enabled - make a recommendation to see input data';
-            }
-            if (outputElement) {
-                outputElement.textContent = 'AI capabilities enabled - make a recommendation to see output data';
-            }
-            
-            // Refresh feedback insights to show AI-powered version
-            setTimeout(() => {
-                fetchFeedbackInsights();
-                log('Refreshed feedback insights with AI capabilities');
-            }, 500);
-            
-        } catch (error) {
-            log('Failed to save API key:', error, 'error');
-            showNotification('Failed to save API key', 'error');
-        }
-    });
-
-    // Handle clear button click
-    clearKeyBtn.addEventListener('click', function() {
-        log('Clear API key button clicked');
-        try {
+    // Handle API key removal
+    const removeApiKeyBtn = document.getElementById('removeApiKey');
+    if (removeApiKeyBtn) {
+        removeApiKeyBtn.addEventListener('click', function() {
             localStorage.removeItem('gemini_api_key');
-            apiKeyInput.value = '';
-            clearKeyBtn.style.display = 'none';
-            log('API key cleared successfully');
-            showNotification('API key cleared', 'success');
-            
-            // Reset AI transparency sections
-            const analysisElement = document.getElementById('aiAnalysisData');
-            const inputElement = document.getElementById('aiInputData');
-            const outputElement = document.getElementById('aiOutputData');
-            
-            if (analysisElement) {
-                analysisElement.textContent = 'No data available - API key required for AI features';
+            const apiKeyInput = document.getElementById('geminiApiKey');
+            if (apiKeyInput) {
+                apiKeyInput.value = '';
             }
-            if (inputElement) {
-                inputElement.textContent = 'No data available - API key required for AI features';
-            }
-            if (outputElement) {
-                outputElement.textContent = 'No data available - API key required for AI features';
-            }
+            showNotification('Gemini API key removed', 'info');
             
-        } catch (error) {
-            log('Failed to clear API key:', error, 'error');
-            showNotification('Failed to clear API key', 'error');
+            // Update AI recommendation button state
+            updateAIButtonState();
+            
+            log('Gemini API key removed from localStorage');
+        });
+    }
+    
+    // Handle clear analysis cache
+    const clearCacheBtn = document.getElementById('clearAnalysisCache');
+    if (clearCacheBtn) {
+        clearCacheBtn.addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/clear-analysis-cache', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Clear frontend caches too
+                    sessionStorage.removeItem('psychological_analysis');
+                    sessionStorage.removeItem('musical_analysis');
+                    
+                    showNotification('Analysis cache cleared successfully!', 'success');
+                    log('Analysis cache cleared: ' + data.caches_cleared.join(', '));
+                    
+                    // Reset analysis displays
+                    resetAnalysisDisplays();
+                } else {
+                    showNotification('Failed to clear cache: ' + data.message, 'error');
+                }
+            } catch (error) {
+                log('Error clearing analysis cache: ' + error.message, 'error');
+                showNotification('Error clearing analysis cache', 'error');
+            }
+        });
+    }
+    
+    // Load existing API key on page load
+    const apiKeyInput = document.getElementById('geminiApiKey');
+    if (apiKeyInput) {
+        const savedApiKey = localStorage.getItem('gemini_api_key');
+        if (savedApiKey) {
+            // Show partial key for security
+            const maskedKey = savedApiKey.substring(0, 8) + '...' + savedApiKey.substring(savedApiKey.length - 4);
+            apiKeyInput.placeholder = `Current key: ${maskedKey}`;
+            log('Loaded existing Gemini API key from localStorage');
         }
-    });
-
-    // Setup performance optimization toggle
-    setupPerformanceToggle();
-
+    }
+    
+    // Update AI button state on load
+    updateAIButtonState();
+    
     log('AI settings setup completed');
+}
+
+function resetAnalysisDisplays() {
+    log('Resetting analysis displays...');
+    
+    // Reset psychological analysis
+    const psychPrompt = document.getElementById('psychAnalysisPrompt');
+    const psychContent = document.getElementById('psychAnalysisContent');
+    const psychLoading = document.getElementById('psychAnalysisLoading');
+    
+    if (psychPrompt) psychPrompt.style.display = 'block';
+    if (psychContent) psychContent.style.display = 'none';
+    if (psychLoading) psychLoading.style.display = 'none';
+    
+    // Reset musical analysis
+    const musicalPrompt = document.getElementById('musicalAnalysisPrompt');
+    const musicalContent = document.getElementById('musicalAnalysisContent');
+    const musicalLoading = document.getElementById('musicalAnalysisLoading');
+    
+    if (musicalPrompt) musicalPrompt.style.display = 'block';
+    if (musicalContent) musicalContent.style.display = 'none';
+    if (musicalLoading) musicalLoading.style.display = 'none';
+    
+    log('Analysis displays reset to initial state');
+}
+
+function updateAIButtonState() {
+    // Implementation of updateAIButtonState function
+    // This function should update the state of AI-related buttons based on the current API key state
+    log('Updating AI button state');
+    
+    const hasApiKey = !!localStorage.getItem('gemini_api_key');
+    log('Has API key:', hasApiKey);
+    
+    // Update AI recommendation button
+    const aiRecommendBtn = document.getElementById('getAIRecommendation');
+    if (aiRecommendBtn) {
+        if (hasApiKey) {
+            aiRecommendBtn.disabled = false;
+            aiRecommendBtn.classList.remove('disabled');
+            aiRecommendBtn.title = 'Get AI-powered music recommendation';
+        } else {
+            aiRecommendBtn.disabled = true;
+            aiRecommendBtn.classList.add('disabled');
+            aiRecommendBtn.title = 'Add Gemini API key in AI Settings to enable AI recommendations';
+        }
+    }
+    
+    // Update psychological analysis button
+    const psychAnalysisBtn = document.getElementById('generatePsychAnalysis');
+    if (psychAnalysisBtn) {
+        if (hasApiKey) {
+            psychAnalysisBtn.disabled = false;
+            psychAnalysisBtn.classList.remove('disabled');
+        } else {
+            psychAnalysisBtn.disabled = true;
+            psychAnalysisBtn.classList.add('disabled');
+        }
+    }
+    
+    // Update musical analysis button
+    const musicalAnalysisBtn = document.getElementById('generateMusicalAnalysis');
+    if (musicalAnalysisBtn) {
+        if (hasApiKey) {
+            musicalAnalysisBtn.disabled = false;
+            musicalAnalysisBtn.classList.remove('disabled');
+        } else {
+            musicalAnalysisBtn.disabled = true;
+            musicalAnalysisBtn.classList.add('disabled');
+        }
+    }
+    
+    // Update playlist creation button
+    const createPlaylistBtn = document.getElementById('createPlaylistBtn');
+    if (createPlaylistBtn) {
+        if (hasApiKey) {
+            createPlaylistBtn.disabled = false;
+            createPlaylistBtn.classList.remove('disabled');
+        } else {
+            createPlaylistBtn.disabled = true;
+            createPlaylistBtn.classList.add('disabled');
+        }
+    }
+    
+    log('AI button states updated');
 }
 
 function setupPerformanceToggle() {
@@ -1661,6 +1717,29 @@ async function generateMusicalAnalysis() {
             })
         });
         
+        // Check if response is ok
+        if (!response.ok) {
+            const errorText = await response.text();
+            log(`HTTP Error ${response.status}: ${errorText}`, 'error');
+            
+            // Handle rate limit specifically
+            if (response.status === 429) {
+                showNotification('You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.', 'error');
+                return;
+            }
+            
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const errorText = await response.text();
+            log(`Invalid response type. Expected JSON, got: ${contentType}`, 'error');
+            log(`Response body: ${errorText.substring(0, 500)}...`, 'error');
+            throw new Error('Server returned non-JSON response. Check server logs for details.');
+        }
+        
         const data = await response.json();
         
         if (data.success && data.analysis) {
@@ -1675,11 +1754,27 @@ async function generateMusicalAnalysis() {
             showNotification('Musical analysis generated successfully!', 'success');
         } else {
             log('Failed to generate musical analysis: ' + data.message, 'error');
-            showNotification(data.message || 'Failed to generate musical analysis', 'error');
+            
+            // Handle rate limit errors specifically
+            if (data.rate_limit_error) {
+                showNotification('You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.', 'error');
+            } else {
+                showNotification(data.message || 'Failed to generate musical analysis', 'error');
+            }
         }
     } catch (error) {
         log('Error generating musical analysis: ' + error.message, 'error');
-        showNotification('Error generating musical analysis. Please try again.', 'error');
+        
+        // Provide more specific error messages
+        if (error.message.includes('Unexpected token')) {
+            showNotification('Server error occurred. Please check the console and try again.', 'error');
+        } else if (error.message.includes('Failed to fetch')) {
+            showNotification('Network error. Please check your connection and try again.', 'error');
+        } else if (error.message.includes('rate limit') || error.message.includes('429')) {
+            showNotification('You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.', 'error');
+        } else {
+            showNotification('Error generating musical analysis. Please try again.', 'error');
+        }
     } finally {
         showMusicalAnalysisLoading(false);
     }
@@ -1811,4 +1906,3 @@ log('%cDebug Mode: Enabled', 'color: #ff6b6b; font-size: 12px;');
 log('%cUse spacebar to play/pause music', 'color: #b3b3b3; font-size: 12px;');
 log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
 log('%cLogging Level: DEBUG', 'color: #ff6b6b; font-size: 12px;');
-

@@ -439,39 +439,76 @@ def api_generate_musical_analysis():
         if not user:
             return jsonify({'success': False, 'message': 'User not authenticated'})
         
-        spotify_client = SpotifyClient(user.access_token)
-        
-        # Generate comprehensive music analysis
-        music_data = {
-            'top_artists': spotify_client.get_top_artists(time_range='medium_term', limit=50),
-            'top_tracks': spotify_client.get_top_tracks(time_range='medium_term', limit=50),
-            'recent_tracks': spotify_client.get_recently_played(limit=50),
-            'saved_tracks': spotify_client.get_saved_tracks(limit=50),
-            'playlists': spotify_client.get_user_playlists(limit=30)
-        }
-        
-        # Check for cached musical analysis first
+        # Check for cached musical analysis first to avoid unnecessary API calls
         cached_musical_analysis = UserAnalysis.get_latest_analysis(user.id, 'musical', max_age_hours=24)
         
         if cached_musical_analysis:
             logger.info("Using cached musical analysis from database")
             return jsonify({'success': True, 'analysis': cached_musical_analysis.get_data(), 'from_cache': True})
         
+        spotify_client = SpotifyClient(user.access_token)
+        
+        # Generate comprehensive music analysis
+        try:
+            music_data = {
+                'top_artists': spotify_client.get_top_artists(time_range='medium_term', limit=50),
+                'top_tracks': spotify_client.get_top_tracks(time_range='medium_term', limit=50),
+                'recent_tracks': spotify_client.get_recently_played(limit=50),
+                'saved_tracks': spotify_client.get_saved_tracks(limit=50),
+                'playlists': spotify_client.get_user_playlists(limit=30)
+            }
+        except Exception as spotify_error:
+            logger.error(f"Error collecting Spotify data for musical analysis: {str(spotify_error)}")
+            return jsonify({'success': False, 'message': 'Failed to collect music data from Spotify'})
+        
         # Generate analysis using Gemini
-        analysis = generate_ai_music_analysis(music_data, custom_gemini_key)
+        try:
+            analysis = generate_ai_music_analysis(music_data, custom_gemini_key)
+            
+            if analysis:
+                # Save the musical analysis to database
+                UserAnalysis.save_analysis(user.id, 'musical', analysis)
+                logger.info("Musical analysis generated successfully and saved to database")
+                
+                return jsonify({
+                    'success': True,
+                    'analysis': analysis,
+                    'from_cache': False
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to generate musical analysis. Please try again.'
+                })
         
-        if analysis:
-            # Save the musical analysis to database
-            UserAnalysis.save_analysis(user.id, 'musical', analysis)
-            logger.info("Musical analysis generated successfully and saved to database")
-        
-        return jsonify({
-            'success': True,
-            'analysis': analysis,
-            'from_cache': False
-        })
+        except Exception as analysis_error:
+            # Check for rate limit errors
+            if check_rate_limit_error(analysis_error):
+                logger.warning(f"MUSICAL ANALYSIS: Gemini rate limit detected - {str(analysis_error)}")
+                return jsonify({
+                    'success': False, 
+                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.',
+                    'rate_limit_error': True,
+                    'suggested_wait_time': '2-3 minutes'
+                }), 429
+            
+            logger.error(f"Musical analysis generation failed: {str(analysis_error)}")
+            return jsonify({
+                'success': False, 
+                'message': f'Analysis generation failed: {str(analysis_error)}'
+            })
         
     except Exception as e:
+        # Check for rate limit errors in main handler
+        if check_rate_limit_error(e):
+            logger.warning(f"MUSICAL ANALYSIS: Gemini rate limit detected in main handler - {str(e)}")
+            return jsonify({
+                'success': False, 
+                'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.',
+                'rate_limit_error': True,
+                'suggested_wait_time': '2-3 minutes'
+            }), 429
+        
         logger.error(f"Musical analysis generation failed: {str(e)}")
         return jsonify({'success': False, 'message': f'Analysis generation failed: {str(e)}'})
 

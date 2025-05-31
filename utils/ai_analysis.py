@@ -287,6 +287,9 @@ def parse_psychological_analysis_response(response_text, duration):
         elif response_text.startswith('```'):
             response_text = response_text[3:]
         
+        # Additional cleaning - remove any extra whitespace and fix common JSON issues
+        response_text = response_text.strip()
+        
         # Find and extract complete JSON
         json_start = response_text.find('{')
         if json_start != -1:
@@ -306,6 +309,13 @@ def parse_psychological_analysis_response(response_text, duration):
                 json_text = response_text[json_start:json_end]
                 logger.info(f"Extracted JSON length: {len(json_text)} characters")
                 
+                # Additional JSON cleaning before parsing
+                json_text = json_text.replace('\n', ' ').replace('\r', ' ')
+                # Fix common JSON issues like trailing commas and unescaped quotes
+                import re
+                json_text = re.sub(r',\s*}', '}', json_text)  # Remove trailing commas
+                json_text = re.sub(r',\s*]', ']', json_text)  # Remove trailing commas in arrays
+                
                 try:
                     insights_json = json.loads(json_text)
                     logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
@@ -313,17 +323,27 @@ def parse_psychological_analysis_response(response_text, duration):
                     return insights_json
                 except json.JSONDecodeError as json_error:
                     logger.error(f"Failed to parse extracted JSON: {json_error}")
-                    logger.error(f"JSON text (first 500 chars): {json_text[:500]}")
+                    logger.error(f"JSON text (first 1000 chars): {json_text[:1000]}")
                     
-                    # Return fallback response
-                    return create_fallback_analysis()
+                    # Try to fix specific JSON issues
+                    try:
+                        # Handle unescaped quotes in strings more aggressively
+                        # Last resort: use regex to find and replace problematic quotes
+                        fixed_json = re.sub(r'(?<!")([^"\\])"(?![",\]}])', r'\1\\"', json_text)
+                        insights_json = json.loads(fixed_json)
+                        logger.info("Successfully parsed JSON after fixing quotes")
+                        return insights_json
+                    except Exception as repair_error:
+                        logger.warning(f"JSON repair attempts failed: {repair_error}, using fallback analysis")
+                        # Return fallback response
+                        return create_fallback_analysis()
         
         logger.error("Could not find complete JSON in response")
-        return None
+        return create_fallback_analysis()
         
     except Exception as parse_error:
         logger.error(f"Error parsing response: {parse_error}")
-        return None
+        return create_fallback_analysis()
 
 def create_fallback_analysis():
     """Create fallback analysis when parsing fails"""
@@ -335,8 +355,57 @@ def create_fallback_analysis():
             "social_tendencies": "Balances mainstream and underground preferences.",
             "life_phase_indicators": "Active exploration phase with established core preferences."
         },
+        "musical_identity": {
+            "sophistication_level": "Shows appreciable musical knowledge and openness to variety.",
+            "exploration_style": "Balanced approach between familiar favorites and new discoveries.",
+            "cultural_positioning": "Engages with both popular and alternative musical cultures.",
+            "authenticity_markers": "Personal music choices reflect genuine emotional connections.",
+            "identity_evolution": "Continuous musical growth and taste development evident."
+        },
+        "listening_psychology": {
+            "mood_regulation": "Uses music actively for emotional management and expression.",
+            "energy_management": "Selects music appropriately for different energy states and activities.",
+            "focus_patterns": "Music serves multiple functional purposes in daily life.",
+            "ritual_behaviors": "Developed consistent patterns in music listening habits.",
+            "attachment_style": "Forms meaningful connections with specific tracks and artists."
+        },
+        "growth_trajectory": {
+            "evolution_pattern": "Shows evidence of musical taste evolution over time.",
+            "future_predictions": "Likely to continue exploring within established preference framework.",
+            "exploration_readiness": "Open to new musical experiences while maintaining core preferences.",
+            "influence_susceptibility": "Balanced between personal taste and external musical influences."
+        },
+        "behavioral_insights": {
+            "recommendation_optimal_timing": "Recommendations work best when aligned with current listening mood.",
+            "discovery_preferences": "Prefers discovering music through personal exploration and trusted sources.",
+            "social_sharing_likelihood": "Moderate likelihood of sharing music discoveries with others.",
+            "purchase_behavior": "Shows engagement patterns suggesting music investment behavior.",
+            "playlist_creation_style": "Likely creates playlists based on mood and activity contexts."
+        },
+        "summary_insights": {
+            "key_findings": [
+                "User demonstrates diverse musical taste with emotional depth",
+                "Shows balance between exploration and familiarity in music choices",
+                "Music serves multiple functional and emotional purposes",
+                "Active engagement with both mainstream and alternative music",
+                "Continuous evolution in musical preferences and discovery"
+            ],
+            "unique_traits": [
+                "Balanced approach to musical exploration and familiarity",
+                "Strong emotional connection to music choices",
+                "Functional use of music for mood and energy regulation"
+            ],
+            "recommendation_strategy": "Focus on emotionally resonant tracks that balance familiar elements with new discoveries.",
+            "psychological_type": "Emotionally-driven music explorer with balanced taste preferences."
+        },
+        "analysis_confidence": {
+            "data_richness": "Sufficient data available for basic insights, though JSON parsing encountered issues.",
+            "insight_confidence": "Medium confidence - based on fallback analysis due to parsing limitations.",
+            "prediction_reliability": "Moderate reliability - general patterns observed but detailed analysis unavailable."
+        },
         "analysis_ready": True,
-        "parsing_issue": True
+        "parsing_issue": True,
+        "fallback_used": True
     }
 
 @log_llm_timing("musical_analysis")
@@ -391,27 +460,42 @@ Guidelines:
 """
         
         logger.info("Generating AI music taste analysis...")
-        response = model.generate_content(prompt)
         
-        if response and response.text:
-            # Parse the JSON response
-            import re
+        try:
+            response = model.generate_content(prompt)
             
-            # Extract JSON from the response
-            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-            if json_match:
-                insights_json = json.loads(json_match.group())
-                logger.info("AI music analysis generated successfully")
-                return insights_json
+            if response and response.text:
+                # Parse the JSON response
+                import re
+                
+                # Extract JSON from the response
+                json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+                if json_match:
+                    insights_json = json.loads(json_match.group())
+                    logger.info("AI music analysis generated successfully")
+                    return insights_json
+                else:
+                    logger.warning("Could not extract JSON from AI response")
+                    return None
             else:
-                logger.warning("Could not extract JSON from AI response")
+                logger.warning("Empty response from AI music analysis")
                 return None
-        else:
-            logger.warning("Empty response from AI music analysis")
-            return None
+        
+        except Exception as api_error:
+            # Check for rate limit errors
+            if check_rate_limit_error(api_error):
+                logger.warning(f"Musical analysis hit Gemini rate limit: {str(api_error)}")
+                # Re-raise the error so it can be handled by the calling function
+                raise api_error
+            else:
+                logger.error(f"Musical analysis API error: {str(api_error)}")
+                return None
             
     except Exception as e:
         logger.error(f"Error in AI music analysis: {e}")
+        # Re-raise rate limit errors, return None for other errors
+        if check_rate_limit_error(e):
+            raise e
         return None
 
 def generate_basic_insights(spotify_client):
