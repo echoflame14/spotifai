@@ -299,30 +299,36 @@ def generate_ai_recommendation(user, gemini_api_key, session_adjustment=""):
                     logger.warning("ENHANCED: Failed to parse cached analysis data as JSON")
                     analysis_data = {}
             
-            psychological_profile = analysis_data.get('comprehensive_analysis', 
-                                   analysis_data.get('analysis', 'No comprehensive analysis available'))
+            # Try multiple possible keys for the analysis data
+            psychological_profile = (
+                analysis_data.get('analysis_text') or  # New unstructured format
+                analysis_data.get('comprehensive_analysis') or 
+                analysis_data.get('analysis') or 
+                analysis_data.get('profile') or  # Basic profile format
+                str(analysis_data.get('psychological_profile', {}).get('raw_analysis', ''))  # Raw analysis format
+            )
             
-            print("\n" + "="*80)
-            print("RECOMMENDATIONS - USING CACHED PSYCHOLOGICAL ANALYSIS:")
-            print("="*80)
-            print(f"Analysis created: {cached_analysis.created_at}")
-            print(f"Analysis ready: {cached_analysis.analysis_ready}")
-            print(f"Core personality preview: {str(psychological_profile)[:200]}...")
-            print("="*80 + "\n")
-            
-        else:
-            # Check for basic psychological analysis as fallback  
-            cached_psych_analysis = UserAnalysis.get_latest_analysis(user.id, 'basic_psychological', max_age_hours=48)
-            psych_cache_valid = cached_psych_analysis and cached_psych_analysis.is_recent(hours=48)
-            
-            if cached_psych_analysis and psych_cache_valid:
-                logger.info("ENHANCED: Using cached basic psychological analysis")
-                psychological_profile = cached_psych_analysis.analysis_data.get('profile', 'Basic psychological profile not available')
+            # If we still don't have a valid profile, force regeneration
+            if not psychological_profile or psychological_profile == "No comprehensive analysis available":
+                logger.warning("ENHANCED: Cached analysis exists but contains no valid profile data, forcing regeneration")
+                cached_analysis = None  # Force regeneration
             else:
-                logger.info("ENHANCED: No valid cached analysis, generating enhanced basic profile...")
-                # Generate enhanced psychological profile for recommendations
-                profile_start = time.time()
-                
+                print("\n" + "="*80)
+                print("RECOMMENDATIONS - USING CACHED PSYCHOLOGICAL ANALYSIS:")
+                print("="*80)
+                print(f"Analysis created: {cached_analysis.created_at}")
+                print(f"Analysis ready: {cached_analysis.analysis_ready}")
+                print(f"Profile preview: {str(psychological_profile)[:200]}...")
+                print("="*80 + "\n")
+            
+        # If no valid cached analysis, generate a new one
+        if not cached_analysis or not psychological_profile:
+            logger.info("ENHANCED: No valid cached analysis found, generating new psychological profile...")
+            
+            # Generate enhanced psychological profile for recommendations
+            profile_start = time.time()
+            
+            try:
                 # Configure Gemini
                 configure_gemini(gemini_api_key)
                 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -337,96 +343,85 @@ def generate_ai_recommendation(user, gemini_api_key, session_adjustment=""):
                 print(profile_prompt)
                 print("="*80 + "\n")
                 
+                response = model.generate_content(profile_prompt)
+                psychological_profile = response.text.strip()
+                
+                print("\n" + "="*80)
+                print("RECOMMENDATIONS - ENHANCED PSYCHOLOGICAL PROFILE RESPONSE FROM GEMINI:")
+                print("="*80)
+                print(psychological_profile)
+                print("="*80 + "\n")
+                
+                profile_duration = time.time() - profile_start
+                logger.info(f"ENHANCED: Generated new psychological profile in {profile_duration:.2f}s")
+                
+                # Save enhanced profile to database for future use
                 try:
-                    response = model.generate_content(profile_prompt)
-                    psychological_profile = response.text.strip()
-                    
-                    print("\n" + "="*80)
-                    print("RECOMMENDATIONS - ENHANCED PSYCHOLOGICAL PROFILE RESPONSE FROM GEMINI:")
-                    print("="*80)
-                    print(psychological_profile)
-                    print("="*80 + "\n")
-                    
-                    profile_duration = time.time() - profile_start
-                    logger.info(f"ENHANCED: Generated enhanced psychological profile in {profile_duration:.2f}s")
-                    
-                    # Save enhanced profile to database for future use
-                    try:
-                        enhanced_profile_analysis = UserAnalysis(
-                            user_id=user.id,
-                            analysis_type='enhanced_psychological',
-                            analysis_data={'profile': psychological_profile},
-                            analysis_ready=True
-                        )
-                        db.session.add(enhanced_profile_analysis)
-                        db.session.commit()
-                        logger.info("ENHANCED: Saved enhanced psychological profile to database")
-                    except Exception as save_error:
-                        logger.warning(f"Failed to save enhanced profile: {save_error}")
-                        db.session.rollback()
-                    
-                except Exception as e:
-                    logger.error(f"Failed to generate enhanced psychological profile: {e}")
-                    psychological_profile = create_fallback_profile(music_data)
+                    enhanced_profile_analysis = UserAnalysis(
+                        user_id=user.id,
+                        analysis_type='enhanced_psychological',
+                        analysis_data={'profile': psychological_profile, 'analysis_text': psychological_profile},
+                        analysis_ready=True
+                    )
+                    db.session.add(enhanced_profile_analysis)
+                    db.session.commit()
+                    logger.info("ENHANCED: Saved new psychological profile to database")
+                except Exception as save_error:
+                    logger.warning(f"Failed to save enhanced profile: {save_error}")
+                    db.session.rollback()
+                
+            except Exception as e:
+                logger.error(f"Failed to generate psychological profile: {e}")
+                psychological_profile = create_fallback_profile(music_data)
+                logger.info("ENHANCED: Using fallback profile due to generation failure")
         
-        # Configure Gemini for recommendation generation
+        # Ensure we always have a valid psychological profile
+        if not psychological_profile or len(psychological_profile.strip()) < 10:
+            logger.warning("ENHANCED: Psychological profile is empty or too short, using fallback")
+            psychological_profile = create_fallback_profile(music_data)
+        
+        # Configure Gemini for streamlined recommendation generation
         configure_gemini(gemini_api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Create enhanced comprehensive prompt for recommendation
-        recommendation_prompt = create_enhanced_recommendation_prompt(
-            music_data, psychological_profile, session_adjustment, blacklist_tracks, diversity_warning
-        )
-
-        # LOG THE ENHANCED RECOMMENDATION PROMPT
-        print("\n" + "="*80)
-        print("RECOMMENDATIONS - ENHANCED RECOMMENDATION PROMPT SENT TO GEMINI:")
-        print("="*80)
-        print(recommendation_prompt)
-        print("="*80 + "\n")
-
-        # Generate AI recommendation
-        logger.info("ENHANCED: Generating AI recommendation with comprehensive data...")
+        # Generate recommendation with reasoning in single call using structured output
+        logger.info("ENHANCED: Generating AI recommendation with clever reasoning in single call...")
         
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(recommendation_prompt)
-            ai_recommendation_text = response.text.strip()
+            recommendation_result = structured_llm.generate_recommendation_with_reasoning(
+                model, music_data, psychological_profile, session_adjustment, 
+                blacklist_tracks, diversity_warning
+            )
+            
+            if not recommendation_result.success:
+                logger.error(f"Structured recommendation failed: {recommendation_result.error_message}")
+                return {
+                    'success': False,
+                    'message': f'AI recommendation failed: {recommendation_result.error_message}'
+                }
+            
+            recommendation = recommendation_result.recommendation
+            song_title = recommendation.song_title
+            artist_name = recommendation.artist_name
+            ai_reasoning = recommendation.reasoning
+            ai_confidence = recommendation.confidence
             
             print("\n" + "="*80)
-            print("RECOMMENDATIONS - ENHANCED RECOMMENDATION RESPONSE FROM GEMINI:")
+            print("RECOMMENDATIONS - STREAMLINED SINGLE-CALL RESPONSE:")
             print("="*80)
-            print(ai_recommendation_text)
+            print(f"Song: {song_title}")
+            print(f"Artist: {artist_name}")
+            print(f"Reasoning: {ai_reasoning}")
+            print(f"Confidence: {ai_confidence}")
             print("="*80 + "\n")
             
-            logger.info(f"AI recommended: {ai_recommendation_text}")
+            logger.info(f"AI recommended: '{song_title}' by {artist_name}")
             
         except Exception as e:
-            logger.error(f"Error generating AI recommendation: {e}")
+            logger.error(f"Error in streamlined recommendation generation: {e}")
             return {
                 'success': False,
-                'message': f'AI recommendation failed: {str(e)}'
-            }
-        
-        # Parse the AI recommendation
-        try:
-            # Parse "Song Title" by Artist Name format
-            if '" by ' in ai_recommendation_text:
-                parts = ai_recommendation_text.split('" by ')
-                if len(parts) == 2:
-                    song_title = parts[0].replace('"', '').strip()
-                    artist_name = parts[1].strip()
-                else:
-                    raise ValueError("Invalid format")
-            else:
-                # Fallback parsing
-                song_title = ai_recommendation_text.strip()
-                artist_name = "Unknown Artist"
-                
-        except Exception as e:
-            logger.error(f"Failed to parse AI recommendation: {ai_recommendation_text}")
-            return {
-                'success': False, 
-                'message': 'Failed to parse AI recommendation. Please try again.'
+                'message': f'Streamlined recommendation failed: {str(e)}'
             }
         
         # Search for the track on Spotify with improved strategy
@@ -479,51 +474,18 @@ def generate_ai_recommendation(user, gemini_api_key, session_adjustment=""):
         )
         
         selected_track = selection_result.selected_result
-        confidence = selection_result.confidence
+        match_confidence = selection_result.confidence
         match_score = selected_track.match_score
         
-        if confidence < 0.5:  # Lower confidence threshold for enhanced system
-            logger.warning(f"ENHANCED: Low confidence selection (confidence: {confidence:.2f})")
+        if match_confidence < 0.5:  # Lower confidence threshold for enhanced system
+            logger.warning(f"ENHANCED: Low match confidence (confidence: {match_confidence:.2f})")
         
         logger.warning(f"ENHANCED: Selected '{selected_track.track_name}' by '{selected_track.artist_name}' for requested '{song_title}' by '{artist_name}'")
-        logger.info(f"ENHANCED: Selected track: {selected_track.track_name} by {selected_track.artist_name} (confidence: {confidence:.2f}, match_score: {match_score:.2f})")
+        logger.info(f"ENHANCED: Selected track: {selected_track.track_name} by {selected_track.artist_name} (match_confidence: {match_confidence:.2f}, match_score: {match_score:.2f})")
         
         logger.info(f"ENHANCED: AI recommendation complete - {time.time() - data_collection_start:.2f}s")
         
-        # Generate enhanced reasoning
-        try:
-            reasoning_prompt = create_enhanced_reasoning_prompt(
-                selected_track.track_name, selected_track.artist_name, 
-                psychological_profile, music_data, session_adjustment, confidence
-            )
-            
-            print("\n" + "="*80)
-            print("RECOMMENDATIONS - ENHANCED REASONING PROMPT SENT TO GEMINI:")
-            print("="*80)
-            print(reasoning_prompt)
-            print("="*80 + "\n")
-            
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            reasoning_response = model.generate_content(reasoning_prompt)
-            ai_reasoning = reasoning_response.text.strip()
-            
-            print("\n" + "="*80)
-            print("RECOMMENDATIONS - ENHANCED REASONING RESPONSE FROM GEMINI:")
-            print("="*80)
-            print(ai_reasoning)
-            print("="*80 + "\n")
-            
-        except Exception as e:
-            print("\n" + "="*80)
-            print("RECOMMENDATIONS - ENHANCED REASONING GEMINI API ERROR:")
-            print("="*80)
-            print(f"Error: {e}")
-            print("="*80 + "\n")
-            
-            logger.warning(f"Failed to generate enhanced reasoning: {e}")
-            ai_reasoning = f"This track was selected based on your comprehensive musical preferences and enhanced listening pattern analysis."
-        
-        # Save enhanced recommendation to database
+        # Save streamlined recommendation to database
         recommendation = Recommendation(
             user_id=user.id,
             track_name=selected_track.track_name,
@@ -544,13 +506,13 @@ def generate_ai_recommendation(user, gemini_api_key, session_adjustment=""):
                                 else None
             }),
             session_adjustment=session_adjustment,
-            confidence_score=confidence,
+            confidence_score=ai_confidence,
             match_score=match_score
         )
         db.session.add(recommendation)
         db.session.commit()
         
-        logger.info(f"ENHANCED: Recommendation saved to database with ID {recommendation.id}")
+        logger.info(f"ENHANCED: Streamlined recommendation saved to database with ID {recommendation.id}")
         
         return {
             'success': True,
@@ -561,7 +523,7 @@ def generate_ai_recommendation(user, gemini_api_key, session_adjustment=""):
             'album_name': selected_track.album_name,
             'album_image_url': selected_track.album_image_url,
             'ai_reasoning': ai_reasoning,
-            'confidence': confidence,
+            'confidence': ai_confidence,
             'match_score': match_score,
             'data_quality': {
                 'recent_tracks_analyzed': music_data['recent_tracks_count'],

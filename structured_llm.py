@@ -28,6 +28,21 @@ class SelectionResult:
     selected_result: SelectedTrackData
     confidence: float
 
+@dataclass
+class RecommendationWithReasoning:
+    """Data class for AI recommendation with clever reasoning"""
+    song_title: str
+    artist_name: str
+    reasoning: str
+    confidence: float
+
+@dataclass 
+class RecommendationResult:
+    """Data class for combined recommendation result"""
+    recommendation: RecommendationWithReasoning
+    success: bool
+    error_message: Optional[str] = None
+
 def fuzzy_similarity(a: str, b: str) -> float:
     """Calculate fuzzy similarity between two strings"""
     return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
@@ -283,6 +298,160 @@ Example response:
                     selected_result=selected_track_data,
                     confidence=0.1
                 )
+
+    def generate_recommendation_with_reasoning(self, model, music_data: dict, psychological_profile: str, 
+                                             session_adjustment: str, blacklist_tracks: list, 
+                                             diversity_warning: str) -> RecommendationResult:
+        """
+        Generate a song recommendation with clever reasoning in a single LLM call using structured output.
+        
+        Args:
+            model: The generative AI model to use
+            music_data: Comprehensive music data dictionary
+            psychological_profile: User's psychological profile
+            session_adjustment: Any session-specific adjustments
+            blacklist_tracks: List of tracks to avoid
+            diversity_warning: Warning about recent recommendations
+            
+        Returns:
+            RecommendationResult with the recommendation and reasoning
+        """
+        try:
+            # Create comprehensive but concise context
+            current_context = "None"
+            if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item'):
+                current_track_name = music_data['current_track']['item']['name']
+                current_artist = music_data['current_track']['item']['artists'][0]['name']
+                current_context = f"{current_track_name} by {current_artist}"
+            
+            # Get recent tracks for context (simplified)
+            recent_tracks_simple = []
+            if isinstance(music_data['recent_tracks'], list):
+                for item in music_data['recent_tracks'][:8]:  # Just last 8 tracks
+                    track = item.get('track', {})
+                    if track:
+                        track_info = f"{track.get('name', 'Unknown')} by {track['artists'][0]['name'] if track.get('artists') else 'Unknown'}"
+                        recent_tracks_simple.append(track_info)
+            
+            # Get top genres (simplified)
+            top_genres_simple = music_data.get('top_genres', [])[:10]
+            
+            # Create streamlined prompt for combined recommendation + reasoning
+            prompt = f"""
+You are a witty music AI that recommends songs with clever, brief explanations. Based on this user's music profile, recommend ONE song with a short but entertaining reason why.
+
+USER'S MUSICAL PERSONALITY:
+{psychological_profile[:800]}...
+
+CURRENT CONTEXT:
+Currently Playing: {current_context}
+Recent Tracks: {recent_tracks_simple}
+Top Genres: {top_genres_simple}
+Session Request: {session_adjustment if session_adjustment else "Good recommendations"}
+
+AVOIDANCE LIST (DO NOT RECOMMEND):
+{blacklist_tracks[:15]}
+
+{diversity_warning}
+
+INSTRUCTIONS:
+1. Recommend ONE specific song that exists on Spotify
+2. Include a 1-2 sentence witty explanation that connects to their personality
+3. Be clever, sassy, and insightful but concise
+4. Format as JSON only, no extra text
+
+Respond with ONLY this JSON structure:
+{{
+    "song_title": "Exact Song Title",
+    "artist_name": "Exact Artist Name", 
+    "reasoning": "Witty 1-2 sentence explanation connecting to their musical chaos/personality",
+    "confidence": 0.85
+}}
+
+Example reasoning styles:
+- "Your taste screams 'emotional rollercoaster seeking musical therapy' and this track is exactly the controlled chaos your overthinking brain craves."
+- "Given your commitment to angsty nu-metal mixed with hyperpop confusion, this is the perfect soundtrack for your next existential crisis."
+- "This song matches your energy of 'I'm fine' while aggressively streaming music that suggests otherwise."
+"""
+
+            # Generate response
+            response = model.generate_content(prompt)
+            response_text = response.text.strip() if response and response.text else ""
+            
+            # Parse JSON response
+            try:
+                # Clean the response text
+                response_text = response_text.strip()
+                
+                # Find JSON boundaries
+                json_start = response_text.find('{')
+                json_end = response_text.rfind('}') + 1
+                
+                if json_start != -1 and json_end != -1:
+                    json_text = response_text[json_start:json_end]
+                    recommendation_data = json.loads(json_text)
+                    
+                    # Validate required fields
+                    required_fields = ['song_title', 'artist_name', 'reasoning', 'confidence']
+                    if not all(field in recommendation_data for field in required_fields):
+                        raise ValueError(f"Missing required fields. Expected: {required_fields}")
+                    
+                    # Create structured result
+                    recommendation = RecommendationWithReasoning(
+                        song_title=recommendation_data['song_title'],
+                        artist_name=recommendation_data['artist_name'],
+                        reasoning=recommendation_data['reasoning'],
+                        confidence=float(recommendation_data['confidence'])
+                    )
+                    
+                    return RecommendationResult(
+                        recommendation=recommendation,
+                        success=True
+                    )
+                    
+                else:
+                    raise ValueError("No valid JSON object found in response")
+                    
+            except (json.JSONDecodeError, ValueError, KeyError) as e:
+                self.logger.warning(f"Failed to parse recommendation JSON: {e}. Response: {response_text[:200]}...")
+                
+                # Try to extract song info manually from response text
+                lines = response_text.split('\n')
+                song_title = "Unknown Song"
+                artist_name = "Unknown Artist"
+                reasoning = "Failed to parse recommendation details, but the AI suggested something based on your musical personality."
+                
+                # Look for quoted song titles or "by" patterns
+                for line in lines:
+                    if '"' in line and 'by' in line:
+                        try:
+                            parts = line.split('" by ')
+                            if len(parts) == 2:
+                                song_title = parts[0].replace('"', '').strip()
+                                artist_name = parts[1].strip()
+                                break
+                        except:
+                            continue
+                
+                recommendation = RecommendationWithReasoning(
+                    song_title=song_title,
+                    artist_name=artist_name,
+                    reasoning=reasoning,
+                    confidence=0.3
+                )
+                
+                return RecommendationResult(
+                    recommendation=recommendation,
+                    success=True
+                )
+                
+        except Exception as e:
+            self.logger.error(f"Error generating recommendation with reasoning: {e}")
+            return RecommendationResult(
+                recommendation=None,
+                success=False,
+                error_message=str(e)
+            )
 
 # Create global instance
 structured_llm = StructuredLLM() 
