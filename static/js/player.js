@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setupSessionPreferences();
             setupAISettings();
             setupPlaylistCreation();
+            setupComprehensiveAnalysis();
             addButtonFeedback();
             addSmoothScrolling();
             log('All initialization functions completed');
@@ -1303,25 +1304,285 @@ Processing Stats:
 
 // New function to update AI data from music taste profile
 function updateAIDataFromProfile(profileData) {
+    log('Updating AI data from profile insights');
+    
+    if (profileData && profileData.analysis_ready) {
+        // Update the psychological analysis display
+        const analysisContainer = document.getElementById('aiAnalysisData');
+        if (analysisContainer) {
+            const displayData = {
+                musical_identity: profileData.musical_identity || 'Not available',
+                psychological_profile: profileData.psychological_profile || 'Not available',
+                listening_behavior: profileData.listening_behavior || 'Not available',
+                cultural_context: profileData.cultural_context || 'Not available'
+            };
+            
+            analysisContainer.textContent = JSON.stringify(displayData, null, 2);
+        }
+        
+        log('Profile insights updated in transparency section');
+    }
+}
+
+function setupComprehensiveAnalysis() {
+    log('Setting up comprehensive analysis features...');
+    
+    // Setup psychological analysis button
+    const psychAnalysisBtn = document.getElementById('generatePsychAnalysis');
+    if (psychAnalysisBtn) {
+        psychAnalysisBtn.addEventListener('click', function() {
+            log('Psychological analysis button clicked');
+            generatePsychologicalAnalysis();
+        });
+    }
+    
+    // Setup musical analysis button
+    const musicalAnalysisBtn = document.getElementById('generateMusicalAnalysis');
+    if (musicalAnalysisBtn) {
+        musicalAnalysisBtn.addEventListener('click', function() {
+            log('Musical analysis button clicked');
+            generateMusicalAnalysis();
+        });
+    }
+    
+    // Check if we have cached analyses and show them
+    const psychAnalysis = sessionStorage.getItem('psychological_analysis');
+    const musicalAnalysis = sessionStorage.getItem('musical_analysis');
+    
+    if (psychAnalysis) {
+        try {
+            const analysis = JSON.parse(psychAnalysis);
+            displayPsychologicalAnalysis(analysis);
+        } catch (e) {
+            log('Error parsing cached psychological analysis: ' + e.message, 'error');
+        }
+    }
+    
+    if (musicalAnalysis) {
+        try {
+            const analysis = JSON.parse(musicalAnalysis);
+            displayMusicalAnalysis(analysis);
+        } catch (e) {
+            log('Error parsing cached musical analysis: ' + e.message, 'error');
+        }
+    }
+    
+    log('Comprehensive analysis setup completed');
+}
+
+async function generatePsychologicalAnalysis() {
+    log('Starting psychological analysis generation...');
+    
+    // Check for API key
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (!apiKey) {
+        showNotification('Please add your Gemini API key in AI Settings first', 'error');
+        return;
+    }
+    
+    // Show loading state
+    showPsychAnalysisLoading(true);
+    
     try {
-        // Update Psychological Analysis
-        const analysisElement = document.getElementById('aiAnalysisData');
-        if (analysisElement && profileData) {
-            let analysisText = '';
-            if (profileData.user_taste_profile) {
-                analysisText += `Music Taste Profile:\n${profileData.user_taste_profile}\n\n`;
-            }
-            if (profileData.recent_mood_analysis) {
-                analysisText += `Recent Mood Analysis:\n${profileData.recent_mood_analysis}`;
-            }
-            if (!analysisText) {
-                analysisText = JSON.stringify(profileData, null, 2);
-            }
-            analysisElement.textContent = analysisText;
-            log('Updated AI Analysis Data from profile');
+        const response = await fetch('/api/generate-psychological-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                custom_gemini_key: apiKey
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.analysis) {
+            log('Psychological analysis generated successfully');
+            
+            // Cache the analysis
+            sessionStorage.setItem('psychological_analysis', JSON.stringify(data.analysis));
+            
+            // Display the analysis
+            displayPsychologicalAnalysis(data.analysis);
+            
+            showNotification('Psychological analysis generated successfully!', 'success');
+        } else {
+            log('Failed to generate psychological analysis: ' + data.message, 'error');
+            showNotification(data.message || 'Failed to generate psychological analysis', 'error');
         }
     } catch (error) {
-        log('Error updating AI data from profile:', error, 'error');
+        log('Error generating psychological analysis: ' + error.message, 'error');
+        showNotification('Error generating psychological analysis. Please try again.', 'error');
+    } finally {
+        showPsychAnalysisLoading(false);
+    }
+}
+
+async function generateMusicalAnalysis() {
+    log('Starting musical analysis generation...');
+    
+    // Check for API key
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (!apiKey) {
+        showNotification('Please add your Gemini API key in AI Settings first', 'error');
+        return;
+    }
+    
+    // Show loading state
+    showMusicalAnalysisLoading(true);
+    
+    try {
+        const response = await fetch('/api/generate-musical-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                custom_gemini_key: apiKey
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.analysis) {
+            log('Musical analysis generated successfully');
+            
+            // Cache the analysis
+            sessionStorage.setItem('musical_analysis', JSON.stringify(data.analysis));
+            
+            // Display the analysis
+            displayMusicalAnalysis(data.analysis);
+            
+            showNotification('Musical analysis generated successfully!', 'success');
+        } else {
+            log('Failed to generate musical analysis: ' + data.message, 'error');
+            showNotification(data.message || 'Failed to generate musical analysis', 'error');
+        }
+    } catch (error) {
+        log('Error generating musical analysis: ' + error.message, 'error');
+        showNotification('Error generating musical analysis. Please try again.', 'error');
+    } finally {
+        showMusicalAnalysisLoading(false);
+    }
+}
+
+function showPsychAnalysisLoading(show) {
+    const loadingEl = document.getElementById('psychAnalysisLoading');
+    const promptEl = document.getElementById('psychAnalysisPrompt');
+    const contentEl = document.getElementById('psychAnalysisContent');
+    
+    if (show) {
+        if (loadingEl) loadingEl.style.display = 'block';
+        if (promptEl) promptEl.style.display = 'none';
+        if (contentEl) contentEl.style.display = 'none';
+    } else {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+function showMusicalAnalysisLoading(show) {
+    const loadingEl = document.getElementById('musicalAnalysisLoading');
+    const promptEl = document.getElementById('musicalAnalysisPrompt');
+    const contentEl = document.getElementById('musicalAnalysisContent');
+    
+    if (show) {
+        if (loadingEl) loadingEl.style.display = 'block';
+        if (promptEl) promptEl.style.display = 'none';
+        if (contentEl) contentEl.style.display = 'none';
+    } else {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+function displayPsychologicalAnalysis(analysis) {
+    log('Displaying psychological analysis');
+    
+    // Hide prompt and loading, show content
+    const promptEl = document.getElementById('psychAnalysisPrompt');
+    const loadingEl = document.getElementById('psychAnalysisLoading');
+    const contentEl = document.getElementById('psychAnalysisContent');
+    
+    if (promptEl) promptEl.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (contentEl) contentEl.style.display = 'block';
+    
+    // Populate the analysis sections
+    if (analysis.psychological_profile) {
+        const profile = analysis.psychological_profile;
+        
+        updateElementText('corePersonality', profile.core_personality);
+        updateElementText('emotionalPatterns', profile.emotional_patterns);
+        updateElementText('cognitiveStyle', profile.cognitive_style);
+        updateElementText('socialTendencies', profile.social_tendencies);
+        
+        // Update key findings list
+        if (analysis.summary_insights && analysis.summary_insights.key_findings) {
+            const keyFindingsEl = document.getElementById('keyFindings');
+            if (keyFindingsEl) {
+                keyFindingsEl.innerHTML = '';
+                analysis.summary_insights.key_findings.forEach(finding => {
+                    const li = document.createElement('li');
+                    li.textContent = finding;
+                    li.className = 'text-light mb-2';
+                    keyFindingsEl.appendChild(li);
+                });
+            }
+        }
+    }
+    
+    log('Psychological analysis display completed');
+}
+
+function displayMusicalAnalysis(analysis) {
+    log('Displaying musical analysis');
+    
+    // Hide prompt and loading, show content
+    const promptEl = document.getElementById('musicalAnalysisPrompt');
+    const loadingEl = document.getElementById('musicalAnalysisLoading');
+    const contentEl = document.getElementById('musicalAnalysisContent');
+    
+    if (promptEl) promptEl.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (contentEl) contentEl.style.display = 'block';
+    
+    // Populate the analysis sections
+    if (analysis.genre_mastery) {
+        updateElementText('genreMastery', analysis.genre_mastery.primary_expertise);
+    }
+    
+    if (analysis.artist_dynamics) {
+        updateElementText('artistDynamics', analysis.artist_dynamics.loyalty_patterns);
+    }
+    
+    if (analysis.musical_sophistication) {
+        updateElementText('musicalSophistication', analysis.musical_sophistication.technical_appreciation);
+    }
+    
+    if (analysis.listening_contexts) {
+        updateElementText('listeningContexts', analysis.listening_contexts.primary_contexts);
+    }
+    
+    // Update unique traits list
+    if (analysis.insights_summary && analysis.insights_summary.unique_taste_markers) {
+        const uniqueTraitsEl = document.getElementById('uniqueTraits');
+        if (uniqueTraitsEl) {
+            uniqueTraitsEl.innerHTML = '';
+            analysis.insights_summary.unique_taste_markers.forEach(trait => {
+                const li = document.createElement('li');
+                li.textContent = trait;
+                li.className = 'text-light mb-2';
+                uniqueTraitsEl.appendChild(li);
+            });
+        }
+    }
+    
+    log('Musical analysis display completed');
+}
+
+function updateElementText(elementId, text) {
+    const element = document.getElementById(elementId);
+    if (element && text) {
+        element.textContent = text;
     }
 }
 
