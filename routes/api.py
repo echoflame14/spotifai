@@ -338,6 +338,32 @@ Return ONLY a JSON object with this exact structure:
             })
             
     except Exception as e:
+        # Check for rate limit errors specifically
+        from utils.ai_analysis import check_rate_limit_error, extract_rate_limit_details
+        if check_rate_limit_error(e):
+            error_details = extract_rate_limit_details(str(e))
+            logger.warning(f"LOADING PHRASES: Gemini rate limit detected - {str(e)[:200]}...")
+            
+            # Return fallback phrases for rate limit errors
+            fallback_phrases = [
+                {
+                    "headline": "Taking a brief pause to respect the API rate limits"
+                }
+            ]
+            
+            if user:
+                user.add_used_loading_phrase(fallback_phrases[0]['headline'])
+                logger.info("Added rate-limit fallback phrase to user's list")
+            
+            return jsonify({
+                'success': True,
+                'phrases': fallback_phrases,
+                'generation_time': 0,
+                'fallback_used': True,
+                'rate_limit_error': True,
+                'suggested_wait_time': error_details['suggested_wait_time']
+            })
+        
         logger.error(f"Loading phrases generation failed: {str(e)}")
         
         # Return fallback phrases on error

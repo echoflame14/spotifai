@@ -14,7 +14,8 @@ from utils.ai_analysis import (
     generate_ultra_detailed_psychological_analysis,
     generate_ai_music_analysis,
     configure_gemini,
-    check_rate_limit_error
+    check_rate_limit_error,
+    extract_rate_limit_details
 )
 from utils.recommendations import generate_ai_recommendation, get_enhanced_recent_recommendations
 from utils.feedback import process_feedback_insights
@@ -101,10 +102,31 @@ def ai_recommendation():
             session['last_recommendation_time'] = current_time
             
             total_duration = time.time() - total_start_time
-            result['performance']['total_duration'] = round(total_duration, 2)
+            
+            # Transform the response to match frontend expectations
+            frontend_response = {
+                'success': True,
+                'track': {
+                    'name': result['track_name'],
+                    'artist': result['artist_name'],
+                    'album': result['album_name'],
+                    'uri': result['track_uri'],
+                    'image': result.get('album_image_url'),
+                    'external_url': f"https://open.spotify.com/track/{result['track_uri'].split(':')[-1]}" if result['track_uri'] else None
+                },
+                'ai_reasoning': result['ai_reasoning'],
+                'recommendation_id': result['recommendation_id'],
+                'confidence': result.get('confidence', 0),
+                'match_score': result.get('match_score', 0),
+                'data_quality': result.get('data_quality', {}),
+                'performance_stats': {
+                    'total_duration': round(total_duration, 2),
+                    'mode': 'enhanced'
+                }
+            }
             
             logger.info(f"AI recommendation completed successfully in {total_duration:.2f}s")
-            return jsonify(result)
+            return jsonify(frontend_response)
         else:
             # Check for rate limit errors
             if 'rate_limit_error' in result:
@@ -194,12 +216,14 @@ Return JSON:
         except Exception as e:
             # Check for rate limit errors
             if check_rate_limit_error(e):
-                logger.warning(f"FEEDBACK: Gemini rate limit detected - {str(e)}")
+                error_details = extract_rate_limit_details(str(e))
+                logger.warning(f"FEEDBACK: Gemini rate limit detected - {str(e)[:200]}...")
                 return jsonify({
                     'success': False, 
-                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before providing feedback.',
+                    'message': f'You\'ve reached your Gemini API rate limit. Please wait {error_details["suggested_wait_time"]} before providing feedback.',
                     'rate_limit_error': True,
-                    'suggested_wait_time': '2-3 minutes'
+                    'suggested_wait_time': error_details['suggested_wait_time'],
+                    'retry_seconds': error_details['retry_seconds']
                 }), 429
             
             logger.error(f"Fast feedback analysis failed: {e}")
@@ -245,12 +269,14 @@ Return JSON:
     except Exception as e:
         # Check for rate limit errors in overall feedback processing
         if check_rate_limit_error(e):
-            logger.warning(f"FEEDBACK: Gemini rate limit detected in main handler - {str(e)}")
+            error_details = extract_rate_limit_details(str(e))
+            logger.warning(f"FEEDBACK: Gemini rate limit detected in main handler - {str(e)[:200]}...")
             return jsonify({
                 'success': False, 
-                'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before providing feedback.',
+                'message': f'You\'ve reached your Gemini API rate limit. Please wait {error_details["suggested_wait_time"]} before providing feedback.',
                 'rate_limit_error': True,
-                'suggested_wait_time': '2-3 minutes'
+                'suggested_wait_time': error_details['suggested_wait_time'],
+                'retry_seconds': error_details['retry_seconds']
             }), 429
         
         logger.error(f"Error processing chat feedback: {str(e)}")
@@ -483,12 +509,15 @@ def api_generate_musical_analysis():
         except Exception as analysis_error:
             # Check for rate limit errors
             if check_rate_limit_error(analysis_error):
-                logger.warning(f"MUSICAL ANALYSIS: Gemini rate limit detected - {str(analysis_error)}")
+                error_details = extract_rate_limit_details(str(analysis_error))
+                
+                logger.warning(f"MUSICAL ANALYSIS: Gemini rate limit detected - {str(analysis_error)[:200]}...")
                 return jsonify({
                     'success': False, 
-                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.',
+                    'message': f'You\'ve reached your Gemini API rate limit. Please wait {error_details["suggested_wait_time"]} before generating another analysis.',
                     'rate_limit_error': True,
-                    'suggested_wait_time': '2-3 minutes'
+                    'suggested_wait_time': error_details['suggested_wait_time'],
+                    'retry_seconds': error_details['retry_seconds']
                 }), 429
             
             logger.error(f"Musical analysis generation failed: {str(analysis_error)}")
@@ -500,12 +529,15 @@ def api_generate_musical_analysis():
     except Exception as e:
         # Check for rate limit errors in main handler
         if check_rate_limit_error(e):
-            logger.warning(f"MUSICAL ANALYSIS: Gemini rate limit detected in main handler - {str(e)}")
+            error_details = extract_rate_limit_details(str(e))
+            
+            logger.warning(f"MUSICAL ANALYSIS: Gemini rate limit detected in main handler - {str(e)[:200]}...")
             return jsonify({
                 'success': False, 
-                'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.',
+                'message': f'You\'ve reached your Gemini API rate limit. Please wait {error_details["suggested_wait_time"]} before generating another analysis.',
                 'rate_limit_error': True,
-                'suggested_wait_time': '2-3 minutes'
+                'suggested_wait_time': error_details['suggested_wait_time'],
+                'retry_seconds': error_details['retry_seconds']
             }), 429
         
         logger.error(f"Musical analysis generation failed: {str(e)}")

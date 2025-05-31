@@ -122,6 +122,10 @@ class Recommendation(db.Model):
     last_played_at = db.Column(db.DateTime)  # When it was last played
     play_count = db.Column(db.Integer, default=0)  # How many times user played it
     
+    # Enhanced recommendation quality metrics
+    confidence_score = db.Column(db.Float)  # AI confidence in the recommendation (0.0 to 1.0)
+    match_score = db.Column(db.Float)  # Track matching quality score (0.0 to 1.0)
+    
     # Feedback relationship
     feedback_entries = db.relationship('UserFeedback', backref='recommendation', lazy=True)
 
@@ -175,6 +179,7 @@ class UserAnalysis(db.Model):
     user_id = db.Column(db.String(50), db.ForeignKey('user.id'), nullable=False)
     analysis_type = db.Column(db.String(50), nullable=False)  # 'psychological', 'musical'
     analysis_data = db.Column(db.Text, nullable=False)  # JSON data of the analysis
+    analysis_ready = db.Column(db.Boolean, default=False)  # Whether analysis is complete and ready
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -183,6 +188,11 @@ class UserAnalysis(db.Model):
     
     def __repr__(self):
         return f'<UserAnalysis {self.user_id}: {self.analysis_type}>'
+    
+    def is_recent(self, hours=24):
+        """Check if this analysis is recent enough"""
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        return self.updated_at >= cutoff_time
     
     @staticmethod
     def get_latest_analysis(user_id, analysis_type, max_age_hours=24):
@@ -196,7 +206,7 @@ class UserAnalysis(db.Model):
         ).order_by(UserAnalysis.updated_at.desc()).first()
     
     @staticmethod
-    def save_analysis(user_id, analysis_type, analysis_data):
+    def save_analysis(user_id, analysis_type, analysis_data, analysis_ready=True):
         """Save or update an analysis for a user"""
         import json
         
@@ -209,6 +219,7 @@ class UserAnalysis(db.Model):
         if existing:
             # Update existing analysis
             existing.analysis_data = json.dumps(analysis_data) if isinstance(analysis_data, dict) else analysis_data
+            existing.analysis_ready = analysis_ready
             existing.updated_at = datetime.utcnow()
             analysis = existing
         else:
@@ -216,7 +227,8 @@ class UserAnalysis(db.Model):
             analysis = UserAnalysis(
                 user_id=user_id,
                 analysis_type=analysis_type,
-                analysis_data=json.dumps(analysis_data) if isinstance(analysis_data, dict) else analysis_data
+                analysis_data=json.dumps(analysis_data) if isinstance(analysis_data, dict) else analysis_data,
+                analysis_ready=analysis_ready
             )
             db.session.add(analysis)
         

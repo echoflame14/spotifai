@@ -218,12 +218,15 @@ Do not include explanations, numbering, or additional text."""
         except Exception as e:
             # Check for rate limit errors
             if check_rate_limit_error(e):
-                logger.warning(f"PLAYLIST: Gemini rate limit detected - {str(e)}")
+                from utils.ai_analysis import extract_rate_limit_details
+                error_details = extract_rate_limit_details(str(e))
+                logger.warning(f"PLAYLIST: Gemini rate limit detected - {str(e)[:200]}...")
                 return jsonify({
                     'success': False, 
-                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before creating another playlist.',
+                    'message': f'You\'ve reached your Gemini API rate limit. Please wait {error_details["suggested_wait_time"]} before creating another playlist.',
                     'rate_limit_error': True,
-                    'suggested_wait_time': '2-3 minutes'
+                    'suggested_wait_time': error_details['suggested_wait_time'],
+                    'retry_seconds': error_details['retry_seconds']
                 }), 429
             
             logger.error(f"AI generation failed: {e}")
@@ -346,12 +349,15 @@ Do not include explanations, numbering, or additional text."""
     except Exception as e:
         # Check for rate limit errors in playlist creation
         if check_rate_limit_error(e):
-            logger.warning(f"PLAYLIST: Gemini rate limit detected in main handler - {str(e)}")
+            from utils.ai_analysis import extract_rate_limit_details
+            error_details = extract_rate_limit_details(str(e))
+            logger.warning(f"PLAYLIST: Gemini rate limit detected in main handler - {str(e)[:200]}...")
             return jsonify({
                 'success': False, 
-                'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before creating another playlist.',
+                'message': f'You\'ve reached your Gemini API rate limit. Please wait {error_details["suggested_wait_time"]} before creating another playlist.',
                 'rate_limit_error': True,
-                'suggested_wait_time': '2-3 minutes'
+                'suggested_wait_time': error_details['suggested_wait_time'],
+                'retry_seconds': error_details['retry_seconds']
             }), 429
         
         logger.error(f"Playlist creation failed: {e}")

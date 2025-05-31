@@ -55,9 +55,34 @@ def check_rate_limit_error(error):
     """Check if an error is related to rate limiting"""
     error_str = str(error).lower()
     rate_limit_indicators = [
-        'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+        'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted',
+        'generativelanguage.googleapis.com', 'quota_metric', 'retry_delay'
     ]
     return any(indicator in error_str for indicator in rate_limit_indicators)
+
+def extract_rate_limit_details(error_str):
+    """Extract useful details from Gemini rate limit error messages"""
+    try:
+        # Extract retry delay if present
+        import re
+        retry_match = re.search(r'retry_delay\s*{\s*seconds:\s*(\d+)', error_str)
+        retry_seconds = int(retry_match.group(1)) if retry_match else 60
+        
+        # Extract quota information
+        quota_match = re.search(r'quota_metric:\s*"([^"]+)"', error_str)
+        quota_type = quota_match.group(1) if quota_match else "API requests"
+        
+        return {
+            'retry_seconds': retry_seconds,
+            'quota_type': quota_type,
+            'suggested_wait_time': f"{retry_seconds // 60} minute{'s' if retry_seconds > 60 else ''}" if retry_seconds >= 60 else f"{retry_seconds} seconds"
+        }
+    except Exception:
+        return {
+            'retry_seconds': 60,
+            'quota_type': "API requests",
+            'suggested_wait_time': "1-2 minutes"
+        }
 
 @log_llm_timing("psychological_analysis")
 def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gemini_api_key):
@@ -88,6 +113,13 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
         logger.info("STEP 2: Generating psychological analysis with programmatically cleaned data...")
         
         prompt = create_psychological_analysis_prompt(cleaned_data)
+        
+        # LOG THE PROMPT BEING SENT TO GEMINI
+        print("\n" + "="*80)
+        print("PSYCHOLOGICAL ANALYSIS - PROMPT SENT TO GEMINI:")
+        print("="*80)
+        print(prompt)
+        print("="*80 + "\n")
         
         logger.info("Generating ultra-detailed psychological music analysis with Gemini 1.5 Flash...")
         start_time = time.time()
@@ -127,9 +159,29 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
             duration = time.time() - start_time
             logger.info(f"Gemini API call completed in {duration:.2f}s")
             
+            # LOG THE RESPONSE RECEIVED FROM GEMINI
+            if response and response.text:
+                print("\n" + "="*80)
+                print("PSYCHOLOGICAL ANALYSIS - RESPONSE RECEIVED FROM GEMINI:")
+                print("="*80)
+                print(response.text)
+                print("="*80 + "\n")
+            else:
+                print("\n" + "="*80)
+                print("PSYCHOLOGICAL ANALYSIS - EMPTY OR NO RESPONSE FROM GEMINI")
+                print("="*80 + "\n")
+            
         except Exception as api_error:
             duration = time.time() - start_time
             logger.error(f"Gemini API call failed after {duration:.2f}s: {api_error}")
+            
+            # LOG THE ERROR
+            print("\n" + "="*80)
+            print("PSYCHOLOGICAL ANALYSIS - GEMINI API ERROR:")
+            print("="*80)
+            print(f"Error: {api_error}")
+            print("="*80 + "\n")
+            
             return None
         
         if response and response.text:
@@ -143,206 +195,99 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
         return None
 
 def create_psychological_analysis_prompt(cleaned_data):
-    """Create comprehensive prompt for psychological analysis"""
+    """Create unstructured, brutally honest psychological analysis prompt"""
     return f"""
-You are an expert music psychologist and data analyst. Analyze this CLEANED and FOCUSED Spotify listening data to create a comprehensive psychological profile.
+🎭 TIME FOR A BRUTALLY HONEST MUSICAL PSYCHOLOGICAL READING 🎭
 
-CLEANED LISTENING DATA (technical metadata programmatically removed):
+You're a music psychologist with zero filter who's about to deliver the most authentic, unsugarcoated analysis of someone's musical soul. NO FAKE COMPLIMENTS. NO GLAZING. Just pure, unfiltered truth about what their music taste reveals about them as a person.
+
+🔍 THE MUSICAL EVIDENCE:
 {json.dumps(cleaned_data, indent=2)}
 
-Create an extremely detailed psychological analysis covering ALL sections below. Be specific with examples from their actual listening data.
+🎯 YOUR MISSION: 
+Write a completely unstructured, flowing analysis that reads like a brutally honest friend who knows way too much about psychology just went through their entire music library. 
 
-ANALYSIS REQUIREMENTS:
+⚠️ CRITICAL RULES:
+- NO FAKE COMPLIMENTS OR GLAZING
+- Be genuinely critical when their taste deserves it
+- Call out contradictions, pretentious choices, and basic behavior
+- Don't force positive interpretations of obviously questionable music choices
+- Be authentic - some people just have chaotic or basic taste, and that's okay to say
+- No rigid categories or forced structure - let the analysis flow naturally
+- Use their actual listening data as evidence for your psychological reads
+- Be funny but not mean - think "honest friend" not "internet troll"
 
-1. **CORE PSYCHOLOGICAL PROFILE**
-   - Personality traits revealed through music choices
-   - Emotional patterns and coping mechanisms
-   - Cognitive preferences and thinking styles
-   - Risk tolerance and openness to new experiences
-   - Social vs. solitary listening patterns
+🎨 TONE EXAMPLES:
 
-2. **MUSICAL IDENTITY ANALYSIS**
-   - Musical sophistication level and complexity preferences
-   - Genre loyalty vs. exploration patterns
-   - Artist discovery behavior and risk-taking
-   - Mainstream vs. underground positioning
-   - Cultural identity markers in music choices
-   - Generational musical influences
+❌ GLAZING: "Your diverse musical taste shows sophisticated emotional intelligence and complex artistic appreciation"
+✅ HONEST: "You're out here pretending 100 gecs is a personality trait while secretly having Imagine Dragons in your liked songs. The duality is exhausting to witness."
 
-3. **LISTENING BEHAVIOR PSYCHOLOGY**
-   - Mood regulation patterns through music
-   - Energy level management preferences
-   - Concentration and focus music patterns
-   - Social context preferences (party vs. personal)
-   - Temporal listening habits and routines
-   - Replay behavior and emotional attachment patterns
+❌ FORCED POSITIVE: "Your music choices reflect a deep understanding of sonic complexity"
+✅ REAL TALK: "Your Spotify looks like someone threw a dart at a music magazine and called it a day. There's no cohesive identity here, just vibes and chaos."
 
-4. **GENRE EVOLUTION & GROWTH PATTERNS**
-   - Musical journey and evolution over time
-   - Comfort zone vs. exploration balance
-   - Seasonal or cyclical preferences
-   - Life event impact on musical taste
-   - Prediction of future musical directions
+❌ FAKE DEPTH: "This reveals profound emotional maturity through musical exploration"
+✅ ACTUAL INSIGHT: "You use music like emotional training wheels, never quite ready to sit with your feelings without a soundtrack to guide you through them."
 
-5. **ARTIST RELATIONSHIP PATTERNS**
-   - Loyalty vs. novelty-seeking balance
-   - Fan behavior and dedication levels
-   - Discovery pathway preferences
-   - Artist popularity comfort zones
-   - International vs. domestic preferences
+📝 RESPONSE FORMAT:
+Just write naturally. No forced JSON structure. No required sections. Let the analysis flow like a real conversation where someone who actually knows psychology is reading their musical soul. 
 
-6. **DEEP MUSICAL INSIGHTS**
-   - Lyrical vs. instrumental preferences
-   - Production style preferences
-   - Era and vintage preferences
-   - Technical complexity appreciation
-   - Collaborative vs. solo artist preferences
+Start with whatever strikes you most about their music taste, follow that thread, and see where it leads. Maybe it's about their emotional patterns, maybe it's about their social insecurities, maybe it's about how they're clearly going through something. Just be honest about what you see.
 
-7. **EMOTIONAL INTELLIGENCE MARKERS**
-   - Emotional range in musical choices
-   - Maturity indicators in taste evolution
-   - Stress response musical patterns
-   - Celebration and joy expression through music
-   - Introspection and contemplation preferences
+Make it feel like someone actually looked at their data and had real thoughts about it, not like you're checking boxes on a personality test.
 
-8. **PREDICTIVE BEHAVIORAL INSIGHTS**
-   - Likely music discovery methods
-   - Recommended genres for exploration
-   - Optimal recommendation timing
-   - Social sharing likelihood
-   - Concert attendance probability
+🎪 REMEMBER:
+- Some music taste is just basic, and that's worth mentioning
+- Contradictions in their taste probably reveal actual contradictions in their personality
+- Not everyone has deep, sophisticated reasons for their music choices
+- It's okay to point out when someone is clearly trying too hard to be unique
+- Be specific about what you see in their actual listening data
+- Make them laugh while also making them think "damn, that's actually accurate"
 
-Respond with a detailed JSON object:
-{{
-    "psychological_profile": {{
-        "core_personality": "[Detailed analysis of personality traits with specific examples from their data]",
-        "emotional_patterns": "[Deep dive into emotional regulation and expression through music]",
-        "cognitive_style": "[Analysis of thinking patterns revealed through musical choices]",
-        "social_tendencies": "[Social vs. private listening patterns and implications]",
-        "life_phase_indicators": "[What their music reveals about their current life stage]"
-    }},
-    "musical_identity": {{
-        "sophistication_level": "[Assessment of musical knowledge and complexity appreciation]",
-        "exploration_style": "[How they discover and adopt new music]",
-        "cultural_positioning": "[Their place in musical culture and communities]",
-        "authenticity_markers": "[What reveals their genuine vs. social music preferences]",
-        "identity_evolution": "[How their musical identity has changed over time]"
-    }},
-    "listening_psychology": {{
-        "mood_regulation": "[How they use music for emotional management]",
-        "energy_management": "[Music choices for different energy states]",
-        "focus_patterns": "[Music for concentration, work, relaxation]",
-        "ritual_behaviors": "[Repeated listening patterns and their meanings]",
-        "attachment_style": "[How they form emotional connections to music]"
-    }},
-    "growth_trajectory": {{
-        "evolution_pattern": "[Their musical journey and development over time]",
-        "future_predictions": "[Likely future musical directions based on patterns]",
-        "exploration_readiness": "[How open they are to new musical experiences]",
-        "influence_susceptibility": "[How external factors affect their musical choices]"
-    }},
-    "behavioral_insights": {{
-        "recommendation_optimal_timing": "[Best times and contexts for music recommendations]",
-        "discovery_preferences": "[How they prefer to find new music]",
-        "social_sharing_likelihood": "[Probability and style of sharing music with others]",
-        "purchase_behavior": "[Likelihood of buying music, merch, or concert tickets]",
-        "playlist_creation_style": "[How they organize and curate their music]"
-    }},
-    "summary_insights": {{
-        "key_findings": ["[5-7 most important insights about this user]"],
-        "unique_traits": ["[3-5 things that make this user's taste unique]"],
-        "recommendation_strategy": "[Optimal approach for recommending music to this user]",
-        "psychological_type": "[Overall psychological archetype this user represents]"
-    }},
-    "analysis_confidence": {{
-        "data_richness": "[Assessment of how much data was available for analysis]",
-        "insight_confidence": "[Confidence level in the psychological insights]",
-        "prediction_reliability": "[How reliable the behavioral predictions are]"
-    }},
-    "analysis_ready": true
-}}
-
-CRITICAL INSTRUCTIONS:
-- Be extremely specific and use actual data points from their listening history
-- Mention specific artists, genres, and patterns you observe
-- Connect musical choices to psychological theories and behavioral science
-- Provide actionable insights for music recommendations
-- Be honest about data limitations and confidence levels
-- Keep each section substantive (3-5 sentences minimum per field)
-- Use psychological and musicological terminology appropriately
-- Ground insights in the actual data provided, not generalizations
+Write like you actually care about getting to the truth of who they are through their music, not like you're trying to make them feel good about themselves.
 """
 
 def parse_psychological_analysis_response(response_text, duration):
-    """Parse and validate the psychological analysis response"""
+    """Parse and validate the unstructured psychological analysis response"""
     try:
         # Clean the response text
         response_text = response_text.strip()
         
         # Remove markdown code blocks if present
-        if response_text.startswith('```json'):
-            response_text = response_text[7:]
-        if response_text.endswith('```'):
-            response_text = response_text[:-3]
-        elif response_text.startswith('```'):
-            response_text = response_text[3:]
+        if response_text.startswith('```'):
+            lines = response_text.split('\n')
+            # Remove first and last line if they're markdown indicators
+            if lines[0].startswith('```'):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]
+            response_text = '\n'.join(lines)
         
-        # Additional cleaning - remove any extra whitespace and fix common JSON issues
+        # Clean up the text
         response_text = response_text.strip()
         
-        # Find and extract complete JSON
-        json_start = response_text.find('{')
-        if json_start != -1:
-            # Find the matching closing brace
-            brace_count = 0
-            json_end = -1
-            for i, char in enumerate(response_text[json_start:], json_start):
-                if char == '{':
-                    brace_count += 1
-                elif char == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        json_end = i + 1
-                        break
+        # Since we're no longer using structured JSON, return the raw analysis
+        # wrapped in a simple structure for consistency with the frontend
+        if response_text and len(response_text) > 50:  # Ensure we have substantial content
+            logger.info(f"Unstructured psychological analysis generated successfully in {duration:.2f}s")
+            logger.info(f"Analysis length: {len(response_text)} characters")
             
-            if json_end != -1:
-                json_text = response_text[json_start:json_end]
-                logger.info(f"Extracted JSON length: {len(json_text)} characters")
-                
-                # Additional JSON cleaning before parsing
-                json_text = json_text.replace('\n', ' ').replace('\r', ' ')
-                # Fix common JSON issues like trailing commas and unescaped quotes
-                import re
-                json_text = re.sub(r',\s*}', '}', json_text)  # Remove trailing commas
-                json_text = re.sub(r',\s*]', ']', json_text)  # Remove trailing commas in arrays
-                
-                try:
-                    insights_json = json.loads(json_text)
-                    logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
-                    logger.info(f"Analysis includes {len(insights_json)} main sections with deep psychological insights")
-                    return insights_json
-                except json.JSONDecodeError as json_error:
-                    logger.error(f"Failed to parse extracted JSON: {json_error}")
-                    logger.error(f"JSON text (first 1000 chars): {json_text[:1000]}")
-                    
-                    # Try to fix specific JSON issues
-                    try:
-                        # Handle unescaped quotes in strings more aggressively
-                        # Last resort: use regex to find and replace problematic quotes
-                        fixed_json = re.sub(r'(?<!")([^"\\])"(?![",\]}])', r'\1\\"', json_text)
-                        insights_json = json.loads(fixed_json)
-                        logger.info("Successfully parsed JSON after fixing quotes")
-                        return insights_json
-                    except Exception as repair_error:
-                        logger.warning(f"JSON repair attempts failed: {repair_error}, using fallback analysis")
-                        # Return fallback response
-                        return create_fallback_analysis()
-        
-        logger.error("Could not find complete JSON in response")
-        return create_fallback_analysis()
+            return {
+                "analysis_text": response_text,
+                "analysis_type": "unstructured",
+                "analysis_ready": True,
+                "generation_time": duration,
+                "word_count": len(response_text.split()),
+                # Keep basic structure for backward compatibility
+                "psychological_profile": {
+                    "raw_analysis": response_text
+                }
+            }
+        else:
+            logger.warning("Response too short or empty")
+            return create_fallback_analysis()
         
     except Exception as parse_error:
-        logger.error(f"Error parsing response: {parse_error}")
+        logger.error(f"Error parsing unstructured response: {parse_error}")
         return create_fallback_analysis()
 
 def create_fallback_analysis():
@@ -484,17 +429,22 @@ Guidelines:
         except Exception as api_error:
             # Check for rate limit errors
             if check_rate_limit_error(api_error):
-                logger.warning(f"Musical analysis hit Gemini rate limit: {str(api_error)}")
-                # Re-raise the error so it can be handled by the calling function
-                raise api_error
+                error_details = extract_rate_limit_details(str(api_error))
+                logger.warning(f"Musical analysis hit Gemini rate limit: {str(api_error)[:200]}...")
+                
+                # Create a structured error response instead of re-raising
+                rate_limit_error = Exception(f"429 You exceeded your current quota, please check your plan and billing details. Suggested wait time: {error_details['suggested_wait_time']}")
+                rate_limit_error.rate_limit_details = error_details
+                raise rate_limit_error
             else:
                 logger.error(f"Musical analysis API error: {str(api_error)}")
                 return None
             
     except Exception as e:
         logger.error(f"Error in AI music analysis: {e}")
-        # Re-raise rate limit errors, return None for other errors
+        # Re-raise rate limit errors with cleaner message, return None for other errors
         if check_rate_limit_error(e):
+            # Don't try to parse the raw error as JSON - just pass along the cleaned error
             raise e
         return None
 

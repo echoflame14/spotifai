@@ -1675,7 +1675,14 @@ async function generatePsychologicalAnalysis() {
             showNotification('Psychological analysis generated successfully!', 'success');
         } else {
             log('Failed to generate psychological analysis: ' + data.message, 'error');
-            showNotification(data.message || 'Failed to generate psychological analysis', 'error');
+            
+            // Handle rate limit errors specifically  
+            if (data.rate_limit_error) {
+                const waitTime = data.suggested_wait_time || 'a few minutes';
+                showNotification(`You've reached your Gemini API rate limit. Please wait ${waitTime} before generating another analysis.`, 'error');
+            } else {
+                showNotification(data.message || 'Failed to generate psychological analysis', 'error');
+            }
         }
     } catch (error) {
         log('Error generating psychological analysis: ' + error.message, 'error');
@@ -1724,7 +1731,14 @@ async function generateMusicalAnalysis() {
             
             // Handle rate limit specifically
             if (response.status === 429) {
-                showNotification('You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.', 'error');
+                // Try to parse the response to get the specific wait time
+                try {
+                    const errorData = await response.json();
+                    const waitTime = errorData.suggested_wait_time || 'a few minutes';
+                    showNotification(`You've reached your Gemini API rate limit. Please wait ${waitTime} before generating another analysis.`, 'error');
+                } catch {
+                    showNotification('You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.', 'error');
+                }
                 return;
             }
             
@@ -1757,7 +1771,8 @@ async function generateMusicalAnalysis() {
             
             // Handle rate limit errors specifically
             if (data.rate_limit_error) {
-                showNotification('You\'ve reached your Gemini API rate limit. Please wait a few minutes before generating another analysis.', 'error');
+                const waitTime = data.suggested_wait_time || 'a few minutes';
+                showNotification(`You've reached your Gemini API rate limit. Please wait ${waitTime} before generating another analysis.`, 'error');
             } else {
                 showNotification(data.message || 'Failed to generate musical analysis', 'error');
             }
@@ -1820,27 +1835,43 @@ function displayPsychologicalAnalysis(analysis) {
     if (loadingEl) loadingEl.style.display = 'none';
     if (contentEl) contentEl.style.display = 'block';
     
-    // Populate the analysis sections
-    if (analysis.psychological_profile) {
-        const profile = analysis.psychological_profile;
-        
-        updateElementText('corePersonality', profile.core_personality);
-        updateElementText('emotionalPatterns', profile.emotional_patterns);
-        updateElementText('cognitiveStyle', profile.cognitive_style);
-        updateElementText('socialTendencies', profile.social_tendencies);
-        
-        // Update key findings list
-        if (analysis.summary_insights && analysis.summary_insights.key_findings) {
-            const keyFindingsEl = document.getElementById('keyFindings');
-            if (keyFindingsEl) {
-                keyFindingsEl.innerHTML = '';
+    // Display the unstructured analysis text
+    const analysisTextEl = document.getElementById('psychAnalysisText');
+    if (analysisTextEl) {
+        // Check if we have the new unstructured format
+        if (analysis.analysis_text) {
+            analysisTextEl.textContent = analysis.analysis_text;
+        } else if (analysis.psychological_profile && analysis.psychological_profile.raw_analysis) {
+            // Fallback for the raw_analysis field
+            analysisTextEl.textContent = analysis.psychological_profile.raw_analysis;
+        } else if (analysis.psychological_profile) {
+            // Legacy fallback - construct text from old structure if needed
+            const profile = analysis.psychological_profile;
+            let legacyText = '';
+            
+            if (profile.core_personality) {
+                legacyText += `🧠 Core Personality\n${profile.core_personality}\n\n`;
+            }
+            if (profile.emotional_patterns) {
+                legacyText += `💭 Emotional Patterns\n${profile.emotional_patterns}\n\n`;
+            }
+            if (profile.cognitive_style) {
+                legacyText += `🎯 Cognitive Style\n${profile.cognitive_style}\n\n`;
+            }
+            if (profile.social_tendencies) {
+                legacyText += `👥 Social Tendencies\n${profile.social_tendencies}\n\n`;
+            }
+            
+            if (analysis.summary_insights && analysis.summary_insights.key_findings) {
+                legacyText += `🔍 Key Insights\n`;
                 analysis.summary_insights.key_findings.forEach(finding => {
-                    const li = document.createElement('li');
-                    li.textContent = finding;
-                    li.className = 'text-light mb-2';
-                    keyFindingsEl.appendChild(li);
+                    legacyText += `• ${finding}\n`;
                 });
             }
+            
+            analysisTextEl.textContent = legacyText || 'Analysis data could not be displayed.';
+        } else {
+            analysisTextEl.textContent = 'Analysis data could not be displayed.';
         }
     }
     
