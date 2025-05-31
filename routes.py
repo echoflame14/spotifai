@@ -2420,27 +2420,23 @@ def api_loading_phrases():
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create prompt for loading phrases
-        prompt = f"""Generate 2 witty, funny, and clever loading phrases for a music recommendation AI.
+        prompt = f"""Generate 1 exceptionally witty, funny, and clever loading phrase for a music recommendation AI.
 The user is a {user_context if user_context else "music enthusiast"}.
 
 Requirements:
-- Each phrase should be 6-12 words for the title, 8-15 words for subtitle  
-- Make them humorous, witty, and music-focused
-- Use clever wordplay, puns, or funny analogies
+- Create 1 outstanding phrase with title (6-12 words) and subtitle (8-15 words)
+- Make it genuinely funny, witty, and music-focused with clever wordplay
 - Should feel like the AI has personality and humor
-- Keep them encouraging but with a comedic twist
-- Progressive feeling (first phase → second phase)
+- Use puns, funny analogies, or creative metaphors
+- Keep it encouraging but with a comedic twist
+- Make it so good that it works perfectly as a single static message
 
 Return ONLY a JSON object with this exact structure:
 {{
     "phrases": [
         {{
-            "title": "First funny phase title",
-            "subtitle": "First funny phase description"
-        }},
-        {{
-            "title": "Second funny phase title", 
-            "subtitle": "Second funny phase description"
+            "title": "One amazing funny title",
+            "subtitle": "One hilarious and engaging subtitle"
         }}
     ]
 }}"""
@@ -2467,7 +2463,7 @@ Return ONLY a JSON object with this exact structure:
             phrases_data = json.loads(response_text)
             
             # Validate structure
-            if 'phrases' not in phrases_data or len(phrases_data['phrases']) != 2:
+            if 'phrases' not in phrases_data or len(phrases_data['phrases']) != 1:
                 raise ValueError("Invalid phrases structure")
             
             for phrase in phrases_data['phrases']:
@@ -2487,10 +2483,6 @@ Return ONLY a JSON object with this exact structure:
                 {
                     "title": "Summoning Your Musical Soulmate",
                     "subtitle": "Our AI is speed-dating with millions of songs on your behalf"
-                },
-                {
-                    "title": "Decoding Your Sonic DNA",
-                    "subtitle": "Like 23andMe, but for your questionable music choices"
                 }
             ]
             
@@ -2507,12 +2499,8 @@ Return ONLY a JSON object with this exact structure:
         # Return fallback phrases on error
         fallback_phrases = [
             {
-                "title": "AI Brain Freeze Detected",
-                "subtitle": "Our robots are having a creative disagreement about your music"
-            },
-            {
-                "title": "Loading Musical Magic", 
-                "subtitle": "Please hold while we consult the ancient Spotify scrolls"
+                "title": "AI Having a Musical Moment",
+                "subtitle": "Even robots need time to find their groove"
             }
         ]
         

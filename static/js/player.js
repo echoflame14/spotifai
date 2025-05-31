@@ -642,35 +642,27 @@ function showMainSpinner() {
         
         // Try to get dynamic loading phrases from Gemini immediately
         generateDynamicLoadingPhrases().then(phrases => {
-            if (phrases && phrases.length === 2) {
-                log('Using dynamic AI-generated loading phrases');
+            if (phrases && phrases.length === 1) {
+                log('Using dynamic AI-generated loading phrase');
                 setupLoadingPhrases(overlay, phrases);
             } else {
-                log('Using funny fallback phrases');
-                // Use fallback phrases if API fails
+                log('Using funny fallback phrase');
+                // Use fallback phrase if API fails
                 const fallbackPhrases = [
                     {
                         title: "Teaching AI Your Vibe",
                         subtitle: "Like a musical psychic, but with better algorithms<span class='main-spinner-dots'></span>"
-                    },
-                    {
-                        title: "Unleashing the Beat Oracle",
-                        subtitle: "Your new favorite song is hiding... we're playing musical hide-and-seek<span class='main-spinner-dots'></span>"
                     }
                 ];
                 setupLoadingPhrases(overlay, fallbackPhrases);
             }
         }).catch(error => {
             log('Failed to get dynamic loading phrases, using fallback:', error);
-            // Use fallback phrases
+            // Use fallback phrase
             const fallbackPhrases = [
                 {
                     title: "Teaching AI Your Vibe",
                     subtitle: "Like a musical psychic, but with better algorithms<span class='main-spinner-dots'></span>"
-                },
-                {
-                    title: "Unleashing the Beat Oracle",
-                    subtitle: "Your new favorite song is hiding... we're playing musical hide-and-seek<span class='main-spinner-dots'></span>"
                 }
             ];
             setupLoadingPhrases(overlay, fallbackPhrases);
@@ -730,9 +722,7 @@ async function generateDynamicLoadingPhrases() {
 
 // Function to setup and cycle through loading phrases
 function setupLoadingPhrases(overlay, phrases) {
-    let currentMessage = 0;
-    
-    // Set initial message
+    // Just pick the first phrase and use it for the entire duration
     const titleElement = overlay.querySelector('.main-spinner-title');
     const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
     
@@ -741,26 +731,8 @@ function setupLoadingPhrases(overlay, phrases) {
         subtitleElement.innerHTML = phrases[0].subtitle;
     }
     
-    // Update message every 5 seconds
-    const messageInterval = setInterval(() => {
-        currentMessage = (currentMessage + 1) % phrases.length;
-        
-        if (titleElement && subtitleElement && phrases[currentMessage]) {
-            // Add smooth transition effect
-            titleElement.style.opacity = '0.5';
-            subtitleElement.style.opacity = '0.5';
-            
-            setTimeout(() => {
-                titleElement.textContent = phrases[currentMessage].title;
-                subtitleElement.innerHTML = phrases[currentMessage].subtitle;
-                titleElement.style.opacity = '1';
-                subtitleElement.style.opacity = '1';
-            }, 150);
-        }
-    }, 5000); // 5 second intervals
-    
-    // Store interval ID to clear it later
-    overlay.dataset.messageInterval = messageInterval;
+    // No more cycling - just keep the same phrase throughout
+    log('Using static loading phrase:', phrases[0]?.title);
 }
 
 // Function to hide the main spinner overlay
@@ -768,13 +740,6 @@ function hideMainSpinner() {
     const overlay = document.getElementById('mainSpinnerOverlay');
     if (overlay) {
         overlay.classList.remove('show');
-        
-        // Clear message interval
-        const intervalId = overlay.dataset.messageInterval;
-        if (intervalId) {
-            clearInterval(parseInt(intervalId));
-            delete overlay.dataset.messageInterval;
-        }
         
         // Reset to original message
         const titleElement = overlay.querySelector('.main-spinner-title');
