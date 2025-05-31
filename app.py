@@ -60,8 +60,9 @@ import models  # noqa: F401
 with app.app_context():
     db.create_all()
 
-# Import routes after everything is set up
-import routes  # noqa: F401
+# Import and register modular routes
+from routes import register_routes
+register_routes(app)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

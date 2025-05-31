@@ -131,6 +131,68 @@ class Recommendation(db.Model):
         ).count()
 
 
+class UserAnalysis(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(50), db.ForeignKey('user.id'), nullable=False)
+    analysis_type = db.Column(db.String(50), nullable=False)  # 'psychological', 'musical'
+    analysis_data = db.Column(db.Text, nullable=False)  # JSON data of the analysis
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship back to user
+    user = db.relationship('User', backref='analyses')
+    
+    def __repr__(self):
+        return f'<UserAnalysis {self.user_id}: {self.analysis_type}>'
+    
+    @staticmethod
+    def get_latest_analysis(user_id, analysis_type, max_age_hours=24):
+        """Get the latest analysis of a specific type for a user if it's recent enough"""
+        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        
+        return UserAnalysis.query.filter(
+            UserAnalysis.user_id == user_id,
+            UserAnalysis.analysis_type == analysis_type,
+            UserAnalysis.updated_at >= cutoff_time
+        ).order_by(UserAnalysis.updated_at.desc()).first()
+    
+    @staticmethod
+    def save_analysis(user_id, analysis_type, analysis_data):
+        """Save or update an analysis for a user"""
+        import json
+        
+        # Check if analysis already exists
+        existing = UserAnalysis.query.filter(
+            UserAnalysis.user_id == user_id,
+            UserAnalysis.analysis_type == analysis_type
+        ).first()
+        
+        if existing:
+            # Update existing analysis
+            existing.analysis_data = json.dumps(analysis_data) if isinstance(analysis_data, dict) else analysis_data
+            existing.updated_at = datetime.utcnow()
+            analysis = existing
+        else:
+            # Create new analysis
+            analysis = UserAnalysis(
+                user_id=user_id,
+                analysis_type=analysis_type,
+                analysis_data=json.dumps(analysis_data) if isinstance(analysis_data, dict) else analysis_data
+            )
+            db.session.add(analysis)
+        
+        db.session.commit()
+        return analysis
+    
+    def get_data(self):
+        """Get the analysis data as a Python object"""
+        import json
+        try:
+            return json.loads(self.analysis_data)
+        except:
+            return self.analysis_data
+
+
 class UserFeedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String(50), db.ForeignKey('user.id'), nullable=False)
