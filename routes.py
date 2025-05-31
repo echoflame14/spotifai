@@ -258,8 +258,8 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
     
     # Check if we already have cached insights for this session
     if 'music_taste_profile' in session and 'profile_timestamp' in session:
-        # Cache for 20 minutes per session to avoid redundant AI calls
-        if time.time() - session['profile_timestamp'] < 1200:
+        # Cache for 30 minutes per session to avoid redundant AI calls
+        if time.time() - session['profile_timestamp'] < 1800:
             app.logger.info("Using cached music taste profile")
             return session['music_taste_profile']
     
@@ -270,20 +270,20 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
             return generate_basic_insights(spotify_client)
         
         # Get COMPREHENSIVE music data for ultra-detailed analysis
-        app.logger.info("Collecting comprehensive music data for ultra-detailed profile...")
+        app.logger.info("Collecting comprehensive music data for ultra-detailed psychological profile...")
         
         # Get extensive listening history
         recent_tracks = spotify_client.get_recently_played(limit=50) or {'items': []}
         
         # Get detailed artist data across all time ranges
-        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=20) or {'items': []}
-        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=20) or {'items': []}
-        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=20) or {'items': []}
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=30) or {'items': []}
+        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=30) or {'items': []}
+        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=30) or {'items': []}
         
         # Get detailed track data across all time ranges
-        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=20) or {'items': []}
-        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=20) or {'items': []}
-        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=20) or {'items': []}
+        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=30) or {'items': []}
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=30) or {'items': []}
+        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=30) or {'items': []}
         
         # Get current listening context
         current_track = spotify_client.get_current_track()
@@ -303,11 +303,11 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
         
         # Sort genres by frequency
         sorted_genres = sorted(genre_frequency.items(), key=lambda x: x[1], reverse=True)
-        top_genres = [genre for genre, count in sorted_genres[:25]]
+        top_genres = [genre for genre, count in sorted_genres[:50]]
         
         # Analyze artist popularity patterns
         artist_popularity_data = []
-        for artist in all_artists[:30]:
+        for artist in all_artists[:50]:
             artist_popularity_data.append({
                 'name': artist['name'],
                 'popularity': artist.get('popularity', 0),
@@ -323,7 +323,7 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
             top_tracks_long.get('items', [])
         )
         
-        for track in all_tracks[:30]:
+        for track in all_tracks[:50]:
             track_analysis.append({
                 'name': track['name'],
                 'artist': track['artists'][0]['name'],
@@ -382,7 +382,7 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
                         'popularity': artist.get('popularity', 0),
                         'followers': artist.get('followers', {}).get('total', 0)
                     }
-                    for artist in top_artists_short.get('items', [])[:15]
+                    for artist in top_artists_short.get('items', [])[:20]
                 ],
                 'medium_term_favorites': [
                     {
@@ -391,7 +391,7 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
                         'popularity': artist.get('popularity', 0),
                         'followers': artist.get('followers', {}).get('total', 0)
                     }
-                    for artist in top_artists_medium.get('items', [])[:15]
+                    for artist in top_artists_medium.get('items', [])[:20]
                 ],
                 'long_term_favorites': [
                     {
@@ -400,15 +400,15 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
                         'popularity': artist.get('popularity', 0),
                         'followers': artist.get('followers', {}).get('total', 0)
                     }
-                    for artist in top_artists_long.get('items', [])[:15]
+                    for artist in top_artists_long.get('items', [])[:20]
                 ],
                 'total_unique_artists': len(set([artist['name'] for artist in all_artists])),
                 'artist_loyalty_patterns': artist_popularity_data
             },
             'track_preferences': {
-                'short_term_tracks': track_analysis[:10],
-                'medium_term_tracks': track_analysis[10:20],
-                'long_term_tracks': track_analysis[20:30],
+                'short_term_tracks': track_analysis[:15],
+                'medium_term_tracks': track_analysis[15:30],
+                'long_term_tracks': track_analysis[30:45],
                 'track_characteristics': {
                     'average_popularity': sum([t.get('popularity', 0) for t in all_tracks]) / len(all_tracks) if all_tracks else 0,
                     'explicit_content_ratio': sum([1 for t in all_tracks if t.get('explicit')]) / len(all_tracks) if all_tracks else 0,
@@ -416,23 +416,24 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
                 }
             },
             'genre_analysis': {
-                'primary_genres': top_genres[:10],
-                'secondary_genres': top_genres[10:20],
+                'primary_genres': top_genres[:15],
+                'secondary_genres': top_genres[15:30],
+                'niche_genres': top_genres[30:45],
                 'genre_diversity_score': len(top_genres),
-                'genre_frequency_distribution': dict(sorted_genres[:20]),
+                'genre_frequency_distribution': dict(sorted_genres[:30]),
                 'genre_evolution': {
-                    'short_term_genres': list(set([genre for artist in top_artists_short.get('items', []) for genre in artist.get('genres', [])]))[:10],
-                    'medium_term_genres': list(set([genre for artist in top_artists_medium.get('items', []) for genre in artist.get('genres', [])]))[:10],
-                    'long_term_genres': list(set([genre for artist in top_artists_long.get('items', []) for genre in artist.get('genres', [])]))[:10]
+                    'short_term_genres': list(set([genre for artist in top_artists_short.get('items', []) for genre in artist.get('genres', [])]))[:15],
+                    'medium_term_genres': list(set([genre for artist in top_artists_medium.get('items', []) for genre in artist.get('genres', [])]))[:15],
+                    'long_term_genres': list(set([genre for artist in top_artists_long.get('items', []) for genre in artist.get('genres', [])]))[:15]
                 }
             },
             'listening_behavior_analysis': recent_listening_analysis,
             'musical_evolution_patterns': {
-                'consistency_score': len(set([artist['name'] for artist in top_artists_long.get('items', [])[:10]]).intersection(
-                    set([artist['name'] for artist in top_artists_short.get('items', [])[:10]])
+                'consistency_score': len(set([artist['name'] for artist in top_artists_long.get('items', [])[:15]]).intersection(
+                    set([artist['name'] for artist in top_artists_short.get('items', [])[:15]])
                 )),
-                'discovery_tendency': len([artist for artist in top_artists_short.get('items', [])[:20] 
-                                         if artist['name'] not in [a['name'] for a in top_artists_long.get('items', [])[:20]]]),
+                'discovery_tendency': len([artist for artist in top_artists_short.get('items', [])[:25] 
+                                         if artist['name'] not in [a['name'] for a in top_artists_long.get('items', [])[:25]]]),
                 'mainstream_vs_niche_preference': {
                     'mainstream_tracks': len([t for t in all_tracks if t.get('popularity', 0) > 70]),
                     'niche_tracks': len([t for t in all_tracks if t.get('popularity', 0) < 30]),
@@ -441,14 +442,14 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
             }
         }
         
-        # Generate ultra-detailed AI insights
-        ai_insights = generate_ultra_detailed_music_analysis(comprehensive_music_data, gemini_api_key)
+        # Generate ultra-detailed AI insights using the most advanced model
+        ai_insights = generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gemini_api_key)
         
         if ai_insights:
-            # Cache the result in session for 20 minutes
+            # Cache the result in session for 30 minutes
             session['music_taste_profile'] = ai_insights
             session['profile_timestamp'] = time.time()
-            app.logger.info("Cached new ultra-detailed music taste profile")
+            app.logger.info("Cached new ultra-detailed psychological music profile")
             return ai_insights
         else:
             # Fallback to basic insights if AI fails
@@ -458,71 +459,177 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
         app.logger.error(f"Error generating comprehensive music insights: {e}")
         return generate_basic_insights(spotify_client)
 
-def generate_ultra_detailed_music_analysis(comprehensive_music_data, gemini_api_key):
-    """Use Gemini AI to generate comprehensive music taste insights with memory optimization"""
+def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gemini_api_key):
+    """Use Gemini 2.5 Flash Preview 5/20 to generate extremely comprehensive psychological and musical insights"""
     try:
         import google.generativeai as genai
         
+        # Clear any previous configuration and set new API key
+        try:
+            genai.configure(api_key="")  # Clear with empty key first
+        except:
+            pass  # Ignore errors when clearing
+        
         genai.configure(api_key=gemini_api_key)
+        # Use the most advanced model available
         model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
-        # Extract key data points to reduce prompt size
-        key_artists = comprehensive_music_data.get('top_artists', {}).get('examples', [])[:5]
-        key_genres = comprehensive_music_data.get('genres', {}).get('examples', [])[:5]
-        recent_tracks = comprehensive_music_data.get('recent_tracks', {}).get('examples', [])[:5]
-        
-        # Create optimized prompt for detailed analysis
+        # Create an extremely detailed prompt for comprehensive analysis
         prompt = f"""
-Analyze this Spotify listening data to create a comprehensive music taste profile:
+You are an expert music psychologist and data analyst. Analyze this comprehensive Spotify listening data to create the most detailed psychological and musical profile possible. Be specific, insightful, and thorough.
 
-KEY DATA:
-- Top Artists: {key_artists}
-- Main Genres: {key_genres}  
-- Recent Tracks: {recent_tracks}
-- Artist Count: {comprehensive_music_data.get('top_artists', {}).get('count', 0)}
-- Genre Count: {comprehensive_music_data.get('genres', {}).get('count', 0)}
+COMPREHENSIVE LISTENING DATA:
+{json.dumps(comprehensive_music_data, indent=2)}
 
-Create a detailed analysis covering:
-1. **Musical Identity**: Core taste, genre preferences, artist patterns
-2. **Listening Behavior**: Patterns, discovery tendencies, engagement style
-3. **Psychological Profile**: What music choices reveal about personality
-4. **Cultural Context**: Mainstream vs alternative positioning
+ANALYSIS REQUIREMENTS:
+Create an extremely detailed analysis covering ALL of these sections. Be specific with examples and provide deep insights.
 
-Respond with a JSON object:
+1. **CORE PSYCHOLOGICAL PROFILE**
+   - Personality traits revealed through music choices
+   - Emotional patterns and coping mechanisms
+   - Cognitive preferences and thinking styles
+   - Risk tolerance and openness to new experiences
+   - Social vs. solitary listening patterns
+   - Life phase indicators (based on genre evolution)
+
+2. **MUSICAL IDENTITY ANALYSIS**
+   - Musical sophistication level and complexity preferences
+   - Genre loyalty vs. exploration patterns
+   - Artist discovery behavior and risk-taking
+   - Mainstream vs. underground positioning
+   - Cultural identity markers in music choices
+   - Generational musical influences
+
+3. **LISTENING BEHAVIOR PSYCHOLOGY**
+   - Mood regulation patterns through music
+   - Energy level management preferences
+   - Concentration and focus music patterns
+   - Social context preferences (party vs. personal)
+   - Temporal listening habits and routines
+   - Replay behavior and emotional attachment patterns
+
+4. **GENRE EVOLUTION & GROWTH PATTERNS**
+   - Musical journey and evolution over time
+   - Comfort zone vs. exploration balance
+   - Seasonal or cyclical preferences
+   - Life event impact on musical taste
+   - Prediction of future musical directions
+
+5. **ARTIST RELATIONSHIP PATTERNS**
+   - Loyalty vs. novelty-seeking balance
+   - Fan behavior and dedication levels
+   - Discovery pathway preferences
+   - Artist popularity comfort zones
+   - International vs. domestic preferences
+
+6. **DEEP MUSICAL INSIGHTS**
+   - Lyrical vs. instrumental preferences
+   - Production style preferences
+   - Era and vintage preferences
+   - Technical complexity appreciation
+   - Collaborative vs. solo artist preferences
+
+7. **EMOTIONAL INTELLIGENCE MARKERS**
+   - Emotional range in musical choices
+   - Maturity indicators in taste evolution
+   - Stress response musical patterns
+   - Celebration and joy expression through music
+   - Introspection and contemplation preferences
+
+8. **PREDICTIVE BEHAVIORAL INSIGHTS**
+   - Likely music discovery methods
+   - Recommended genres for exploration
+   - Optimal recommendation timing
+   - Social sharing likelihood
+   - Concert attendance probability
+
+Respond with a detailed JSON object:
 {{
-    "musical_identity": "[3-4 sentences about core taste and preferences]",
-    "listening_behavior": "[2-3 sentences about patterns and engagement]", 
-    "psychological_profile": "[2-3 sentences about personality insights]",
-    "cultural_context": "[2 sentences about cultural positioning]",
+    "psychological_profile": {{
+        "core_personality": "[Detailed analysis of personality traits with specific examples from their data]",
+        "emotional_patterns": "[Deep dive into emotional regulation and expression through music]",
+        "cognitive_style": "[Analysis of thinking patterns revealed through musical choices]",
+        "social_tendencies": "[Social vs. private listening patterns and implications]",
+        "life_phase_indicators": "[What their music reveals about their current life stage]"
+    }},
+    "musical_identity": {{
+        "sophistication_level": "[Assessment of musical knowledge and complexity appreciation]",
+        "exploration_style": "[How they discover and adopt new music]",
+        "cultural_positioning": "[Their place in musical culture and communities]",
+        "authenticity_markers": "[What reveals their genuine vs. social music preferences]",
+        "identity_evolution": "[How their musical identity has changed over time]"
+    }},
+    "listening_psychology": {{
+        "mood_regulation": "[How they use music for emotional management]",
+        "energy_management": "[Music choices for different energy states]",
+        "focus_patterns": "[Music for concentration, work, relaxation]",
+        "ritual_behaviors": "[Repeated listening patterns and their meanings]",
+        "attachment_style": "[How they form emotional connections to music]"
+    }},
+    "growth_trajectory": {{
+        "evolution_pattern": "[Their musical journey and development over time]",
+        "future_predictions": "[Likely future musical directions based on patterns]",
+        "exploration_readiness": "[How open they are to new musical experiences]",
+        "influence_susceptibility": "[How external factors affect their musical choices]"
+    }},
+    "behavioral_insights": {{
+        "recommendation_optimal_timing": "[Best times and contexts for music recommendations]",
+        "discovery_preferences": "[How they prefer to find new music]",
+        "social_sharing_likelihood": "[Probability and style of sharing music with others]",
+        "purchase_behavior": "[Likelihood of buying music, merch, or concert tickets]",
+        "playlist_creation_style": "[How they organize and curate their music]"
+    }},
+    "summary_insights": {{
+        "key_findings": ["[5-7 most important insights about this user]"],
+        "unique_traits": ["[3-5 things that make this user's taste unique]"],
+        "recommendation_strategy": "[Optimal approach for recommending music to this user]",
+        "psychological_type": "[Overall psychological archetype this user represents]"
+    }},
+    "analysis_confidence": {{
+        "data_richness": "[Assessment of how much data was available for analysis]",
+        "insight_confidence": "[Confidence level in the psychological insights]",
+        "prediction_reliability": "[How reliable the behavioral predictions are]"
+    }},
     "analysis_ready": true
 }}
 
-Keep total response under 300 words. Be specific but concise.
+CRITICAL INSTRUCTIONS:
+- Be extremely specific and use actual data points from their listening history
+- Mention specific artists, genres, and patterns you observe
+- Connect musical choices to psychological theories and behavioral science
+- Provide actionable insights for music recommendations
+- Be honest about data limitations and confidence levels
+- Keep each section substantive (3-5 sentences minimum per field)
+- Use psychological and musicological terminology appropriately
+- Ground insights in the actual data provided, not generalizations
 """
+
+        app.logger.info("Generating ultra-detailed psychological music analysis with Gemini 2.5 Flash Preview...")
+        start_time = time.time()
         
-        app.logger.info("Generating optimized AI music taste analysis...")
         response = model.generate_content(prompt)
+        duration = time.time() - start_time
         
         if response and response.text:
             # Parse the JSON response
             import re
-            import json
             
             # Extract JSON from the response
             json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
             if json_match:
                 insights_json = json.loads(json_match.group())
-                app.logger.info("Optimized AI music analysis generated successfully")
+                app.logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
+                app.logger.info(f"Analysis includes {len(insights_json)} main sections with deep psychological insights")
                 return insights_json
             else:
-                app.logger.warning("Could not extract JSON from AI response")
+                app.logger.warning("Could not extract JSON from ultra-detailed analysis response")
                 return None
         else:
-            app.logger.warning("Empty response from AI music analysis")
+            app.logger.warning("Empty response from ultra-detailed psychological analysis")
             return None
             
     except Exception as e:
-        app.logger.error(f"Error in AI music analysis: {e}")
+        app.logger.error(f"Error in ultra-detailed psychological analysis: {e}")
         return None
 
 def generate_basic_insights(spotify_client):
@@ -591,36 +698,56 @@ def generate_ai_music_analysis(music_data, gemini_api_key):
     try:
         import google.generativeai as genai
         
+        # Clear any previous configuration and set new API key
+        try:
+            genai.configure(api_key="")  # Clear with empty key first
+        except:
+            pass  # Ignore errors when clearing
+        
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
-        # Create insightful, data-driven prompt for music analysis
+        # Create comprehensive prompt for musical analysis that matches frontend expectations
         prompt = f"""
-Analyze this user's Spotify listening data and provide thoughtful insights about their musical preferences and patterns. Be conversational and informative while remaining positive.
+Analyze this user's comprehensive Spotify listening data and provide detailed musical expertise insights.
 
 MUSIC DATA:
 {json.dumps(music_data, indent=2)}
 
 Respond ONLY with a JSON object in this exact format:
 {{
-    "user_taste_profile": "[2-3 sentences describing their overall music preferences with specific data points. Include genre patterns, favorite artists, or listening habits. Focus on what makes their taste unique and interesting]",
-    "recent_mood_analysis": "[1-2 sentences examining their recent listening patterns. Mention specific trends, energy levels, or genre shifts. Connect these patterns to their current musical journey with positive insights]",
+    "genre_mastery": {{
+        "primary_expertise": "[Detailed analysis of their main genre expertise and sophistication level. Include specific genres they've mastered and their depth of knowledge]"
+    }},
+    "artist_dynamics": {{
+        "loyalty_patterns": "[Analysis of how they relate to artists - are they loyal fans or explorers? Do they follow artists' entire discographies or cherry-pick hits?]"
+    }},
+    "musical_sophistication": {{
+        "technical_appreciation": "[Assessment of their ability to appreciate musical complexity, production quality, instrumentation, etc. Are they casual listeners or do they notice technical details?]"
+    }},
+    "listening_contexts": {{
+        "primary_contexts": "[Analysis of when and how they listen to music - for focus, energy, mood regulation, social settings, etc.]"
+    }},
+    "insights_summary": {{
+        "unique_taste_markers": [
+            "[First unique aspect of their musical taste]",
+            "[Second unique aspect of their musical taste]",
+            "[Third unique aspect of their musical taste]",
+            "[Fourth unique aspect of their musical taste]",
+            "[Fifth unique aspect of their musical taste]"
+        ]
+    }},
     "analysis_ready": true
 }}
 
 Guidelines:
-- Include specific numbers and data points (e.g., "Your 15 top artists span 8 different genres")
-- Mention actual song titles, artists, or genres from their data
-- Make thoughtful connections between musical choices and personality traits
-- Observe patterns in their listening evolution over time
-- Be insightful about contradictions or interesting combinations in their taste
-- Comment on emotional themes or energy levels in their recent tracks
-- Keep the tone engaging and perceptive, not clinical or overly sarcastic
-
-Example tone:
-"With artists ranging from System of a Down to Jim Croce in your top rotation, you're clearly someone who values emotional authenticity over genre boundaries"
-"Your recent shift from high-energy metal to introspective tracks suggests you're processing some significant changes in your life"
-"The fact that you have both classical pieces and nu-metal in heavy rotation indicates a complex relationship with intensity and calm"
+- Be specific and use actual data from their listening history
+- Mention specific artists, genres, and patterns you observe
+- Each section should be 2-3 detailed sentences
+- Focus on musical expertise and sophistication rather than personality
+- Use technical music terms appropriately
+- Be insightful about their musical journey and evolution
+- The unique_taste_markers should be specific, actionable insights
 """
         
         app.logger.info("Generating AI music taste analysis...")
@@ -649,7 +776,7 @@ Example tone:
 
 @app.route('/dashboard')
 def dashboard():
-    """Main dashboard showing user's music"""
+    """Main dashboard showing user's music with comprehensive AI analysis"""
     if 'user_id' not in session:
         return redirect(url_for('index'))
     
@@ -674,14 +801,20 @@ def dashboard():
     # Get playback state
     playback_state = spotify_client.get_playback_state()
     
-    # Generate basic music insights without API key (AI analysis happens client-side)
+    # Check if we have cached analyses
+    psychological_analysis = session.get('psychological_analysis')
+    musical_analysis = session.get('musical_analysis')
+    
+    # Generate comprehensive music insights without API key for now (will be generated client-side with user's key)
     music_insights = generate_music_taste_insights(spotify_client)
     
     return render_template('dashboard.html', 
                          user=user, 
                          current_track=current_track,
                          playback_state=playback_state,
-                         music_insights=music_insights)
+                         music_insights=music_insights,
+                         psychological_analysis=psychological_analysis,
+                         musical_analysis=musical_analysis)
 
 @app.route('/play', methods=['GET', 'POST'])
 def play():
@@ -813,6 +946,12 @@ def chat_feedback():
             return jsonify({'success': False, 'message': 'AI analysis not available - API key required'}), 400
         
         # Configure Gemini for feedback analysis - USE FASTER MODEL
+        # Clear any previous configuration and set new API key
+        try:
+            genai.configure(api_key="")  # Clear with empty key first
+        except:
+            pass  # Ignore errors when clearing
+        
         genai.configure(api_key=custom_gemini_key)
         model = genai.GenerativeModel('gemini-1.5-flash')  # Much faster than 2.5-flash-preview
         
@@ -859,6 +998,19 @@ Return JSON:
                 
         except Exception as e:
             app.logger.error(f"Fast feedback analysis failed: {e}")
+            # Check for rate limit errors in feedback analysis
+            error_str = str(e).lower()
+            if any(rate_limit_indicator in error_str for rate_limit_indicator in [
+                'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+            ]):
+                app.logger.warning(f"FEEDBACK: Gemini rate limit detected - {str(e)}")
+                return jsonify({
+                    'success': False, 
+                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before providing feedback to allow your quota to refresh.',
+                    'rate_limit_error': True,
+                    'suggested_wait_time': '2-3 minutes'
+                }), 429
+            
             # Fallback to simple keyword sentiment analysis
             feedback_lower = feedback_text.lower()
             if any(word in feedback_lower for word in ['love', 'great', 'awesome', 'like', 'good', 'perfect']):
@@ -904,6 +1056,19 @@ Return JSON:
         })
         
     except Exception as e:
+        # Check for rate limit errors in overall feedback processing
+        error_str = str(e).lower()
+        if any(rate_limit_indicator in error_str for rate_limit_indicator in [
+            'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+        ]):
+            app.logger.warning(f"FEEDBACK: Gemini rate limit detected in main handler - {str(e)}")
+            return jsonify({
+                'success': False, 
+                'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before providing feedback to allow your quota to refresh.',
+                'rate_limit_error': True,
+                'suggested_wait_time': '2-3 minutes'
+            }), 429
+        
         app.logger.error(f"Error processing chat feedback: {str(e)}")
         return jsonify({'success': False, 'message': 'Error processing feedback'}), 500
 
@@ -961,6 +1126,13 @@ def process_feedback_insights(feedbacks, gemini_api_key=None):
         
         # Get comprehensive feedback data in smaller chunks
         import google.generativeai as genai
+        
+        # Clear any previous configuration and set new API key
+        try:
+            genai.configure(api_key="")  # Clear with empty key first
+        except:
+            pass  # Ignore errors when clearing
+        
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
@@ -1188,28 +1360,87 @@ def get_feedback_insights():
 
 @app.route('/api/current-track')
 def api_current_track():
-    """API endpoint to get current track info without page reload"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    user = User.query.get(session['user_id'])
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    # Check if token needs refresh
-    if user.is_token_expired():
-        if not refresh_user_token(user):
-            return jsonify({'error': 'Token expired'}), 401
-    
-    spotify_client = SpotifyClient(user.access_token)
-    
-    current_track = spotify_client.get_current_track()
-    playback_state = spotify_client.get_playback_state()
-    
-    return jsonify({
-        'current_track': current_track,
-        'playback_state': playback_state
-    })
+    """API endpoint to get current track information"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        user = User.query.get(session['user_id'])
+        if not user or not user.access_token:
+            return jsonify({'error': 'User not found or no access token'}), 401
+        
+        spotify_client = SpotifyClient(user.access_token)
+        current_track = spotify_client.get_current_track()
+        
+        if current_track:
+            return jsonify({
+                'success': True,
+                'track': current_track
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No track currently playing'
+            })
+            
+    except Exception as e:
+        app.logger.error(f"Error getting current track: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/performance-toggle', methods=['POST'])
+def performance_toggle():
+    """API endpoint to get performance configuration for AI recommendations"""
+    try:
+        # Default configuration
+        config = {
+            'endpoint': '/ai-recommendation',
+            'mode': 'standard',
+            'lightning_enabled': False,
+            'cached_data': False,
+            'cached_profile': False
+        }
+        
+        # Check if lightning mode should be enabled based on various factors
+        # You can customize this logic based on your performance requirements
+        if 'user_id' in session:
+            user = User.query.get(session['user_id'])
+            if user:
+                # Enable lightning mode for certain conditions
+                # Example: users who have made recent recommendations, have cached data, etc.
+                recent_recommendations = Recommendation.query.filter_by(
+                    user_id=user.id
+                ).filter(
+                    Recommendation.created_at > datetime.utcnow() - timedelta(hours=1)
+                ).count()
+                
+                if recent_recommendations > 0:
+                    config['lightning_enabled'] = True
+                    config['mode'] = 'lightning'
+                    config['cached_data'] = True
+                    
+                # Check if user has recent profile data (you might have this in your database)
+                # For now, we'll assume profile might be cached if user has recent activity
+                if recent_recommendations > 2:
+                    config['cached_profile'] = True
+        
+        # You can add more sophisticated logic here based on:
+        # - Server load
+        # - Time of day
+        # - User preferences
+        # - Available API quotas
+        
+        return jsonify(config)
+        
+    except Exception as e:
+        app.logger.error(f"Error in performance toggle: {str(e)}")
+        # Return default safe configuration on error
+        return jsonify({
+            'endpoint': '/ai-recommendation',
+            'mode': 'standard',
+            'lightning_enabled': False,
+            'cached_data': False,
+            'cached_profile': False
+        })
 
 @app.route('/create-ai-playlist', methods=['POST'])
 def create_ai_playlist():
@@ -1241,6 +1472,13 @@ def create_ai_playlist():
         
         # Generate AI-powered track recommendations for the playlist
         import google.generativeai as genai
+        
+        # Clear any previous configuration and set new API key
+        try:
+            genai.configure(api_key="")  # Clear with empty key first
+        except:
+            pass  # Ignore errors when clearing
+        
         genai.configure(api_key=custom_gemini_key)
         model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
@@ -1477,6 +1715,19 @@ Do not include any other text, explanations, or formatting."""
         })
         
     except Exception as e:
+        # Check for rate limit errors in playlist creation
+        error_str = str(e).lower()
+        if any(rate_limit_indicator in error_str for rate_limit_indicator in [
+            'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+        ]):
+            app.logger.warning(f"PLAYLIST: Gemini rate limit detected - {str(e)}")
+            return jsonify({
+                'success': False, 
+                'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before creating another playlist to allow your quota to refresh.',
+                'rate_limit_error': True,
+                'suggested_wait_time': '2-3 minutes'
+            }), 429
+        
         app.logger.error(f"Playlist creation failed: {e}")
         return jsonify({
             'success': False,
@@ -1495,718 +1746,6 @@ def logout():
     session.pop('last_recommendation_time', None)
     flash('You have been logged out', 'info')
     return redirect(url_for('index'))
-
-def refresh_user_token(user):
-    """Refresh user's access token"""
-    if not user.refresh_token:
-        return False
-    
-    token_url = 'https://accounts.spotify.com/api/token'
-    
-    auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
-    auth_bytes = auth_string.encode('utf-8')
-    auth_b64 = base64.b64encode(auth_bytes).decode('utf-8')
-    
-    headers = {
-        'Authorization': f'Basic {auth_b64}',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    
-    data = {
-        'grant_type': 'refresh_token',
-        'refresh_token': user.refresh_token
-    }
-    
-    try:
-        response = requests.post(token_url, headers=headers, data=data)
-        response.raise_for_status()
-        token_data = response.json()
-        
-        user.access_token = token_data['access_token']
-        if 'refresh_token' in token_data:
-            user.refresh_token = token_data['refresh_token']
-        
-        expires_in = token_data.get('expires_in', 3600)
-        user.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
-        
-        db.session.commit()
-        return True
-        
-    except requests.RequestException as e:
-        app.logger.error(f"Token refresh failed: {e}")
-        return False
-
-@app.errorhandler(404)
-def not_found(error):
-    return render_template('error.html', 
-                         error_title='Page Not Found',
-                         error_message='The page you are looking for does not exist.'), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return render_template('error.html',
-                         error_title='Internal Server Error',
-                         error_message='Something went wrong. Please try again later.'), 500
-
-@app.route('/test-server', methods=['GET', 'POST'])
-def test_server():
-    """Simple test endpoint to verify server connectivity"""
-    app.logger.info("=== TEST SERVER ENDPOINT HIT ===")
-    app.logger.info(f"Method: {request.method}")
-    app.logger.info(f"Headers: {dict(request.headers)}")
-    if request.method == 'POST':
-        app.logger.info(f"Body: {request.get_data()}")
-    app.logger.info("=== END TEST ===")
-    return jsonify({'status': 'server is working', 'method': request.method})
-
-# Import Lightning mode functionality
-try:
-    from llm_optimization import data_optimizer, hyper_optimized_llm_manager, cache_manager
-    app.logger.info("Lightning mode (hyper fast) modules loaded successfully")
-    OPTIMIZATION_AVAILABLE = True
-except ImportError as e:
-    app.logger.warning(f"Lightning mode modules not available: {e}")
-    OPTIMIZATION_AVAILABLE = False
-
-@app.route('/api/performance-toggle', methods=['POST'])
-def toggle_performance_mode():
-    """Lightning mode is the only supported mode"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
-    if OPTIMIZATION_AVAILABLE:
-        return jsonify({
-            'success': True,
-            'mode': 'lightning',
-            'endpoint': '/ai-recommendation-lightning',
-            'message': 'Lightning mode (hyper fast) is active'
-        })
-    else:
-        return jsonify({
-            'success': True,
-            'mode': 'standard',
-            'endpoint': '/ai-recommendation',
-            'message': 'Using standard AI recommendation mode (Lightning mode optimization not available)'
-        })
-
-@app.route('/api/performance-stats', methods=['GET'])
-def get_performance_stats():
-    """Get performance statistics for Lightning mode"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
-    try:
-        user_id = session['user_id']
-        
-        # Check if optimization is available
-        if not OPTIMIZATION_AVAILABLE:
-            return jsonify({
-                'success': True,
-                'stats': {
-                    'cache_status': {'cached_entries': 0},
-                    'total_recommendations': 0,
-                    'current_mode': 'Lightning (hyper fast)',
-                    'note': 'Lightning mode optimization not available'
-                }
-            })
-        
-        # Get cache statistics
-        cache_stats = cache_manager.get_cache_stats()
-        
-        # Get total recommendations for this user
-        total_recommendations = Recommendation.query.filter_by(user_id=user_id).count()
-        
-        return jsonify({
-            'success': True,
-            'stats': {
-                'cache_status': cache_stats,
-                'total_recommendations': total_recommendations,
-                'current_mode': 'Lightning (hyper fast)',
-                'optimization_available': True
-            }
-        })
-    except Exception as e:
-        app.logger.error(f"Failed to get performance stats: {e}")
-        return jsonify({'success': False, 'message': 'Failed to get performance stats'}), 500
-
-def generate_conversational_reasoning(recommended_track, user_profile, music_data, gemini_api_key):
-    """Generate conversational AI reasoning using the most advanced model"""
-    try:
-        # Use the most advanced model available
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
-        
-        # Create a more varied and genuine conversational prompt
-        prompt = f"""
-You are recommending music to a friend. Write ONE short, enthusiastic sentence explaining why they'll love this song.
-
-THEIR MUSIC TASTE:
-{user_profile}
-
-RECENT LISTENING:
-- Recent tracks: {[f"{track['name']} by {track['artist']}" for track in music_data.get('recent_tracks', [])[:3]]}
-- Top genres: {music_data.get('top_genres', 'Various genres')}
-
-RECOMMENDED SONG:
-"{recommended_track['name']}" by {recommended_track['artists'][0]['name']}
-
-Write exactly ONE sentence (maximum 20 words) explaining why they'll love this song. Be specific and enthusiastic but VERY concise.
-
-Examples of good responses:
-- "Perfect heavy riffs and emotional vocals that match your Skillet obsession!"
-- "This has the electronic chaos and aggression you love in your metal tracks!"
-- "Combines the anthemic energy of your favorites with modern production!"
-
-Your response (ONE sentence, max 20 words):
-"""
-
-        response = model.generate_content(prompt)
-        
-        if response and response.text:
-            # Ensure it's really just one sentence
-            result = response.text.strip()
-            # Take only the first sentence if multiple were generated
-            if '.' in result:
-                result = result.split('.')[0] + '.'
-            # Limit to roughly 20 words
-            words = result.split()
-            if len(words) > 25:
-                result = ' '.join(words[:25]) + '...'
-            return result
-        else:
-            # Fallback if the advanced model fails
-            return f"Perfect match for your taste - combines everything you love!"
-            
-    except Exception as e:
-        app.logger.error(f"Advanced conversational reasoning failed: {str(e)}")
-        # Enhanced fallback that's still conversational
-        fallback_styles = [
-            f"Exactly the energy and style you've been loving lately!",
-            f"Perfect match for your taste - you'll be obsessed!",
-            f"Has that exact vibe you chase in your favorite tracks!",
-            f"Combines everything you love in one incredible song!"
-        ]
-        
-        import random
-        return random.choice(fallback_styles)
-
-@app.route('/api/generate-conversational-reasoning', methods=['POST'])
-def generate_conversational_reasoning_api():
-    """Generate conversational reasoning for a recommendation separately"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-
-    user = User.query.get(session['user_id'])
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
-
-    # Get request data
-    request_data = request.get_json() or {}
-    gemini_api_key = request_data.get('gemini_api_key')
-    recommendation_id = request_data.get('recommendation_id')
-    
-    if not gemini_api_key:
-        return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
-    
-    if not recommendation_id:
-        return jsonify({'success': False, 'message': 'Recommendation ID required'}), 400
-
-    # Configure genai
-    genai.configure(api_key=gemini_api_key)
-
-    try:
-        # Get the recommendation from the database
-        recommendation = Recommendation.query.get(recommendation_id)
-        if not recommendation or recommendation.user_id != user.id:
-            return jsonify({'success': False, 'message': 'Recommendation not found'}), 404
-
-        # Get user's music data (use cached if available when optimization is available)
-        spotify_client = SpotifyClient(user.access_token)
-        
-        if OPTIMIZATION_AVAILABLE:
-            # Use optimized caching when available
-            cached_music_data = cache_manager.get_cached_data(user.id, 'music_data')
-            
-            if cached_music_data:
-                music_data = cached_music_data
-            else:
-                music_data = data_optimizer.collect_optimized_spotify_data(spotify_client)
-                cache_manager.cache_data(user.id, 'music_data', music_data)
-        else:
-            # Fallback: collect basic music data without optimization
-            app.logger.info("Using fallback data collection (optimization modules not available)")
-            try:
-                # Get basic music data
-                current_track = spotify_client.get_current_track()
-                recent_tracks = spotify_client.get_recently_played(limit=10)
-                top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=5)
-                top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=5)
-                
-                music_data = {
-                    'current_track': current_track,
-                    'recent_tracks': recent_tracks.get('items', []) if recent_tracks else [],
-                    'top_artists': {
-                        'short_term': top_artists_short.get('items', []) if top_artists_short else [],
-                        'medium_term': top_artists_medium.get('items', []) if top_artists_medium else []
-                    },
-                    'top_tracks': {
-                        'short_term': spotify_client.get_top_tracks(time_range='short_term', limit=5).get('items', []) if spotify_client.get_top_tracks(time_range='short_term', limit=5) else [],
-                        'medium_term': spotify_client.get_top_tracks(time_range='medium_term', limit=5).get('items', []) if spotify_client.get_top_tracks(time_range='medium_term', limit=5) else []
-                    }
-                }
-            except Exception as e:
-                app.logger.warning(f"Fallback data collection failed: {e}")
-                # Minimal fallback
-                music_data = {
-                    'current_track': None,
-                    'recent_tracks': [],
-                    'top_artists': {
-                        'short_term': [],
-                        'medium_term': []
-                    },
-                    'top_tracks': {
-                        'short_term': [],
-                        'medium_term': []
-                    }
-                }
-
-        # Create track object from the recommendation
-        recommended_track = {
-            'name': recommendation.track_name,
-            'artists': [{'name': recommendation.artist_name}]
-        }
-
-        # Extract user profile from the psychological analysis
-        user_profile = recommendation.psychological_analysis.replace("Lightning profile: ", "") if recommendation.psychological_analysis else "Music lover with diverse taste"
-
-        # Generate conversational reasoning
-        start_time = time.time()
-        ai_reasoning_text = generate_conversational_reasoning(
-            recommended_track, user_profile, music_data, gemini_api_key
-        )
-        duration = time.time() - start_time
-
-        # Update the recommendation with the new reasoning
-        recommendation.ai_reasoning = ai_reasoning_text
-        db.session.commit()
-
-        app.logger.info(f"Generated conversational reasoning in {duration:.2f}s for recommendation {recommendation_id}")
-
-        return jsonify({
-            'success': True,
-            'ai_reasoning': ai_reasoning_text,
-            'generation_time': round(duration, 2)
-        })
-
-    except Exception as e:
-        app.logger.error(f"Failed to generate conversational reasoning: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': f'Failed to generate reasoning: {str(e)}'}), 500
-
-@app.route('/ai-recommendation-lightning', methods=['POST'])
-def ai_recommendation_lightning():
-    """Lightning-fast AI recommendation using optimized models and cached data with enhanced duplicate prevention"""
-    from flask import jsonify, session, request
-    import json, time
-
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-
-    user = User.query.get(session['user_id'])
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
-
-    # Get request data safely
-    request_data = request.get_json() or {}
-    gemini_api_key = request_data.get('gemini_api_key')
-    session_adjustment = request_data.get('session_adjustment', '').strip()
-
-    if session_adjustment:
-        session['session_adjustment'] = session_adjustment
-    else:
-        session_adjustment = session.get('session_adjustment', '')
-
-    if not gemini_api_key:
-        return jsonify({'success': False, 'message': 'Gemini API key required for Lightning mode'}), 400
-
-    # Configure genai
-    genai.configure(api_key=gemini_api_key)
-
-    # Check if optimization is available
-    if not OPTIMIZATION_AVAILABLE:
-        return jsonify({
-            'success': False, 
-            'message': 'Lightning mode not available. Please use standard recommendation.'
-        }), 503
-
-    try:
-        total_start_time = time.time()
-        current_time = time.time()
-        
-        # Rate limiting check
-        last_rec_time = session.get('last_recommendation_time', 0)
-        if current_time - last_rec_time < 1:  # 1 second minimum between recommendations
-            return jsonify({
-                'success': False, 
-                'message': 'Please wait a moment before requesting another recommendation.'
-            }), 429
-
-        # Initialize Spotify client
-        spotify_client = SpotifyClient(user.access_token)
-        
-        # Use hyper-optimized data collection with caching
-        app.logger.info("LIGHTNING: Starting hyper-optimized data collection...")
-        data_collection_start = time.time()
-        
-        # Check for cached music data
-        cached_music_data = cache_manager.get_cached_data(user.id, 'music_data')
-        
-        if cached_music_data:
-            app.logger.info("LIGHTNING: Using cached music data")
-            music_data = cached_music_data
-        else:
-            app.logger.info("LIGHTNING: Collecting fresh music data")
-            music_data = data_optimizer.collect_optimized_spotify_data(spotify_client)
-            cache_manager.cache_data(user.id, 'music_data', music_data)
-        
-        data_collection_duration = time.time() - data_collection_start
-        app.logger.info(f"LIGHTNING: Data collection complete - {data_collection_duration:.2f}s")
-        
-        # Get enhanced recent recommendations to avoid duplicates
-        rec_tracking = get_enhanced_recent_recommendations(user, hours_back=24)
-        recent_recommendations = rec_tracking['formatted_list']
-        artist_frequency = rec_tracking['artist_frequency']
-        diversity_warning = rec_tracking['warning_message']
-        
-        app.logger.info(f"LIGHTNING: Found {rec_tracking['total_count']} recent recommendations for duplicate prevention")
-        if diversity_warning:
-            app.logger.info(f"LIGHTNING: Diversity warning - {diversity_warning}")
-        
-        # Get optimized recommendation using hyper-fast approach
-        app.logger.info("LIGHTNING: Generating optimized recommendation...")
-        optimization_start = time.time()
-        
-        optimization_result = hyper_optimized_llm_manager.get_lightning_recommendation(
-            music_data, 
-            gemini_api_key,
-            session_adjustment=session_adjustment,
-            recent_recommendations=recent_recommendations,
-            user_id=user.id,
-            artist_frequency=artist_frequency,
-            diversity_warning=diversity_warning
-        )
-        
-        if not optimization_result['success']:
-            return jsonify({
-                'success': False, 
-                'message': f'AI recommendation failed: {optimization_result["error"]}'
-            }), 500
-
-        recommendation_text = optimization_result['recommendation']
-        user_profile = optimization_result['user_profile']
-        optimization_stats = optimization_result['stats']
-        
-        optimization_duration = time.time() - optimization_start
-        app.logger.info(f"LIGHTNING: Recommendation generation complete - {optimization_duration:.2f}s")
-        
-        # Parse recommendation to extract song and artist
-        app.logger.info("LIGHTNING: Parsing recommendation...")
-        parse_start = time.time()
-        
-        # Use the same fast model for parsing
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        parse_prompt = f"""
-Extract the song title and artist name from this recommendation text. Return only in this exact format:
-SONG: [song title]
-ARTIST: [artist name]
-
-Recommendation text: {recommendation_text}
-"""
-        
-        try:
-            parse_response = model.generate_content(parse_prompt)
-            parse_text = parse_response.text.strip()
-            
-            # Extract song and artist
-            song_line = [line for line in parse_text.split('\n') if line.startswith('SONG:')]
-            artist_line = [line for line in parse_text.split('\n') if line.startswith('ARTIST:')]
-            
-            if song_line and artist_line:
-                song_title = song_line[0].replace('SONG:', '').strip()
-                artist_name = artist_line[0].replace('ARTIST:', '').strip()
-                parse_confidence = 0.9
-            else:
-                # Fallback parsing
-                lines = parse_text.split('\n')
-                if len(lines) >= 2:
-                    song_title = lines[0].replace('SONG:', '').strip()
-                    artist_name = lines[1].replace('ARTIST:', '').strip()
-                    
-                    # Clean up song title and artist name by removing explanatory text in parentheses
-                    # Remove any content in parentheses that looks like explanations (long text)
-                    import re
-                    
-                    # For song title: remove any parenthetical explanations longer than 10 characters
-                    song_title = re.sub(r'\([^)]{10,}\)', '', song_title).strip()
-                    
-                    # For artist name: remove any parenthetical explanations longer than 10 characters
-                    artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
-                    
-                    # Additional cleanup: remove quotes and extra whitespace
-                    song_title = song_title.strip('"\'').strip()
-                    artist_name = artist_name.strip('"\'').strip()
-                    
-                    parse_confidence = 0.6
-                else:
-                    raise Exception("Could not parse recommendation")
-                    
-        except Exception as e:
-            app.logger.warning(f"LIGHTNING: Parse failed, using fallback: {str(e)}")
-            # Simple text parsing fallback
-            if '"' in recommendation_text:
-                parts = recommendation_text.split('"')
-                if len(parts) >= 3:
-                    song_title = parts[1]
-                    remaining = parts[2]
-                    if ' by ' in remaining:
-                        artist_name = remaining.split(' by ')[1].split('.')[0].split(',')[0].strip()
-                        # Clean parenthetical explanations from fallback parsing too
-                        import re
-                        artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
-                    else:
-                        artist_name = "Unknown Artist"
-                    parse_confidence = 0.3
-                else:
-                    song_title = "Unknown Song"
-                    artist_name = "Unknown Artist"
-                    parse_confidence = 0.1
-            else:
-                song_title = "Unknown Song"
-                artist_name = "Unknown Artist"
-                parse_confidence = 0.1
-        
-        parse_duration = time.time() - parse_start
-        app.logger.info(f"LIGHTNING: Parsing complete - {parse_duration:.2f}s - '{song_title}' by {artist_name}")
-        
-        # Validate recommendation for duplicates
-        is_valid, validation_reason = check_recommendation_validity(user.id, song_title, artist_name)
-        if not is_valid:
-            app.logger.warning(f"LIGHTNING: Recommendation validation failed - {validation_reason}")
-            return jsonify({
-                'success': False,
-                'message': f'AI suggested a recent duplicate. {validation_reason}. Please try again for a fresh recommendation.',
-                'ai_recommendation': recommendation_text,
-                'validation_error': True
-            }), 400
-        
-        # Search for the track on Spotify
-        app.logger.info("LIGHTNING: Searching Spotify...")
-        search_start = time.time()
-        
-        spotify_client = SpotifyClient(user.access_token)
-        
-        # Use simple concatenated search query
-        search_query = f"{song_title} {artist_name}"
-        
-        # Ensure search query doesn't exceed Spotify's 250-character limit
-        max_query_length = 250
-        if len(search_query) > max_query_length:
-            app.logger.warning(f"LIGHTNING: Search query too long ({len(search_query)} chars), truncating to {max_query_length} chars")
-            # Prioritize keeping the song title, then truncate artist name if needed
-            if len(song_title) < max_query_length - 10:  # Leave some space for artist
-                remaining_length = max_query_length - len(song_title) - 1  # -1 for space
-                truncated_artist = artist_name[:remaining_length] if remaining_length > 0 else ""
-                search_query = f"{song_title} {truncated_artist}".strip()
-            else:
-                # If song title is too long, truncate it
-                search_query = song_title[:max_query_length]
-            app.logger.info(f"LIGHTNING: Truncated search query: {search_query}")
-
-        app.logger.info(f"LIGHTNING: Search query: {search_query}")
-        
-        # Get more results for LLM to choose from
-        search_results = spotify_client.search_tracks(search_query, limit=10)
-        
-        if not search_results or not search_results.get('tracks', {}).get('items'):
-            app.logger.error(f"LIGHTNING: No search results for '{search_query}'")
-            search_duration = time.time() - search_start
-            app.logger.info(f"LIGHTNING: Search complete - {search_duration:.2f}s")
-            
-            return jsonify({
-                'success': False,
-                'message': f'Could not find the AI-recommended track "{song_title}" by {artist_name} on Spotify. Please try another recommendation.',
-                'ai_recommendation': recommendation_text,
-                'search_attempted': True
-            }), 404
-        
-        # Use LLM to select the best result
-        app.logger.info("LIGHTNING: LLM selecting best result...")
-        selection_start = time.time()
-        
-        try:
-            selection_result = structured_llm.select_spotify_result(
-                model, song_title, artist_name, search_results['tracks']['items']
-            )
-            
-            selected_track_data = selection_result.selected_result
-            selection_confidence = selection_result.confidence
-            
-            # Convert back to Spotify API format
-            recommended_track = {
-                'id': selected_track_data.track_id,
-                'name': selected_track_data.track_name,
-                'artists': [{'name': selected_track_data.artist_name}],
-                'album': {
-                    'name': selected_track_data.album_name,
-                    'images': [{'url': selected_track_data.album_image_url}] if selected_track_data.album_image_url else []
-                },
-                'uri': selected_track_data.track_uri,
-                'external_urls': {'spotify': selected_track_data.external_url},
-                'preview_url': selected_track_data.preview_url
-            }
-            
-            match_score = selected_track_data.match_score
-            selection_reasoning = selected_track_data.reasoning
-            
-            app.logger.info(f"LIGHTNING: Selected track - '{recommended_track['name']}' by {recommended_track['artists'][0]['name']} (match score: {match_score:.2f}, confidence: {selection_confidence:.2f})")
-            app.logger.info(f"LIGHTNING: Selection reasoning - {selection_reasoning}")
-            
-        except Exception as e:
-            app.logger.warning(f"LIGHTNING: LLM selection failed, using first result: {str(e)}")
-            # Fallback to first result
-            recommended_track = search_results['tracks']['items'][0]
-            match_score = 0.5
-            selection_confidence = 0.5
-            selection_reasoning = "Fallback selection: Used first search result due to AI processing failure"
-        
-        selection_duration = time.time() - selection_start
-        search_duration = time.time() - search_start
-        app.logger.info(f"LIGHTNING: Result selection complete - {selection_duration:.2f}s")
-        app.logger.info(f"LIGHTNING: Total search complete - {search_duration:.2f}s")
-        
-        # Save recommendation to database with enhanced tracking
-        app.logger.info("LIGHTNING: Saving recommendation to database...")
-        save_start = time.time()
-        
-        recommendation = save_enhanced_recommendation(
-            user, recommended_track, "Generating personalized explanation...", user_profile, music_data,
-            session_adjustment=session_adjustment, method="lightning"
-        )
-        
-        session['current_recommendation_id'] = recommendation.id
-        session['last_recommendation_time'] = current_time
-        
-        save_duration = time.time() - save_start
-        total_duration = time.time() - total_start_time
-        
-        # Log lightning performance
-        app.logger.info(">" * 60)
-        app.logger.info("LIGHTNING AI RECOMMENDATION PERFORMANCE SUMMARY")
-        app.logger.info(">" * 60)
-        app.logger.info(f"Data Collection:     {data_collection_duration:.2f}s")
-        app.logger.info(f"Profile (Cached):    {optimization_stats['profile_duration']:.2f}s")
-        app.logger.info(f"Recommendation:      {optimization_stats['rec_duration']:.2f}s")
-        app.logger.info(f"Track Parsing:       {parse_duration:.2f}s")
-        app.logger.info(f"Result Selection:    {selection_duration:.2f}s")
-        app.logger.info(f"Spotify Search:      {search_duration:.2f}s")
-        app.logger.info(f"Database Save:       {save_duration:.2f}s")
-        app.logger.info(f"Total Request Time:  {total_duration:.2f}s")
-        app.logger.info(f"Mode:                Lightning (enhanced)")
-        app.logger.info(f"Model Used:          {optimization_stats['models_used'][0]}")
-        app.logger.info(f"Duplicates Avoided:  {len(recent_recommendations)}")
-        app.logger.info(f"Performance Gain:    {optimization_stats.get('performance_gain_estimate', 'N/A')}")
-        app.logger.info(">" * 60)
-        
-        return jsonify({
-            'success': True,
-            'track': {
-                'name': recommended_track['name'],
-                'artist': recommended_track['artists'][0]['name'],
-                'album': recommended_track['album']['name'],
-                'image': recommended_track['album']['images'][0]['url'] if recommended_track['album']['images'] else None,
-                'uri': recommended_track['uri'],
-                'external_url': recommended_track['external_urls']['spotify'],
-                'preview_url': recommended_track.get('preview_url')
-            },
-            'ai_reasoning': "Generating personalized explanation...",  # Placeholder
-            'user_profile': user_profile,
-            'recommendation_id': recommendation.id,
-            'exact_match': match_score >= 0.5,
-            'ai_recommendation': recommendation_text,
-            'requires_reasoning_generation': True,
-            'performance_stats': {
-                'total_duration': round(total_duration, 2),
-                'profile_duration': round(optimization_stats['profile_duration'], 2),
-                'rec_duration': round(optimization_stats['rec_duration'], 2),
-                'parse_duration': round(parse_duration, 2),
-                'selection_duration': round(selection_duration, 2),
-                'save_duration': round(save_duration, 2),
-                'total_llm_duration': round(optimization_stats['total_llm_duration'] + parse_duration + selection_duration, 2),
-                'search_duration': round(search_duration, 2),
-                'model_used': optimization_stats['models_used'][0],
-                'approach': 'lightning_enhanced_duplicate_prevention',
-                'cached_profile': optimization_stats['cached_profile'],
-                'cached_data': cached_music_data is not None,
-                'match_score': round(match_score, 2),
-                'parse_confidence': round(parse_confidence, 2),
-                'selection_confidence': round(selection_confidence, 2),
-                'duplicates_avoided': len(recent_recommendations),
-                'diversity_score': max(0, 10 - len(recent_recommendations)),
-                'performance_gain_estimate': f"{61/total_duration:.1f}x faster"
-            }
-        })
-        
-    except Exception as e:
-        app.logger.error(f"Enhanced Lightning AI recommendation failed: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
-
-@app.route('/api/generate-music-taste-profile', methods=['POST'])
-def generate_music_taste_profile():
-    """Generate AI music taste profile using user's Gemini API key"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
-    user = User.query.get(session['user_id'])
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
-    
-    try:
-        # Get custom Gemini API key from request
-        request_data = request.get_json() or {}
-        custom_gemini_key = request_data.get('custom_gemini_key')
-        
-        if not custom_gemini_key:
-            return jsonify({
-                'success': False, 
-                'message': 'Gemini API key required for AI analysis'
-            }), 400
-        
-        # Initialize Spotify client
-        spotify_client = SpotifyClient(user.access_token)
-        
-        # Generate music taste insights with the provided API key
-        app.logger.info("Generating music taste profile with user's API key...")
-        insights = generate_music_taste_insights(spotify_client, custom_gemini_key)
-        
-        if insights and insights.get('analysis_ready'):
-            app.logger.info("Music taste profile generated successfully")
-            return jsonify({
-                'success': True,
-                'insights': insights
-            })
-        else:
-            app.logger.warning("Music taste profile generation returned basic insights only")
-            return jsonify({
-                'success': False,
-                'message': 'AI analysis failed, only basic insights available',
-                'basic_insights': insights
-            })
-            
-    except Exception as e:
-        app.logger.error(f"Error generating music taste profile: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False, 
-            'message': f'Failed to generate music taste profile: {str(e)}'
-        }), 500
 
 @app.route('/ai-recommendation', methods=['POST'])
 def ai_recommendation():
@@ -2237,7 +1776,30 @@ def ai_recommendation():
     
     # Configure Gemini if API key is provided
     if gemini_api_key:
-        genai.configure(api_key=gemini_api_key)
+        # Debug logging to verify API key
+        key_preview = gemini_api_key[:8] + "..." if len(gemini_api_key) > 8 else gemini_api_key
+        app.logger.info(f"STANDARD: Attempting to configure Gemini with API key: {key_preview}")
+        
+        # Configure Gemini with user's API key only - do not use environment variables
+        try:
+            # Clear any previous configuration and set new API key
+            try:
+                genai.configure(api_key="")  # Clear with empty key first
+            except:
+                pass  # Ignore errors when clearing
+            
+            # Configure with user's API key
+            genai.configure(api_key=gemini_api_key)
+                
+            app.logger.info("STANDARD: Successfully configured Gemini with user API key")
+        except Exception as config_error:
+            app.logger.error(f"Failed to configure Gemini with user API key: {config_error}")
+            return jsonify({
+                'success': False, 
+                'message': f'Failed to configure Gemini API: {str(config_error)}',
+                'api_error': True
+            }), 400
+        
         app.logger.info("STANDARD: Using provided Gemini API key for enhanced recommendations")
     else:
         app.logger.warning("STANDARD: No Gemini API key provided - using basic recommendations")
@@ -2328,6 +1890,8 @@ def ai_recommendation():
         recent_recommendations = rec_tracking['formatted_list']
         artist_frequency = rec_tracking['artist_frequency']
         diversity_warning = rec_tracking['warning_message']
+        # NEW: Get explicit blacklist for better duplicate prevention
+        blacklist_tracks = rec_tracking['blacklist_tracks']
         
         app.logger.info(f"STANDARD: Found {rec_tracking['total_count']} recent recommendations for duplicate prevention")
         if diversity_warning:
@@ -2337,6 +1901,7 @@ def ai_recommendation():
         app.logger.info("STANDARD: Generating user profile...")
         profile_start = time.time()
         
+        # Create model AFTER configuration with fresh API key
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         profile_prompt = f"""
@@ -2359,402 +1924,279 @@ Keep it conversational and insightful.
             profile_response = model.generate_content(profile_prompt)
             user_profile = profile_response.text.strip() if profile_response and profile_response.text else "Music lover with diverse taste who enjoys discovering new sounds."
         except Exception as e:
+            # Check for rate limit errors in profile generation
+            error_str = str(e).lower()
+            if any(rate_limit_indicator in error_str for rate_limit_indicator in [
+                'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+            ]):
+                app.logger.warning(f"STANDARD: Gemini rate limit detected during profile generation - {str(e)}")
+                return jsonify({
+                    'success': False, 
+                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before requesting another recommendation to allow your quota to refresh.',
+                    'rate_limit_error': True,
+                    'suggested_wait_time': '2-3 minutes'
+                }), 429
+            
             app.logger.warning(f"Profile generation failed: {e}")
             user_profile = "Music lover with diverse taste who enjoys discovering new sounds."
         
         profile_duration = time.time() - profile_start
         app.logger.info(f"STANDARD: User profile complete - {profile_duration:.2f}s")
-        
-        # Generate recommendation with enhanced duplicate prevention and retry logic
+
+        # Generate AI recommendation
         app.logger.info("STANDARD: Generating AI recommendation...")
-        rec_start = time.time()
+        recommendation_start = time.time()
         
-        # Build artist frequency context for the prompt
-        frequent_artists = []
-        for artist, count in artist_frequency.items():
-            if count >= 1:  # Updated to match new limit
-                frequent_artists.append(f"{artist} ({count} times recently)")
-        
-        artist_warning = ""
-        if frequent_artists:
-            artist_warning = f"\nAVOID THESE RECENTLY RECOMMENDED ARTISTS: {', '.join(frequent_artists[:5])}"
-        
-        # Retry logic for recommendation generation with progressive relaxation
-        max_retries = 5  # Increased from 3 to 5
-        retry_count = 0
-        recommendation_successful = False
-        
-        while retry_count < max_retries and not recommendation_successful:
-            if retry_count > 0:
-                app.logger.info(f"STANDARD: Retry attempt {retry_count} for recommendation generation...")
-                # Add additional context for retries
-                artist_warning += f"\nIMPORTANT: This is retry #{retry_count} - avoid ALL previously mentioned artists and songs even more strictly."
-                
-                # Progressive relaxation of prompts for difficult cases
-                if retry_count >= 2:
-                    artist_warning += f"\nURGENT: Consider more obscure artists, remixes, covers, or different genres to avoid overused artists."
-                if retry_count >= 3:
-                    artist_warning += f"\nCRITICAL: Explore completely different musical directions, underground artists, or international music to find something fresh."
-            
-            rec_prompt = f"""
-Based on this user's music data, recommend ONE specific song that perfectly matches their taste while avoiding recent duplicates.
+        # Create comprehensive prompt for recommendation
+        recommendation_prompt = f"""
+Based on this user's comprehensive music data, recommend ONE specific song that perfectly matches their taste.
 
-USER PROFILE: {user_profile}
+USER PSYCHOLOGICAL PROFILE:
+{user_profile}
 
-MUSIC DATA:
-- Recent tracks: {[f"{track['track']['name']} by {track['track']['artists'][0]['name']}" for track in music_data['recent_tracks'][:8]]}
-- Top artists: {[artist['name'] for artist in music_data['top_artists']['short_term'][:8]]}
-- Top genres: {music_data['top_genres'][:8]}
+CURRENT MUSICAL CONTEXT:
+- Current track: {music_data['current_track']['item']['name'] + ' by ' + music_data['current_track']['item']['artists'][0]['name'] if music_data['current_track'] and music_data['current_track'].get('item') else 'None'}
+- Recent tracks: {[f"{track['track']['name']} by {track['track']['artists'][0]['name']}" for track in music_data['recent_tracks'][:5]]}
+- Top artists: {[artist['name'] for artist in music_data['top_artists']['short_term'][:5]]}
+- Top genres: {music_data['top_genres'][:5]}
 
-RECENT RECOMMENDATIONS TO AVOID (DO NOT REPEAT ANY): {recent_recommendations}
+SESSION CONTEXT:
+{f"User adjustment: {session_adjustment}" if session_adjustment else "No specific session adjustment"}
+
+STRICT AVOIDANCE LIST (DO NOT RECOMMEND ANY OF THESE):
+{blacklist_tracks[:20]}  
+
 {diversity_warning}
-{artist_warning}
 
-{"IMPORTANT SESSION ADJUSTMENT FROM USER: " + session_adjustment if session_adjustment else "No specific session preferences provided."}
+REQUIREMENTS:
+1. Recommend exactly ONE song
+2. Must be a real, existing song available on Spotify
+3. Should perfectly match their psychological profile and current taste
+4. Must NOT be any song from the avoidance list above
+5. Format: "Song Title" by Artist Name
 
-Recommend exactly ONE song in this format:
-SONG: [song title]
-ARTIST: [artist name]
-REASON: [one sentence explaining why this matches their taste{"and session preference" if session_adjustment else ""}]
+Respond with ONLY the song recommendation in this exact format:
+"Song Title" by Artist Name
 
-CRITICAL REQUIREMENTS:
-- Must be a DIFFERENT song and artist from recent recommendations
-- Prioritize musical diversity and discovery
-- Ensure the artist hasn't been recommended recently AT ALL
-- Match their established preferences
-{f"- PRIORITIZE the user's session adjustment: {session_adjustment}" if session_adjustment else "- Introduce slight variation to keep things interesting"}
-- Be available on Spotify
-{"- Respect the specific session mood/style requested above" if session_adjustment else ""}
-- AVOID ANY ARTIST that has been recommended in the last 72 hours
-{f"- RETRY #{retry_count}: Try more obscure/underground artists if needed" if retry_count >= 2 else ""}
+Do not include any explanation, reasoning, or additional text.
 """
+
+        try:
+            recommendation_response = model.generate_content(recommendation_prompt)
+            ai_recommendation_text = recommendation_response.text.strip() if recommendation_response and recommendation_response.text else None
             
-            # Debug log the full prompt (truncated for readability)
-            app.logger.info(f"STANDARD: Recommendation prompt includes session adjustment: {bool(session_adjustment)}")
-            if session_adjustment:
-                app.logger.info(f"STANDARD: Session adjustment in prompt: '{session_adjustment}'")
-            
-            try:
-                rec_response = model.generate_content(rec_prompt)
-                recommendation_text = rec_response.text.strip() if rec_response and rec_response.text else ""
-            except Exception as e:
-                app.logger.error(f"Recommendation generation failed: {e}")
-                return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
-            
-            # Parse recommendation
-            app.logger.info("STANDARD: Parsing recommendation...")
-            parse_start = time.time()
-            
-            try:
-                # Extract song and artist
-                song_line = [line for line in recommendation_text.split('\n') if line.startswith('SONG:')]
-                artist_line = [line for line in recommendation_text.split('\n') if line.startswith('ARTIST:')]
-                reason_line = [line for line in recommendation_text.split('\n') if line.startswith('REASON:')]
+            if not ai_recommendation_text:
+                raise Exception("Empty AI recommendation response")
                 
-                if song_line and artist_line:
-                    song_title = song_line[0].replace('SONG:', '').strip()
-                    artist_name = artist_line[0].replace('ARTIST:', '').strip()
-                    ai_reasoning = reason_line[0].replace('REASON:', '').strip() if reason_line else "Perfect match for your taste!"
-                    
-                    # Clean up song title and artist name by removing explanatory text in parentheses
-                    # Remove any content in parentheses that looks like explanations (long text)
-                    import re
-                    
-                    # For song title: remove any parenthetical explanations longer than 10 characters
-                    song_title = re.sub(r'\([^)]{10,}\)', '', song_title).strip()
-                    
-                    # For artist name: remove any parenthetical explanations longer than 10 characters
-                    artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
-                    
-                    # Additional cleanup: remove quotes and extra whitespace
-                    song_title = song_title.strip('"\'').strip()
-                    artist_name = artist_name.strip('"\'').strip()
-                    
-                else:
-                    raise Exception("Could not parse recommendation")
-                    
-            except Exception as e:
-                app.logger.warning(f"STANDARD: Parse failed, using fallback: {str(e)}")
-                # Simple fallback parsing
-                if '"' in recommendation_text:
-                    parts = recommendation_text.split('"')
-                    if len(parts) >= 3:
-                        song_title = parts[1]
-                        remaining = parts[2]
-                        if ' by ' in remaining:
-                            artist_name = remaining.split(' by ')[1].split('.')[0].split(',')[0].strip()
-                            # Clean parenthetical explanations from fallback parsing too
-                            import re
-                            artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
-                        else:
-                            artist_name = "Unknown Artist"
-                        ai_reasoning = "Great match for your taste!"
-                    else:
-                        song_title = "Unknown Song"
-                        artist_name = "Unknown Artist"
-                        ai_reasoning = "Perfect discovery for you!"
-                else:
-                    song_title = "Unknown Song"
-                    artist_name = "Unknown Artist"
-                    ai_reasoning = "Perfect discovery for you!"
+            app.logger.info(f"AI recommended: {ai_recommendation_text}")
             
-            parse_duration = time.time() - parse_start
-            app.logger.info(f"STANDARD: Parsing complete - {parse_duration:.2f}s - '{song_title}' by {artist_name}")
+        except Exception as e:
+            # Check for rate limit errors in recommendation generation
+            error_str = str(e).lower()
+            if any(rate_limit_indicator in error_str for rate_limit_indicator in [
+                'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+            ]):
+                app.logger.warning(f"STANDARD: Gemini rate limit detected during recommendation - {str(e)}")
+                return jsonify({
+                    'success': False, 
+                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before requesting another recommendation to allow your quota to refresh.',
+                    'rate_limit_error': True,
+                    'suggested_wait_time': '2-3 minutes'
+                }), 429
             
-            # Progressive validation relaxation for difficult cases
-            is_valid = False
-            validation_reason = ""
-            
-            if retry_count < 3:
-                # Strict validation for first 3 attempts
-                is_valid, validation_reason = check_recommendation_validity(user.id, song_title, artist_name)
-            elif retry_count == 3:
-                # Relaxed validation - allow artist repetition after 24 hours instead of 72
-                app.logger.info("STANDARD: Using relaxed validation (24h artist limit) for retry attempt 4")
-                if Recommendation.is_duplicate(user.id, song_title, artist_name, hours_back=24):
-                    is_valid = False
-                    validation_reason = f"Exact duplicate: '{song_title}' by {artist_name} was recommended in the last 24 hours"
-                else:
-                    # Check artist overuse with relaxed rules (within 24 hours instead of 72)
-                    artist_count_24h = Recommendation.get_artist_recommendation_count(user.id, artist_name, hours_back=24)
-                    if artist_count_24h >= 2:  # Allow 1 recent recommendation within 24h
-                        is_valid = False
-                        validation_reason = f"Artist overuse (relaxed): {artist_name} has been recommended {artist_count_24h} times in the last 24 hours"
-                    else:
-                        is_valid = True
-                        validation_reason = "Valid recommendation (relaxed validation)"
-            else:
-                # Final attempt - only check for exact duplicates in last 12 hours
-                app.logger.info("STANDARD: Using minimal validation (12h duplicate check only) for final attempt")
-                if Recommendation.is_duplicate(user.id, song_title, artist_name, hours_back=12):
-                    is_valid = False
-                    validation_reason = f"Recent duplicate: '{song_title}' by {artist_name} was recommended in the last 12 hours"
-                else:
-                    is_valid = True
-                    validation_reason = "Valid recommendation (minimal validation - final attempt)"
-            
-            if not is_valid:
-                app.logger.warning(f"STANDARD: Recommendation validation failed (attempt {retry_count + 1}) - {validation_reason}")
-                retry_count += 1
-                if retry_count >= max_retries:
-                    app.logger.error(f"STANDARD: Failed to generate valid recommendation after {max_retries} attempts")
-                    
-                    # Fallback strategy: try to find any track from user's top genres that hasn't been recommended
-                    app.logger.info("STANDARD: Attempting fallback strategy with genre-based recommendation...")
-                    try:
-                        fallback_success = attempt_fallback_recommendation(user, music_data, session_adjustment)
-                        if fallback_success:
-                            return fallback_success
-                    except Exception as fallback_error:
-                        app.logger.error(f"STANDARD: Fallback strategy also failed: {fallback_error}")
-                    
-                    return jsonify({
-                        'success': False,
-                        'message': f'Unable to generate a fresh recommendation after {max_retries} attempts due to extensive recent listening history. Please try again in a few hours for the best diversity, or clear your recent recommendations.',
-                        'ai_recommendation': recommendation_text,
-                        'validation_error': True,
-                        'retry_count': retry_count,
-                        'suggestion': 'Your music discovery is very active! Try again later for maximum diversity.'
-                    }), 400
-                # Continue the loop to retry
-                continue
-            else:
-                recommendation_successful = True
-                validation_msg = f"on attempt {retry_count + 1}"
-                if retry_count >= 3:
-                    validation_msg += " (using relaxed validation)"
-                app.logger.info(f"STANDARD: Recommendation validation successful {validation_msg}")
+            app.logger.error(f"AI recommendation generation failed: {e}")
+            return jsonify({
+                'success': False, 
+                'message': 'Failed to generate AI recommendation. Please try again.'
+            }), 500
         
-        rec_duration = time.time() - rec_start
-        app.logger.info(f"STANDARD: Recommendation generation complete - {rec_duration:.2f}s")
+        # Parse the AI recommendation
+        try:
+            # Parse "Song Title" by Artist Name format
+            if '" by ' in ai_recommendation_text:
+                parts = ai_recommendation_text.split('" by ')
+                if len(parts) == 2:
+                    song_title = parts[0].replace('"', '').strip()
+                    artist_name = parts[1].strip()
+                else:
+                    raise ValueError("Invalid format")
+            else:
+                # Fallback parsing
+                song_title = ai_recommendation_text.strip()
+                artist_name = "Unknown Artist"
+                
+        except Exception as e:
+            app.logger.error(f"Failed to parse AI recommendation: {ai_recommendation_text}")
+            return jsonify({
+                'success': False, 
+                'message': 'Failed to parse AI recommendation. Please try again.'
+            }), 500
         
         # Search for the track on Spotify
-        app.logger.info("STANDARD: Searching Spotify...")
-        search_start = time.time()
+        app.logger.info(f"STANDARD: Searching Spotify for: {song_title} by {artist_name}")
+        spotify_client = SpotifyClient(user.access_token)
         
-        search_query = f"{song_title} {artist_name}"
-        
-        # Ensure search query doesn't exceed Spotify's 250-character limit
-        max_query_length = 250
-        if len(search_query) > max_query_length:
-            app.logger.warning(f"STANDARD: Search query too long ({len(search_query)} chars), truncating to {max_query_length} chars")
-            # Prioritize keeping the song title, then truncate artist name if needed
-            if len(song_title) < max_query_length - 10:  # Leave some space for artist
-                remaining_length = max_query_length - len(song_title) - 1  # -1 for space
-                truncated_artist = artist_name[:remaining_length] if remaining_length > 0 else ""
-                search_query = f"{song_title} {truncated_artist}".strip()
-            else:
-                # If song title is too long, truncate it
-                search_query = song_title[:max_query_length]
-            app.logger.info(f"STANDARD: Truncated search query: {search_query}")
-
-        app.logger.info(f"STANDARD: Search query: {search_query}")
-        
+        # Try exact search first
+        search_query = f'track:"{song_title}" artist:"{artist_name}"'
         search_results = spotify_client.search_tracks(search_query, limit=5)
         
         if not search_results or not search_results.get('tracks', {}).get('items'):
-            app.logger.error(f"STANDARD: No search results for '{search_query}'")
-            search_duration = time.time() - search_start
-            app.logger.info(f"STANDARD: Search complete - {search_duration:.2f}s")
-            
+            # Try broader search
+            app.logger.info("STANDARD: Exact search failed, trying broader search")
+            search_query = f"{song_title} {artist_name}"
+            search_results = spotify_client.search_tracks(search_query, limit=5)
+        
+        if not search_results or not search_results.get('tracks', {}).get('items'):
+            app.logger.error(f"STANDARD: Could not find track on Spotify: {song_title} by {artist_name}")
             return jsonify({
-                'success': False,
-                'message': f'Could not find the AI-recommended track "{song_title}" by {artist_name} on Spotify. Please try another recommendation.',
-                'ai_recommendation': recommendation_text,
-                'search_attempted': True
+                'success': False, 
+                'message': f'Could not find "{song_title}" by {artist_name} on Spotify. Please try again.'
             }), 404
         
-        # Use the first result (simplified selection)
-        recommended_track = search_results['tracks']['items'][0]
-        search_duration = time.time() - search_start
-        app.logger.info(f"STANDARD: Search complete - {search_duration:.2f}s")
-        
-        # Save recommendation to database with enhanced tracking
-        app.logger.info("STANDARD: Saving recommendation to database...")
-        save_start = time.time()
-        
-        recommendation = save_enhanced_recommendation(
-            user, recommended_track, ai_reasoning, user_profile, music_data,
-            session_adjustment=session_adjustment, method="standard"
+        # Use structured LLM to select best match if multiple results
+        from structured_llm import structured_llm
+        selection_result = structured_llm.select_spotify_result(
+            model, song_title, artist_name, search_results['tracks']['items']
         )
         
+        selected_track = selection_result.selected_result
+        app.logger.info(f"STANDARD: Selected track: {selected_track.track_name} by {selected_track.artist_name}")
+        
+        recommendation_duration = time.time() - recommendation_start
+        app.logger.info(f"STANDARD: AI recommendation complete - {recommendation_duration:.2f}s")
+        
+        # Generate detailed reasoning for the recommendation
+        reasoning_prompt = f"""
+Explain in 2-3 sentences why you recommended "{selected_track.track_name}" by {selected_track.artist_name} for this user.
+
+Consider their:
+- Psychological profile: {user_profile}
+- Current musical context: {music_data['current_track']['item']['name'] if music_data['current_track'] and music_data['current_track'].get('item') else 'None'}
+- Session context: {session_adjustment if session_adjustment else 'General discovery'}
+
+Keep it personal and insightful.
+"""
+        
+        try:
+            reasoning_response = model.generate_content(reasoning_prompt)
+            ai_reasoning = reasoning_response.text.strip() if reasoning_response and reasoning_response.text else f"This track perfectly complements your musical taste and current listening mood."
+        except Exception as e:
+            app.logger.warning(f"Failed to generate reasoning: {e}")
+            ai_reasoning = f"This track was selected based on your musical preferences and listening patterns."
+        
+        # Save recommendation to database
+        recommendation = Recommendation(
+            user_id=user.id,
+            track_name=selected_track.track_name,
+            artist_name=selected_track.artist_name,
+            track_uri=selected_track.track_uri,
+            album_name=selected_track.album_name,
+            ai_reasoning=ai_reasoning,
+            psychological_analysis=user_profile,
+            listening_data_snapshot=json.dumps({
+                'recent_tracks_count': len(music_data['recent_tracks']),
+                'top_genres': music_data['top_genres'][:5],
+                'current_track': music_data['current_track']['item']['name'] if music_data['current_track'] and music_data['current_track'].get('item') else None
+            }),
+            session_adjustment=session_adjustment,
+            recommendation_method='standard'
+        )
+        db.session.add(recommendation)
+        db.session.commit()
+        
+        # Store recommendation ID in session for feedback
         session['current_recommendation_id'] = recommendation.id
         session['last_recommendation_time'] = current_time
         
-        save_duration = time.time() - save_start
         total_duration = time.time() - total_start_time
+        app.logger.info(f"STANDARD: Total recommendation process complete - {total_duration:.2f}s")
         
-        # Log standard performance
-        app.logger.info("=" * 60)
-        app.logger.info("ENHANCED STANDARD AI RECOMMENDATION PERFORMANCE SUMMARY")
-        app.logger.info("=" * 60)
-        app.logger.info(f"Data Collection:     {data_collection_duration:.2f}s")
-        app.logger.info(f"User Profile:        {profile_duration:.2f}s")
-        app.logger.info(f"Recommendation:      {rec_duration:.2f}s")
-        app.logger.info(f"Track Parsing:       {parse_duration:.2f}s")
-        app.logger.info(f"Spotify Search:      {search_duration:.2f}s")
-        app.logger.info(f"Database Save:       {save_duration:.2f}s")
-        app.logger.info(f"Total Request Time:  {total_duration:.2f}s")
-        app.logger.info(f"Mode:                Standard (enhanced with duplicate prevention)")
-        app.logger.info(f"Model Used:          gemini-1.5-flash")
-        app.logger.info(f"Duplicates Avoided:  {len(recent_recommendations)}")
-        app.logger.info("=" * 60)
-        
+        # Return successful recommendation
         return jsonify({
             'success': True,
             'track': {
-                'name': recommended_track['name'],
-                'artist': recommended_track['artists'][0]['name'],
-                'album': recommended_track['album']['name'],
-                'image': recommended_track['album']['images'][0]['url'] if recommended_track['album']['images'] else None,
-                'uri': recommended_track['uri'],
-                'external_url': recommended_track['external_urls']['spotify'],
-                'preview_url': recommended_track.get('preview_url')
+                'name': selected_track.track_name,
+                'artist': selected_track.artist_name,
+                'album': selected_track.album_name,
+                'uri': selected_track.track_uri,
+                'external_url': selected_track.external_url,
+                'preview_url': selected_track.preview_url,
+                'image_url': selected_track.album_image_url
             },
-            'ai_reasoning': ai_reasoning,
-            'user_profile': user_profile,
+            'reasoning': ai_reasoning,
             'recommendation_id': recommendation.id,
-            'ai_recommendation': recommendation_text,
-            'performance_stats': {
+            'performance': {
                 'total_duration': round(total_duration, 2),
-                'profile_duration': round(profile_duration, 2),
-                'rec_duration': round(rec_duration, 2),
-                'parse_duration': round(parse_duration, 2),
-                'search_duration': round(search_duration, 2),
-                'save_duration': round(save_duration, 2),
-                'model_used': 'gemini-1.5-flash',
-                'mode': 'standard_enhanced',
-                'duplicates_avoided': len(recent_recommendations),
-                'diversity_score': max(0, 10 - len(recent_recommendations))  # Simple diversity score
-            }
+                'data_collection': round(data_collection_duration, 2),
+                'profile_generation': round(profile_duration, 2),
+                'recommendation_generation': round(recommendation_duration, 2),
+                'duplicate_prevention': {
+                    'tracks_avoided': len(blacklist_tracks),
+                    'total_recent_recommendations': rec_tracking['total_count']
+                }
+            },
+            'psychological_analysis': user_profile,
+            'session_context': session_adjustment if session_adjustment else None
         })
         
     except Exception as e:
         app.logger.error(f"Enhanced standard AI recommendation failed: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
 
-def attempt_fallback_recommendation(user, music_data, session_adjustment):
-    """
-    Fallback strategy: generate a recommendation based on user's top genres
-    """
-    app.logger.info("STANDARD: Executing fallback recommendation strategy...")
+def refresh_user_token(user):
+    """Refresh user's access token"""
+    if not user.refresh_token:
+        return False
+    
+    token_url = 'https://accounts.spotify.com/api/token'
+    
+    auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
+    auth_bytes = auth_string.encode('utf-8')
+    auth_b64 = base64.b64encode(auth_bytes).decode('utf-8')
+    
+    headers = {
+        'Authorization': f'Basic {auth_b64}',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    
+    data = {
+        'grant_type': 'refresh_token',
+        'refresh_token': user.refresh_token
+    }
     
     try:
-        # Use a simple genre-based search to find something fresh
-        top_genres = music_data.get('top_genres', ['pop', 'rock'])[:3]
+        response = requests.post(token_url, headers=headers, data=data)
+        response.raise_for_status()
+        token_data = response.json()
         
-        spotify_client = SpotifyClient(user.access_token)
+        user.access_token = token_data['access_token']
+        if 'refresh_token' in token_data:
+            user.refresh_token = token_data['refresh_token']
         
-        # Try searching for tracks in their top genres
-        for genre in top_genres:
-            search_query = f"genre:{genre}"
-            if session_adjustment:
-                search_query = f"{session_adjustment} genre:{genre}"
-            
-            search_results = spotify_client.search_tracks(search_query, limit=20)
-            
-            if search_results and search_results.get('tracks', {}).get('items'):
-                # Look for a track that hasn't been recommended recently
-                for track in search_results['tracks']['items']:
-                    track_name = track['name']
-                    artist_name = track['artists'][0]['name']
-                    
-                    # Check if this would be a valid recommendation (relaxed check)
-                    if not Recommendation.is_duplicate(user.id, track_name, artist_name, hours_back=6):  # Only 6 hours for fallback
-                        app.logger.info(f"STANDARD: Fallback found track: '{track_name}' by {artist_name}")
-                        
-                        # Save the fallback recommendation
-                        fallback_reasoning = f"Fallback discovery from your {genre} preferences"
-                        if session_adjustment:
-                            fallback_reasoning += f" matching your request for {session_adjustment}"
-                        
-                        recommendation = save_enhanced_recommendation(
-                            user, track, fallback_reasoning, f"Fallback based on {genre} preference", music_data,
-                            session_adjustment=session_adjustment, method="standard_fallback"
-                        )
-                        
-                        session['current_recommendation_id'] = recommendation.id
-                        session['last_recommendation_time'] = time.time()
-                        
-                        return jsonify({
-                            'success': True,
-                            'track': {
-                                'name': track['name'],
-                                'artist': track['artists'][0]['name'],
-                                'album': track['album']['name'],
-                                'image': track['album']['images'][0]['url'] if track['album']['images'] else None,
-                                'uri': track['uri'],
-                                'external_url': track['external_urls']['spotify'],
-                                'preview_url': track.get('preview_url')
-                            },
-                            'ai_reasoning': fallback_reasoning,
-                            'user_profile': f"Fallback discovery based on {genre} preferences",
-                            'recommendation_id': recommendation.id,
-                            'fallback_used': True,
-                            'fallback_genre': genre,
-                            'message': 'Found a fresh discovery using fallback strategy!'
-                        })
+        expires_in = token_data.get('expires_in', 3600)
+        user.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
         
-        app.logger.warning("STANDARD: All fallback attempts failed")
-        return None
+        db.session.commit()
+        return True
         
-    except Exception as e:
-        app.logger.error(f"STANDARD: Fallback strategy failed: {e}")
-        return None
+    except requests.RequestException as e:
+        app.logger.error(f"Token refresh failed: {e}")
+        return False
 
 def get_enhanced_recent_recommendations(user, hours_back=24, include_artist_counts=True):
     """
     Get enhanced recent recommendations with better formatting and artist frequency tracking
     """
     # Get ALL recent recommendations within the time period, not just 15
-    recent_recs = user.get_recommendation_history_for_prompt(hours_back=hours_back, limit=None)
+    recent_recs = user.get_recent_recommendations(hours_back=hours_back, limit=None)
     
     if not recent_recs:
         return {
             'formatted_list': [],
             'artist_frequency': {},
             'total_count': 0,
-            'warning_message': ""
+            'warning_message': "",
+            'blacklist_tracks': []
         }
     
     # Count artist frequency for diversity warnings - get ALL recommendations in 72 hours
@@ -2782,49 +2224,214 @@ def get_enhanced_recent_recommendations(user, hours_back=24, include_artist_coun
     elif total_count >= 5:
         warning_message = f"User has {total_count} recent recommendations. Ensure variety in your suggestion."
     
+    # Create explicit track blacklist for the AI prompt (ENHANCEMENT: Bug Fix #1)
+    blacklist_tracks = []
+    
+    # Get ALL recent recommendations for comprehensive blacklist (not just display_recs)
+    for rec in recent_recs:
+        # Add track to blacklist
+        blacklist_tracks.append(f'"{rec.track_name}" by {rec.artist_name}')
+    
     app.logger.info(f"DUPLICATE PREVENTION: Found {total_count} recommendations in last {hours_back}h, showing {len(display_recs)} in prompt")
+    app.logger.info(f"DUPLICATE PREVENTION: Created blacklist with {len(blacklist_tracks)} tracks")
     
     return {
         'formatted_list': display_recs,  # Limited for prompt display
         'artist_frequency': artist_frequency,
         'total_count': total_count,  # Accurate total count
-        'warning_message': warning_message
+        'warning_message': warning_message,
+        'blacklist_tracks': blacklist_tracks  # Explicit track blacklist only
     }
+    
+@app.route('/api/generate-psychological-analysis', methods=['POST'])
+def api_generate_psychological_analysis():
+    """Generate a comprehensive psychological analysis of the user's music taste"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+        
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        data = request.get_json()
+        custom_gemini_key = data.get('custom_gemini_key') if data else None
+        
+        if not custom_gemini_key:
+            return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
+        
+        # Initialize Spotify client
+        spotify_client = SpotifyClient(
+            access_token=user.access_token
+        )
+        
+        # Collect comprehensive music data
+        app.logger.info("Collecting comprehensive music data for psychological analysis...")
+        
+        # Get current track and playback state
+        current_track = spotify_client.get_current_track()
+        playback_state = spotify_client.get_playback_state()
+        
+        # Get listening history and preferences
+        recent_tracks = spotify_client.get_recent_tracks(limit=50)
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=50)
+        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=50)
+        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=50)
+        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=50)
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=50)
+        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=50)
+        
+        # Get saved tracks and playlists
+        saved_tracks = spotify_client.get_saved_tracks(limit=50)
+        user_playlists = spotify_client.get_user_playlists(limit=50)
+        
+        # Aggregate comprehensive data
+        comprehensive_music_data = {
+            'current_track': current_track,
+            'playback_state': playback_state,
+            'recent_tracks': recent_tracks,
+            'top_artists': {
+                'short_term': top_artists_short,
+                'medium_term': top_artists_medium,
+                'long_term': top_artists_long
+            },
+            'top_tracks': {
+                'short_term': top_tracks_short,
+                'medium_term': top_tracks_medium,
+                'long_term': top_tracks_long
+            },
+            'saved_tracks': saved_tracks,
+            'user_playlists': user_playlists
+        }
+        
+        # Generate psychological analysis
+        analysis = generate_ultra_detailed_psychological_analysis(comprehensive_music_data, custom_gemini_key)
+        
+        if analysis:
+            app.logger.info("Psychological analysis generated successfully")
+            return jsonify({'success': True, 'analysis': analysis})
+        else:
+            app.logger.error("Failed to generate psychological analysis")
+            return jsonify({'success': False, 'message': 'Failed to generate analysis'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"Error in psychological analysis API: {str(e)}")
+        return jsonify({'success': False, 'message': f'Internal server error: {str(e)}'}), 500
 
-def check_recommendation_validity(user_id, track_name, artist_name):
-    """
-    Check if a recommended track is valid (not a recent duplicate)
-    Returns (is_valid, reason)
-    """
-    # Check exact duplicates
-    if Recommendation.is_duplicate(user_id, track_name, artist_name, hours_back=24):
-        return False, f"Exact duplicate: '{track_name}' by {artist_name} was recommended in the last 24 hours"
+@app.route('/api/generate-musical-analysis', methods=['POST'])
+def api_generate_musical_analysis():
+    """Generate a comprehensive musical analysis of the user's taste and patterns"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Authentication required'}), 401
+        
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        data = request.get_json()
+        custom_gemini_key = data.get('custom_gemini_key') if data else None
+        
+        if not custom_gemini_key:
+            return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
+        
+        # Initialize Spotify client
+        spotify_client = SpotifyClient(
+            access_token=user.access_token
+        )
+        
+        # Collect comprehensive music data
+        app.logger.info("Collecting comprehensive music data for musical analysis...")
+        
+        # Get current track and playback state
+        current_track = spotify_client.get_current_track()
+        playback_state = spotify_client.get_playback_state()
+        
+        # Get listening history and preferences
+        recent_tracks = spotify_client.get_recent_tracks(limit=50)
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=50)
+        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=50)
+        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=50)
+        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=50)
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=50)
+        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=50)
+        
+        # Get saved tracks and playlists
+        saved_tracks = spotify_client.get_saved_tracks(limit=50)
+        user_playlists = spotify_client.get_user_playlists(limit=50)
+        
+        # Get audio features for comprehensive analysis
+        track_ids = []
+        
+        # Collect track IDs from various sources
+        if recent_tracks and 'items' in recent_tracks:
+            track_ids.extend([item['track']['id'] for item in recent_tracks['items'] if item.get('track') and item['track'].get('id')])
+        
+        # Collect from all time ranges
+        if top_tracks_short and 'items' in top_tracks_short:
+            track_ids.extend([track['id'] for track in top_tracks_short['items'] if track.get('id')])
+        
+        if top_tracks_medium and 'items' in top_tracks_medium:
+            track_ids.extend([track['id'] for track in top_tracks_medium['items'] if track.get('id')])
+        
+        if top_tracks_long and 'items' in top_tracks_long:
+            track_ids.extend([track['id'] for track in top_tracks_long['items'] if track.get('id')])
+        
+        if saved_tracks and 'items' in saved_tracks:
+            track_ids.extend([item['track']['id'] for item in saved_tracks['items'] if item.get('track') and item['track'].get('id')])
+        
+        # Remove duplicates and limit to avoid API limits
+        track_ids = list(set(track_ids))[:100]
+        
+        # Get audio features
+        audio_features = []
+        if track_ids:
+            # Spotify API accepts max 100 tracks at once
+            for i in range(0, len(track_ids), 100):
+                batch = track_ids[i:i+100]
+                try:
+                    features_batch = spotify_client.get_audio_features(batch)
+                    if features_batch and features_batch.get('audio_features'):
+                        audio_features.extend([f for f in features_batch['audio_features'] if f is not None])
+                    elif features_batch:
+                        # Handle case where API returns features directly as a list
+                        audio_features.extend([f for f in features_batch if f is not None])
+                except Exception as e:
+                    app.logger.warning(f"Failed to get audio features for batch: {str(e)}")
+                    # Continue without audio features rather than failing the entire analysis
+                    continue
+        
+        # Aggregate comprehensive data
+        music_data = {
+            'current_track': current_track,
+            'playback_state': playback_state,
+            'recent_tracks': recent_tracks,
+            'top_artists': {
+                'short_term': top_artists_short,
+                'medium_term': top_artists_medium,
+                'long_term': top_artists_long
+            },
+            'top_tracks': {
+                'short_term': top_tracks_short,
+                'medium_term': top_tracks_medium,
+                'long_term': top_tracks_long
+            },
+            'saved_tracks': saved_tracks,
+            'user_playlists': user_playlists,
+            'audio_features': audio_features
+        }
+        
+        # Generate musical analysis
+        analysis = generate_ai_music_analysis(music_data, custom_gemini_key)
+        
+        if analysis:
+            app.logger.info("Musical analysis generated successfully")
+            return jsonify({'success': True, 'analysis': analysis})
+        else:
+            app.logger.error("Failed to generate musical analysis")
+            return jsonify({'success': False, 'message': 'Failed to generate analysis'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"Error in musical analysis API: {str(e)}")
+        return jsonify({'success': False, 'message': f'Internal server error: {str(e)}'}), 500
     
-    # Check artist overuse (more than 0 times in 72 hours - limit to 1)
-    artist_count = Recommendation.get_artist_recommendation_count(user_id, artist_name, hours_back=72)
-    if artist_count >= 1:
-        return False, f"Artist overuse: {artist_name} has been recommended {artist_count} times in the last 72 hours"
-    
-    return True, "Valid recommendation"
-
-def save_enhanced_recommendation(user, recommended_track, ai_reasoning, user_profile, music_data, 
-                                session_adjustment=None, method="standard"):
-    """
-    Save recommendation with enhanced tracking fields
-    """
-    recommendation = Recommendation(
-        user_id=user.id,
-        track_name=recommended_track['name'],
-        artist_name=recommended_track['artists'][0]['name'],
-        track_uri=recommended_track['uri'],
-        album_name=recommended_track['album']['name'],
-        ai_reasoning=ai_reasoning,
-        psychological_analysis=f"{method.title()} profile: {user_profile}",
-        listening_data_snapshot=json.dumps(music_data),
-        session_adjustment=session_adjustment,
-        recommendation_method=method
-    )
-    db.session.add(recommendation)
-    db.session.commit()
-    
-    return recommendation

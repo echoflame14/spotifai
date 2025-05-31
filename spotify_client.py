@@ -186,3 +186,25 @@ class SpotifyClient:
         }
         
         return self._make_request('POST', f'/playlists/{playlist_id}/tracks', json=data)
+
+    def get_audio_features(self, track_ids):
+        """Get audio features for multiple tracks (max 100)"""
+        if not track_ids:
+            return []
+        
+        # Convert single track ID to list if needed
+        if isinstance(track_ids, str):
+            track_ids = [track_ids]
+        
+        # Limit to 100 tracks per API request
+        if len(track_ids) > 100:
+            track_ids = track_ids[:100]
+        
+        # Join track IDs with commas
+        ids_param = ','.join(track_ids)
+        
+        return self._make_request('GET', f'/audio-features?ids={ids_param}')
+
+    def get_recent_tracks(self, limit=20):
+        """Get user's recently played tracks (alias for get_recently_played for consistency)"""
+        return self.get_recently_played(limit=limit)
