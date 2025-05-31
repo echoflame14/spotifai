@@ -4,8 +4,7 @@ API routes for various endpoints.
 This module handles miscellaneous API endpoints that don't fit in other categories.
 """
 
-from flask import Blueprint, request, session, jsonify
-from app import app
+from flask import Blueprint, request, session, jsonify, current_app
 from models import User
 from spotify_client import SpotifyClient
 from utils.spotify_auth import refresh_user_token
@@ -127,10 +126,16 @@ def api_loading_phrases():
         user_id = session.get('user_id')
         user_context = ""
         comprehensive_analysis = None
+        user = None
+        used_phrases = []
         
         if user_id:
             user = User.query.get(user_id)
             if user:
+                # Get previously used phrases to avoid repetition
+                used_phrases = user.get_used_loading_phrases()
+                logger.info(f"User has {len(used_phrases)} previously used loading phrases")
+                
                 # CHECK FOR COMPREHENSIVE PSYCHOLOGICAL ANALYSIS FIRST
                 from models import UserAnalysis
                 cached_analysis = UserAnalysis.get_latest_analysis(user.id, 'psychological', max_age_hours=24)
@@ -174,6 +179,11 @@ def api_loading_phrases():
         
         model = genai.GenerativeModel('gemini-1.5-flash')
         
+        # Create a list of used phrases for the prompt
+        used_phrases_text = ""
+        if used_phrases:
+            used_phrases_text = f"\n\nDO NOT REPEAT these previously used phrases:\n{chr(10).join([f'- {phrase}' for phrase in used_phrases[-20:]])}\n"
+        
         # Create enhanced prompt for loading phrases with psychological context
         if comprehensive_analysis:
             prompt = f"""Generate 1 exceptionally creative and personalized funny one-liner for a music recommendation AI loading screen.
@@ -196,7 +206,7 @@ PERSONALIZATION INSTRUCTIONS:
 AVOID these repetitive themes:
 - Generic "analyzing your taste" messages
 - Overused "musical DNA" references
-- Basic "crazy" or "wild" taste comments
+- Basic "crazy" or "wild" taste comments{used_phrases_text}
 
 Instead, be creative with these diverse themes (pick ONE that fits their psychology):
 - Music discovery adventure metaphors (for exploratory users)
@@ -213,6 +223,7 @@ Requirements:
 - Personalize it to their specific psychological profile above
 - Make it feel like the AI has a quirky personality AND knows them personally
 - Keep it encouraging and music-focused
+- MUST be completely different from any previously used phrases listed above
 
 Return ONLY a JSON object with this exact structure:
 {{
@@ -230,7 +241,7 @@ The user is a {user_context if user_context else "music enthusiast"}.
 AVOID these repetitive themes:
 - Anything about "crazy" or "wild" tastes
 - Generic "analyzing your taste" messages
-- Overused "musical DNA" references
+- Overused "musical DNA" references{used_phrases_text}
 
 Instead, be creative with these diverse themes (pick ONE):
 - Music discovery adventure metaphors
@@ -251,6 +262,7 @@ Requirements:
 - Pick a completely different theme than typical "analyzing taste" messages
 - Make it feel like the AI has a quirky personality
 - Keep it encouraging and music-focused
+- MUST be completely different from any previously used phrases listed above
 
 Return ONLY a JSON object with this exact structure:
 {{
@@ -290,10 +302,17 @@ Return ONLY a JSON object with this exact structure:
                 if 'headline' not in phrase:
                     raise ValueError("Missing headline in phrase")
             
+            # Add the generated phrase to the user's used phrases list
+            generated_phrase = phrases_data['phrases'][0]['headline']
+            if user:
+                was_added = user.add_used_loading_phrase(generated_phrase)
+                logger.info(f"Added new loading phrase to user's list: '{generated_phrase}' (was new: {was_added})")
+            
             return jsonify({
                 'success': True,
                 'phrases': phrases_data['phrases'],
-                'generation_time': duration
+                'generation_time': duration,
+                'phrases_avoided': len(used_phrases)
             })
             
         except (json.JSONDecodeError, ValueError) as e:
@@ -305,11 +324,17 @@ Return ONLY a JSON object with this exact structure:
                 }
             ]
             
+            # Still add the fallback phrase to the user's list if applicable
+            if user:
+                user.add_used_loading_phrase(fallback_phrases[0]['headline'])
+                logger.info(f"Added fallback loading phrase to user's list")
+            
             return jsonify({
                 'success': True,
                 'phrases': fallback_phrases,
                 'generation_time': duration,
-                'fallback_used': True
+                'fallback_used': True,
+                'phrases_avoided': len(used_phrases)
             })
             
     except Exception as e:
@@ -318,13 +343,68 @@ Return ONLY a JSON object with this exact structure:
         # Return fallback phrases on error
         fallback_phrases = [
             {
-                "headline": "Teaching robots to appreciate good music takes time"
+                "headline": "Tuning the recommendation algorithm like a vintage guitar"
             }
         ]
         
         return jsonify({
             'success': True,
             'phrases': fallback_phrases,
-            'fallback_used': True,
-            'error': str(e)
-        }) 
+            'generation_time': 0,
+            'fallback_used': True
+        })
+
+@api_bp.route('/api/clear-loading-phrases', methods=['POST'])
+def clear_loading_phrases():
+    """Clear the user's used loading phrases list"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Get current count before clearing
+        used_phrases = user.get_used_loading_phrases()
+        phrase_count = len(used_phrases)
+        
+        # Clear the used phrases list
+        user.clear_used_loading_phrases()
+        
+        logger.info(f"Cleared {phrase_count} used loading phrases for user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleared {phrase_count} used loading phrases',
+            'phrases_cleared': phrase_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error clearing loading phrases: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to clear phrases: {str(e)}'}), 500
+
+@api_bp.route('/api/used-loading-phrases', methods=['GET'])
+def get_used_loading_phrases():
+    """Get the current list of used loading phrases for the user (debug endpoint)"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        used_phrases = user.get_used_loading_phrases()
+        
+        return jsonify({
+            'success': True,
+            'used_phrases': used_phrases,
+            'total_count': len(used_phrases)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting used loading phrases: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to get phrases: {str(e)}'}), 500 

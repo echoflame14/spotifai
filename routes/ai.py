@@ -5,10 +5,9 @@ This module handles all AI-related functionality including recommendations,
 psychological analysis, musical analysis, and feedback processing.
 """
 
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, render_template, current_app
 from datetime import datetime
-from app import app, db
-from models import User, Recommendation, UserFeedback, UserAnalysis
+from models import User, Recommendation, UserFeedback, UserAnalysis, db
 from spotify_client import SpotifyClient
 from utils.spotify_auth import refresh_user_token
 from utils.ai_analysis import (

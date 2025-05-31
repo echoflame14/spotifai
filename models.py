@@ -15,6 +15,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # New field for storing used loading phrases to avoid repetition
+    used_loading_phrases = db.Column(db.Text)  # JSON array of used phrases
+    
     # Relationships
     recommendations = db.relationship('Recommendation', backref='user', lazy=True)
     feedback_entries = db.relationship('UserFeedback', backref='user', lazy=True)
@@ -27,6 +30,42 @@ class User(db.Model):
         if not self.token_expires_at:
             return True
         return datetime.utcnow() >= self.token_expires_at
+
+    def get_used_loading_phrases(self):
+        """Get the list of used loading phrases for this user"""
+        import json
+        if not self.used_loading_phrases:
+            return []
+        try:
+            return json.loads(self.used_loading_phrases)
+        except:
+            return []
+    
+    def add_used_loading_phrase(self, phrase):
+        """Add a loading phrase to the do-not-repeat list"""
+        import json
+        used_phrases = self.get_used_loading_phrases()
+        
+        # Normalize the phrase for comparison (lowercase, strip whitespace)
+        normalized_phrase = phrase.lower().strip()
+        
+        # Check if phrase already exists (normalized comparison)
+        if not any(existing.lower().strip() == normalized_phrase for existing in used_phrases):
+            used_phrases.append(phrase)
+            
+            # Keep only the last 50 phrases to prevent unlimited growth
+            if len(used_phrases) > 50:
+                used_phrases = used_phrases[-50:]
+            
+            self.used_loading_phrases = json.dumps(used_phrases)
+            db.session.commit()
+            return True
+        return False
+    
+    def clear_used_loading_phrases(self):
+        """Clear all used loading phrases (for testing or reset purposes)"""
+        self.used_loading_phrases = None
+        db.session.commit()
 
     def get_recent_recommendations(self, hours_back=24, limit=20):
         """Get recent recommendations to prevent duplicates"""

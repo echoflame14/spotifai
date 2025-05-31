@@ -4,9 +4,8 @@ Dashboard and music control routes.
 This module handles dashboard display and basic music control functionality.
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from app import app, db
-from models import User
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
+from models import User, db
 from spotify_client import SpotifyClient
 from utils.spotify_auth import refresh_user_token
 from utils.ai_analysis import generate_basic_insights

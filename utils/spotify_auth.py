@@ -9,7 +9,7 @@ import secrets
 import base64
 import requests
 from datetime import datetime, timedelta
-from flask import request, session
+from flask import request, session, current_app
 from urllib.parse import urlencode
 import logging
 
@@ -164,7 +164,7 @@ def refresh_user_token(user):
         expires_in = token_data.get('expires_in', 3600)
         user.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
         
-        from app import db
+        from models import db
         db.session.commit()
         return True
         

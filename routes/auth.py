@@ -5,10 +5,9 @@ This module handles all authentication-related routes including login,
 callback, and logout functionality.
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from datetime import datetime
-from app import app, db
-from models import User
+from models import User, db
 from spotify_client import SpotifyClient
 from utils.spotify_auth import generate_auth_url, exchange_code_for_token, refresh_user_token
 import logging
@@ -38,9 +37,9 @@ def login():
         logger.info(f"Session ID: {session.get('session_id', 'no session_id')}")
         logger.info(f"Session before OAuth: {dict(session)}")
         logger.info(f"Session permanent: {session.permanent}")
-        logger.info(f"Cookie settings - Secure: {app.config.get('SESSION_COOKIE_SECURE')}")
-        logger.info(f"Cookie settings - SameSite: {app.config.get('SESSION_COOKIE_SAMESITE')}")
-        logger.info(f"Cookie settings - Domain: {app.config.get('SESSION_COOKIE_DOMAIN')}")
+        logger.info(f"Cookie settings - Secure: {current_app.config.get('SESSION_COOKIE_SECURE')}")
+        logger.info(f"Cookie settings - SameSite: {current_app.config.get('SESSION_COOKIE_SAMESITE')}")
+        logger.info(f"Cookie settings - Domain: {current_app.config.get('SESSION_COOKIE_DOMAIN')}")
         logger.info("============================")
         
         # Debug: Log the parameters being used

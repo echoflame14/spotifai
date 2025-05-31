@@ -8,8 +8,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from flask import session
-from app import db
-from models import Recommendation, UserAnalysis
+from models import Recommendation, UserAnalysis, db
 from spotify_client import SpotifyClient
 from utils.ai_analysis import configure_gemini, log_llm_timing
 from structured_llm import structured_llm

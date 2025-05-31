@@ -4,10 +4,9 @@ Playlist creation and management routes.
 This module handles AI-powered playlist creation functionality.
 """
 
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, current_app
 from datetime import datetime
-from app import app, db
-from models import User, Recommendation, UserAnalysis
+from models import User, Recommendation, UserAnalysis, db
 from spotify_client import SpotifyClient
 from utils.spotify_auth import refresh_user_token
 from utils.ai_analysis import configure_gemini, check_rate_limit_error
