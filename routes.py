@@ -130,32 +130,67 @@ def callback():
         code = request.args.get('code')
         state = request.args.get('state')
         error = request.args.get('error')
+        error_description = request.args.get('error_description')
         
         app.logger.info(f"=== CALLBACK DEBUG INFO ===")
+        app.logger.info(f"Callback URL accessed: {request.url}")
         app.logger.info(f"Received code: {'Yes' if code else 'No'}")
+        app.logger.info(f"Code length: {len(code) if code else 0}")
         app.logger.info(f"Received state: {state}")
         app.logger.info(f"Received error: {error}")
+        app.logger.info(f"Error description: {error_description}")
         app.logger.info(f"Session state: {session.get('oauth_state')}")
         app.logger.info(f"Request URL: {request.url}")
         app.logger.info(f"Request headers: {dict(request.headers)}")
+        app.logger.info(f"All request args: {dict(request.args)}")
+        app.logger.info(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')}")
         app.logger.info(f"========================")
         
-        # Check for errors
+        # Check for errors from Spotify
         if error:
-            app.logger.error(f"Authorization failed with error: {error}")
-            flash(f'Authorization failed: {error}', 'error')
+            error_msg = f"Spotify authorization error: {error}"
+            if error_description:
+                error_msg += f" - {error_description}"
+            
+            app.logger.error(error_msg)
+            
+            # Provide specific error messages for common issues
+            if error == 'access_denied':
+                flash('You denied access to Spotify. Please try again and grant permissions.', 'error')
+            elif error == 'invalid_client':
+                flash('Invalid client configuration. Please contact support.', 'error')
+            elif error == 'invalid_request':
+                flash('Invalid authorization request. Please try again.', 'error')
+            else:
+                flash(f'Authorization failed: {error_msg}', 'error')
+            
+            return redirect(url_for('index'))
+        
+        # Check if we received an authorization code
+        if not code:
+            app.logger.error("No authorization code received from Spotify")
+            flash('No authorization code received from Spotify. Please try again.', 'error')
             return redirect(url_for('index'))
         
         # Verify state parameter
-        if not state or state != session.get('oauth_state'):
-            app.logger.error(f"State mismatch - Received: {state}, Expected: {session.get('oauth_state')}")
-            flash('Invalid state parameter. Please try again.', 'error')
+        session_state = session.get('oauth_state')
+        if not state or state != session_state:
+            app.logger.error(f"State mismatch - Received: '{state}', Expected: '{session_state}'")
+            app.logger.error(f"State comparison: received={repr(state)}, session={repr(session_state)}")
+            flash('Security check failed (invalid state). Please try again.', 'error')
             return redirect(url_for('index'))
+        
+        app.logger.info("State validation passed")
         
         # Exchange code for access token
         token_url = 'https://accounts.spotify.com/api/token'
         
         # Prepare authorization header
+        if not SPOTIFY_CLIENT_SECRET:
+            app.logger.error("SPOTIFY_CLIENT_SECRET is not set")
+            flash('Server configuration error. Please contact support.', 'error')
+            return redirect(url_for('index'))
+        
         auth_string = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
         auth_bytes = auth_string.encode('utf-8')
         auth_b64 = base64.b64encode(auth_bytes).decode('utf-8')
@@ -180,40 +215,77 @@ def callback():
         app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
         app.logger.info(f"Client Secret length: {len(SPOTIFY_CLIENT_SECRET) if SPOTIFY_CLIENT_SECRET else 0}")
         app.logger.info(f"Auth header length: {len(auth_b64)}")
+        app.logger.info(f"Authorization code length: {len(code)}")
         app.logger.info(f"Request data: {data}")
         app.logger.info(f"Request headers: {headers}")
         app.logger.info("===============================")
         
         try:
-            response = requests.post(token_url, headers=headers, data=data)
+            app.logger.info("Sending token exchange request to Spotify...")
+            response = requests.post(token_url, headers=headers, data=data, timeout=30)
             app.logger.info(f"Token exchange response status: {response.status_code}")
+            app.logger.info(f"Token exchange response time: {response.elapsed.total_seconds():.2f}s")
             
             if response.status_code != 200:
                 app.logger.error(f"Token exchange failed with status {response.status_code}")
                 app.logger.error(f"Response content: {response.text}")
-                app.logger.error(f"Request data: {data}")
-                app.logger.error(f"Auth string length: {len(auth_string)}")
-                app.logger.error(f"Full response headers: {dict(response.headers)}")
-                flash('Failed to authenticate with Spotify. Please try again.', 'error')
+                app.logger.error(f"Response headers: {dict(response.headers)}")
+                app.logger.error(f"Request data sent: {data}")
+                app.logger.error(f"Auth string components - Client ID: {SPOTIFY_CLIENT_ID}, Secret length: {len(SPOTIFY_CLIENT_SECRET)}")
+                
+                # Provide specific error messages based on status code
+                if response.status_code == 400:
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get('error_description', 'Bad request to Spotify')
+                        app.logger.error(f"Spotify API error details: {error_data}")
+                    except:
+                        error_msg = 'Invalid request to Spotify API'
+                    flash(f'Authentication failed: {error_msg}', 'error')
+                elif response.status_code == 401:
+                    flash('Invalid client credentials. Please check your Spotify app configuration.', 'error')
+                else:
+                    flash('Failed to authenticate with Spotify. Please try again.', 'error')
+                
                 return redirect(url_for('index'))
             
-            token_data = response.json()
-            app.logger.info("Successfully received token data")
+            try:
+                token_data = response.json()
+                app.logger.info("Successfully received token data from Spotify")
+                app.logger.info(f"Token data keys: {list(token_data.keys())}")
+            except ValueError as e:
+                app.logger.error(f"Failed to parse token response as JSON: {e}")
+                app.logger.error(f"Raw response: {response.text}")
+                flash('Invalid response from Spotify. Please try again.', 'error')
+                return redirect(url_for('index'))
             
-            access_token = token_data['access_token']
+            access_token = token_data.get('access_token')
             refresh_token = token_data.get('refresh_token')
             expires_in = token_data.get('expires_in', 3600)
             
+            if not access_token:
+                app.logger.error("No access token in Spotify response")
+                app.logger.error(f"Token response: {token_data}")
+                flash('Invalid token response from Spotify. Please try again.', 'error')
+                return redirect(url_for('index'))
+            
+            app.logger.info(f"Access token received (length: {len(access_token)})")
+            app.logger.info(f"Refresh token: {'Yes' if refresh_token else 'No'}")
+            app.logger.info(f"Expires in: {expires_in} seconds")
+            
             # Get user profile
+            app.logger.info("Attempting to get user profile from Spotify...")
             spotify_client = SpotifyClient(access_token)
             user_profile = spotify_client.get_user_profile()
             
             if not user_profile:
                 app.logger.error("Failed to get user profile from Spotify")
-                flash('Failed to get user profile from Spotify', 'error')
+                app.logger.error("This could indicate an invalid access token or API issue")
+                flash('Failed to get user profile from Spotify. Please try again.', 'error')
                 return redirect(url_for('index'))
             
             app.logger.info(f"Successfully retrieved user profile for: {user_profile.get('id')}")
+            app.logger.info(f"User profile keys: {list(user_profile.keys())}")
             
             # Calculate token expiration
             expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
@@ -223,6 +295,8 @@ def callback():
             if not user:
                 app.logger.info(f"Creating new user: {user_profile['id']}")
                 user = User(id=user_profile['id'])
+            else:
+                app.logger.info(f"Updating existing user: {user_profile['id']}")
             
             user.display_name = user_profile.get('display_name', '')
             user.email = user_profile.get('email', '')
@@ -232,25 +306,36 @@ def callback():
             user.token_expires_at = expires_at
             user.last_login = datetime.utcnow()
             
-            db.session.add(user)
-            db.session.commit()
-            app.logger.info(f"User data saved to database: {user.id}")
+            try:
+                db.session.add(user)
+                db.session.commit()
+                app.logger.info(f"User data saved to database: {user.id}")
+            except Exception as e:
+                app.logger.error(f"Failed to save user to database: {e}")
+                db.session.rollback()
+                flash('Failed to save user data. Please try again.', 'error')
+                return redirect(url_for('index'))
             
             # Store user ID in session
             session['user_id'] = user.id
             session.pop('oauth_state', None)
             
+            app.logger.info(f"User {user.id} successfully authenticated and logged in")
             flash('Successfully logged in!', 'success')
             return redirect(url_for('dashboard'))
             
         except requests.RequestException as e:
             app.logger.error(f"Token exchange request failed: {str(e)}")
-            flash('Failed to authenticate with Spotify. Please try again.', 'error')
+            app.logger.error(f"Request exception type: {type(e).__name__}")
+            flash('Network error during authentication. Please try again.', 'error')
             return redirect(url_for('index'))
             
     except Exception as e:
         app.logger.error(f"Callback processing failed: {str(e)}")
-        flash('An unexpected error occurred. Please try again.', 'error')
+        app.logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        flash('An unexpected error occurred during authentication. Please try again.', 'error')
         return redirect(url_for('index'))
 
 def generate_music_taste_insights(spotify_client, gemini_api_key=None):
@@ -2524,4 +2609,121 @@ Return ONLY a JSON object with this exact structure:
             'fallback_used': True,
             'error': str(e)
         })
+    
+@app.route('/test-callback')
+def test_callback():
+    """Test endpoint to verify callback URL is accessible"""
+    app.logger.info("=== TEST CALLBACK ACCESSED ===")
+    app.logger.info(f"Request URL: {request.url}")
+    app.logger.info(f"Request args: {dict(request.args)}")
+    app.logger.info(f"Request headers: {dict(request.headers)}")
+    app.logger.info("=============================")
+    
+    return f"""
+    <h1>Callback Test Successful!</h1>
+    <p>If you can see this page, the callback URL is working.</p>
+    <p>Request URL: {request.url}</p>
+    <p>Args received: {dict(request.args)}</p>
+    <p>Timestamp: {datetime.utcnow()}</p>
+    """
+
+@app.route('/debug-oauth')
+def debug_oauth():
+    """Debug endpoint to show OAuth configuration"""
+    redirect_uri = get_redirect_uri()
+    
+    debug_info = {
+        'current_time': datetime.utcnow().isoformat(),
+        'app_host': request.host,
+        'app_url': request.url,
+        'client_id': SPOTIFY_CLIENT_ID,
+        'client_secret_length': len(SPOTIFY_CLIENT_SECRET) if SPOTIFY_CLIENT_SECRET else 0,
+        'redirect_uri': redirect_uri,
+        'environment_redirect_uri': os.environ.get('SPOTIFY_REDIRECT_URI', 'NOT SET'),
+        'scopes': 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-top-read user-library-read'
+    }
+    
+    # Generate test authorization URL
+    state = secrets.token_urlsafe(16)
+    auth_params = {
+        'response_type': 'code',
+        'client_id': SPOTIFY_CLIENT_ID,
+        'scope': debug_info['scopes'],
+        'redirect_uri': redirect_uri,
+        'state': state
+    }
+    auth_url = 'https://accounts.spotify.com/authorize?' + urlencode(auth_params)
+    debug_info['test_auth_url'] = auth_url
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>OAuth Debug Information</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
+            .container {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            .debug-item {{ margin: 10px 0; padding: 10px; background: #f8f9fa; border-left: 4px solid #007bff; }}
+            .critical {{ border-left-color: #dc3545; background: #f8d7da; }}
+            .success {{ border-left-color: #28a745; background: #d4edda; }}
+            .warning {{ border-left-color: #ffc107; background: #fff3cd; }}
+            .btn {{ display: inline-block; padding: 10px 20px; background: #1db954; color: white; text-decoration: none; border-radius: 4px; margin: 5px; }}
+            pre {{ background: #f1f1f1; padding: 10px; border-radius: 4px; overflow-x: auto; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔍 Spotify OAuth Debug Information</h1>
+            
+            <div class="debug-item {'success' if debug_info['client_secret_length'] > 0 else 'critical'}">
+                <strong>Client Credentials:</strong><br>
+                Client ID: {debug_info['client_id']}<br>
+                Client Secret: {'✅ Present (' + str(debug_info['client_secret_length']) + ' chars)' if debug_info['client_secret_length'] > 0 else '❌ Missing'}
+            </div>
+            
+            <div class="debug-item success">
+                <strong>Redirect URI Configuration:</strong><br>
+                Current: {debug_info['redirect_uri']}<br>
+                Environment: {debug_info['environment_redirect_uri']}
+            </div>
+            
+            <div class="debug-item">
+                <strong>App Information:</strong><br>
+                Host: {debug_info['app_host']}<br>
+                Current URL: {debug_info['app_url']}<br>
+                Timestamp: {debug_info['current_time']}
+            </div>
+            
+            <div class="debug-item warning">
+                <strong>⚠️ Important Spotify Dashboard Check:</strong><br>
+                In your <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a>, 
+                ensure the Redirect URI is EXACTLY:<br>
+                <code>{debug_info['redirect_uri']}</code>
+            </div>
+            
+            <h2>🧪 Test Endpoints</h2>
+            <a href="/test-callback" class="btn" target="_blank">Test Callback URL</a>
+            <a href="/test-callback?code=test123&state=test456" class="btn" target="_blank">Test Callback with Params</a>
+            
+            <h2>🔗 Test Authorization</h2>
+            <p>Click this link to test the OAuth flow:</p>
+            <a href="{debug_info['test_auth_url']}" class="btn" target="_blank">Test Spotify Authorization</a>
+            
+            <h2>📋 Configuration Details</h2>
+            <pre>{json.dumps(debug_info, indent=2)}</pre>
+            
+            <h2>🏥 Troubleshooting Steps</h2>
+            <ol>
+                <li>Verify the Redirect URI in Spotify Dashboard matches exactly: <code>{debug_info['redirect_uri']}</code></li>
+                <li>Test the callback URL directly: <a href="/test-callback" target="_blank">/test-callback</a></li>
+                <li>Check if users are getting authorization errors on Spotify's side</li>
+                <li>Verify your Client ID and Secret are correct</li>
+                <li>Ensure your app has the correct scopes requested</li>
+            </ol>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
     
