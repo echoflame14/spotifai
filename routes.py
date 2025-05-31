@@ -254,12 +254,12 @@ def callback():
         return redirect(url_for('index'))
 
 def generate_music_taste_insights(spotify_client, gemini_api_key=None):
-    """Generate music taste insights from user's Spotify data using AI analysis"""
+    """Generate comprehensive music taste insights from user's Spotify data using extensive AI analysis"""
     
     # Check if we already have cached insights for this session
     if 'music_taste_profile' in session and 'profile_timestamp' in session:
-        # Cache for 30 minutes per session to avoid redundant AI calls
-        if time.time() - session['profile_timestamp'] < 1800:
+        # Cache for 20 minutes per session to avoid redundant AI calls
+        if time.time() - session['profile_timestamp'] < 1200:
             app.logger.info("Using cached music taste profile")
             return session['music_taste_profile']
     
@@ -269,73 +269,308 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
             # Return basic stats without AI analysis
             return generate_basic_insights(spotify_client)
         
-        # Get comprehensive music data
-        recent_tracks = spotify_client.get_recently_played(limit=30) or {'items': []}
-        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=15) or {'items': []}
-        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=15) or {'items': []}
-        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=15) or {'items': []}
-        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=15) or {'items': []}
+        # Get COMPREHENSIVE music data for ultra-detailed analysis
+        app.logger.info("Collecting comprehensive music data for ultra-detailed profile...")
         
-        # Prepare data for AI analysis
-        music_data = {
-            'recent_tracks': [
-                {
-                    'name': item['track']['name'],
-                    'artist': item['track']['artists'][0]['name'],
-                    'genres': item['track']['artists'][0].get('genres', []) if len(item['track']['artists']) > 0 else []
-                }
-                for item in recent_tracks.get('items', [])[:20]
-            ],
-            'top_artists_recent': [
-                {
-                    'name': artist['name'],
-                    'genres': artist.get('genres', []),
-                    'popularity': artist.get('popularity', 0)
-                }
-                for artist in top_artists_short.get('items', [])[:10]
-            ],
-            'top_artists_overall': [
-                {
-                    'name': artist['name'],
-                    'genres': artist.get('genres', []),
-                    'popularity': artist.get('popularity', 0)
-                }
-                for artist in top_artists_medium.get('items', [])[:10]
-            ],
-            'top_tracks_recent': [
-                {
-                    'name': track['name'],
-                    'artist': track['artists'][0]['name'],
-                    'popularity': track.get('popularity', 0)
-                }
-                for track in top_tracks_short.get('items', [])[:10]
-            ],
-            'top_tracks_overall': [
-                {
-                    'name': track['name'],
-                    'artist': track['artists'][0]['name'],
-                    'popularity': track.get('popularity', 0)
-                }
-                for track in top_tracks_medium.get('items', [])[:10]
-            ]
+        # Get extensive listening history
+        recent_tracks = spotify_client.get_recently_played(limit=50) or {'items': []}
+        
+        # Get detailed artist data across all time ranges
+        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=20) or {'items': []}
+        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=20) or {'items': []}
+        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=20) or {'items': []}
+        
+        # Get detailed track data across all time ranges
+        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=20) or {'items': []}
+        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=20) or {'items': []}
+        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=20) or {'items': []}
+        
+        # Get current listening context
+        current_track = spotify_client.get_current_track()
+        
+        # Analyze listening patterns and extract genres
+        all_artists = (
+            top_artists_short.get('items', []) + 
+            top_artists_medium.get('items', []) + 
+            top_artists_long.get('items', [])
+        )
+        
+        # Comprehensive genre analysis
+        genre_frequency = {}
+        for artist in all_artists:
+            for genre in artist.get('genres', []):
+                genre_frequency[genre] = genre_frequency.get(genre, 0) + 1
+        
+        # Sort genres by frequency
+        sorted_genres = sorted(genre_frequency.items(), key=lambda x: x[1], reverse=True)
+        top_genres = [genre for genre, count in sorted_genres[:25]]
+        
+        # Analyze artist popularity patterns
+        artist_popularity_data = []
+        for artist in all_artists[:30]:
+            artist_popularity_data.append({
+                'name': artist['name'],
+                'popularity': artist.get('popularity', 0),
+                'genres': artist.get('genres', []),
+                'followers': artist.get('followers', {}).get('total', 0)
+            })
+        
+        # Analyze track characteristics
+        track_analysis = []
+        all_tracks = (
+            top_tracks_short.get('items', []) + 
+            top_tracks_medium.get('items', []) + 
+            top_tracks_long.get('items', [])
+        )
+        
+        for track in all_tracks[:30]:
+            track_analysis.append({
+                'name': track['name'],
+                'artist': track['artists'][0]['name'],
+                'popularity': track.get('popularity', 0),
+                'duration_ms': track.get('duration_ms', 0),
+                'explicit': track.get('explicit', False),
+                'release_date': track.get('album', {}).get('release_date', 'Unknown'),
+                'album_type': track.get('album', {}).get('album_type', 'Unknown')
+            })
+        
+        # Analyze recent listening patterns and behavior
+        recent_listening_analysis = {
+            'total_tracks': len(recent_tracks.get('items', [])),
+            'unique_artists': len(set([item['track']['artists'][0]['name'] for item in recent_tracks.get('items', [])])),
+            'repeat_behavior': {},
+            'listening_times': [],
+            'track_skipping_patterns': []
         }
         
-        # Generate AI insights
-        ai_insights = generate_ai_music_analysis(music_data, gemini_api_key)
+        # Analyze repeat listening behavior
+        track_play_counts = {}
+        for item in recent_tracks.get('items', []):
+            track_key = f"{item['track']['name']} - {item['track']['artists'][0]['name']}"
+            track_play_counts[track_key] = track_play_counts.get(track_key, 0) + 1
+        
+        repeated_tracks = {k: v for k, v in track_play_counts.items() if v > 1}
+        recent_listening_analysis['repeat_behavior'] = repeated_tracks
+        
+        # Analyze temporal listening patterns
+        for item in recent_tracks.get('items', []):
+            if item.get('played_at'):
+                recent_listening_analysis['listening_times'].append(item['played_at'])
+        
+        # Prepare comprehensive data for AI analysis
+        comprehensive_music_data = {
+            'current_listening_context': {
+                'current_track': current_track,
+                'recent_tracks_sample': [
+                    {
+                        'name': item['track']['name'],
+                        'artist': item['track']['artists'][0]['name'],
+                        'album': item['track']['album']['name'],
+                        'played_at': item.get('played_at'),
+                        'duration_ms': item['track'].get('duration_ms', 0),
+                        'popularity': item['track'].get('popularity', 0),
+                        'explicit': item['track'].get('explicit', False)
+                    }
+                    for item in recent_tracks.get('items', [])[:30]
+                ]
+            },
+            'artist_preferences': {
+                'short_term_favorites': [
+                    {
+                        'name': artist['name'],
+                        'genres': artist.get('genres', []),
+                        'popularity': artist.get('popularity', 0),
+                        'followers': artist.get('followers', {}).get('total', 0)
+                    }
+                    for artist in top_artists_short.get('items', [])[:15]
+                ],
+                'medium_term_favorites': [
+                    {
+                        'name': artist['name'],
+                        'genres': artist.get('genres', []),
+                        'popularity': artist.get('popularity', 0),
+                        'followers': artist.get('followers', {}).get('total', 0)
+                    }
+                    for artist in top_artists_medium.get('items', [])[:15]
+                ],
+                'long_term_favorites': [
+                    {
+                        'name': artist['name'],
+                        'genres': artist.get('genres', []),
+                        'popularity': artist.get('popularity', 0),
+                        'followers': artist.get('followers', {}).get('total', 0)
+                    }
+                    for artist in top_artists_long.get('items', [])[:15]
+                ],
+                'total_unique_artists': len(set([artist['name'] for artist in all_artists])),
+                'artist_loyalty_patterns': artist_popularity_data
+            },
+            'track_preferences': {
+                'short_term_tracks': track_analysis[:10],
+                'medium_term_tracks': track_analysis[10:20],
+                'long_term_tracks': track_analysis[20:30],
+                'track_characteristics': {
+                    'average_popularity': sum([t.get('popularity', 0) for t in all_tracks]) / len(all_tracks) if all_tracks else 0,
+                    'explicit_content_ratio': sum([1 for t in all_tracks if t.get('explicit')]) / len(all_tracks) if all_tracks else 0,
+                    'average_duration_minutes': sum([t.get('duration_ms', 0) for t in all_tracks]) / len(all_tracks) / 60000 if all_tracks else 0
+                }
+            },
+            'genre_analysis': {
+                'primary_genres': top_genres[:10],
+                'secondary_genres': top_genres[10:20],
+                'genre_diversity_score': len(top_genres),
+                'genre_frequency_distribution': dict(sorted_genres[:20]),
+                'genre_evolution': {
+                    'short_term_genres': list(set([genre for artist in top_artists_short.get('items', []) for genre in artist.get('genres', [])]))[:10],
+                    'medium_term_genres': list(set([genre for artist in top_artists_medium.get('items', []) for genre in artist.get('genres', [])]))[:10],
+                    'long_term_genres': list(set([genre for artist in top_artists_long.get('items', []) for genre in artist.get('genres', [])]))[:10]
+                }
+            },
+            'listening_behavior_analysis': recent_listening_analysis,
+            'musical_evolution_patterns': {
+                'consistency_score': len(set([artist['name'] for artist in top_artists_long.get('items', [])[:10]]).intersection(
+                    set([artist['name'] for artist in top_artists_short.get('items', [])[:10]])
+                )),
+                'discovery_tendency': len([artist for artist in top_artists_short.get('items', [])[:20] 
+                                         if artist['name'] not in [a['name'] for a in top_artists_long.get('items', [])[:20]]]),
+                'mainstream_vs_niche_preference': {
+                    'mainstream_tracks': len([t for t in all_tracks if t.get('popularity', 0) > 70]),
+                    'niche_tracks': len([t for t in all_tracks if t.get('popularity', 0) < 30]),
+                    'total_tracks_analyzed': len(all_tracks)
+                }
+            }
+        }
+        
+        # Generate ultra-detailed AI insights
+        ai_insights = generate_ultra_detailed_music_analysis(comprehensive_music_data, gemini_api_key)
         
         if ai_insights:
-            # Cache the result in session for 30 minutes
+            # Cache the result in session for 20 minutes
             session['music_taste_profile'] = ai_insights
             session['profile_timestamp'] = time.time()
-            app.logger.info("Cached new music taste profile")
+            app.logger.info("Cached new ultra-detailed music taste profile")
             return ai_insights
         else:
             # Fallback to basic insights if AI fails
             return generate_basic_insights(spotify_client)
             
     except Exception as e:
-        app.logger.error(f"Error generating music insights: {e}")
+        app.logger.error(f"Error generating comprehensive music insights: {e}")
         return generate_basic_insights(spotify_client)
+
+def generate_ultra_detailed_music_analysis(comprehensive_music_data, gemini_api_key):
+    """Use Gemini AI to generate ultra-detailed, comprehensive music taste insights with psychological depth"""
+    try:
+        import google.generativeai as genai
+        
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')  # Use the most advanced model
+        
+        # Create an extremely comprehensive prompt for ultra-detailed analysis
+        prompt = f"""
+You are a sophisticated music psychologist and data analyst with expertise in musical taste profiling, behavioral psychology, and cultural music trends. Analyze this comprehensive Spotify listening data to create an extremely detailed psychological and musical profile.
+
+COMPREHENSIVE MUSIC DATA FOR ANALYSIS:
+{json.dumps(comprehensive_music_data, indent=2)}
+
+ANALYSIS REQUIREMENTS:
+Create an ultra-detailed, multi-dimensional analysis covering these specific areas with extreme depth and specificity:
+
+**PSYCHOLOGICAL MUSIC PROFILE:**
+- Deep psychological drivers behind their musical choices
+- Emotional regulation patterns through music
+- Personality traits reflected in listening habits
+- Cognitive and emotional processing style indicated by music preferences
+- Social identity and self-expression through musical taste
+- Stress response and coping mechanisms via music selection
+- Attention patterns and focus preferences based on track characteristics
+
+**MUSICAL IDENTITY & TASTE EVOLUTION:**
+- Core musical identity and what defines their taste
+- Evolution of preferences across different time periods
+- Consistency vs. exploration patterns in their listening
+- Musical adventurousness and openness to new genres
+- Comfort zone vs. discovery balance
+- Cultural and subcultural affiliations through music
+- Generational influences and musical nostalgia patterns
+
+**BEHAVIORAL LISTENING PATTERNS:**
+- Repeat listening psychology and attachment formation
+- Playlist creation and curation tendencies
+- Mood-based listening patterns and emotional regulation
+- Social vs. private listening preferences
+- Active vs. background listening behavior
+- Genre-switching patterns and cognitive flexibility
+- Musical attention span and complexity tolerance
+
+**GENRE PREFERENCES & SONIC CHARACTERISTICS:**
+- Detailed breakdown of genre preferences and their psychological implications
+- Sound texture preferences (aggressive, smooth, complex, minimal)
+- Rhythmic and temporal preferences and their neurological implications
+- Harmonic complexity tolerance and cognitive processing style
+- Lyrical content preferences and verbal processing patterns
+- Production style preferences and aesthetic sensibilities
+
+**SOCIAL & CULTURAL MUSICAL IDENTITY:**
+- Musical taste as social signaling and identity construction
+- Mainstream vs. alternative preferences and social positioning
+- Cultural capital accumulation through music discovery
+- Generational musical markers and cultural belonging
+- Musical gatekeeping tendencies and taste hierarchies
+
+**TEMPORAL & CONTEXTUAL LISTENING:**
+- Time-based listening patterns and lifestyle integration
+- Seasonal and mood-dependent musical preferences
+- Activity-based music selection patterns
+- Energy level matching and circadian rhythm alignment
+- Contextual switching between different musical personas
+
+Respond ONLY with a JSON object in this exact format:
+{{
+    "ultra_detailed_psychological_profile": "[4-6 detailed paragraphs providing extremely comprehensive psychological analysis of their musical personality, including specific references to artists, genres, and behavioral patterns. Include psychological theories, personality insights, emotional regulation patterns, and cognitive processing style. Be specific about what their music choices reveal about their inner world, social identity, and psychological needs. Reference specific data points and patterns from their listening history.]",
+    "comprehensive_musical_identity": "[3-4 paragraphs detailing their core musical identity, taste evolution, and artistic preferences. Include analysis of their genre journey, consistency patterns, discovery tendencies, and musical adventurousness. Reference specific artists and genres from their data and explain what these choices reveal about their aesthetic sensibilities and cultural positioning.]",
+    "detailed_behavioral_analysis": "[2-3 paragraphs analyzing their listening behaviors, repeat patterns, and musical engagement style. Include insights about their emotional regulation through music, social vs. private listening, and how they use music functionally in their daily life.]",
+    "sonic_preference_breakdown": "[2-3 paragraphs detailing their preferences for specific sonic characteristics, production styles, lyrical content, and musical complexity. Reference specific tracks and artists to illustrate points about their aesthetic preferences.]",
+    "cultural_social_context": "[2 paragraphs analyzing their musical taste within broader cultural and social contexts, including mainstream vs. alternative positioning, generational influences, and social identity construction through music.]",
+    "analysis_ready": true
+}}
+
+CRITICAL REQUIREMENTS:
+- Include specific artist names, track names, and genre references from their actual data
+- Provide psychological depth with references to established psychological theories where relevant
+- Use specific data points (numbers, percentages, patterns) to support analysis
+- Be extremely detailed and comprehensive - aim for 1000+ words total across all sections
+- Connect musical choices to broader personality traits and psychological patterns
+- Reference specific behavioral patterns observable in their listening data
+- Include insights about their emotional relationship with music
+- Analyze their musical taste within broader cultural and social contexts
+
+Make this analysis so detailed and insightful that it feels like a professional psychological assessment of their musical personality.
+"""
+        
+        app.logger.info("Generating ultra-detailed AI music taste analysis...")
+        response = model.generate_content(prompt)
+        
+        if response and response.text:
+            # Parse the JSON response
+            import re
+            
+            # Extract JSON from the response
+            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+            if json_match:
+                insights_json = json.loads(json_match.group())
+                app.logger.info("Ultra-detailed AI music analysis generated successfully")
+                return insights_json
+            else:
+                app.logger.warning("Could not extract JSON from ultra-detailed AI response")
+                return None
+        else:
+            app.logger.warning("Empty response from ultra-detailed AI music analysis")
+            return None
+            
+    except Exception as e:
+        app.logger.error(f"Error in ultra-detailed AI music analysis: {e}")
+        return None
 
 def generate_basic_insights(spotify_client):
     """Generate basic insights without AI analysis"""
