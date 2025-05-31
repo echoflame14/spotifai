@@ -444,30 +444,58 @@ function handleAIRecommendation() {
     const customGeminiKey = localStorage.getItem('gemini_api_key');
     log('Custom Gemini API key present:', !!customGeminiKey);
 
-    // Use Lightning mode (hyper fast mode) - only mode supported
-    const endpoint = '/ai-recommendation-lightning';
-    const mode = 'lightning';
-
-    log('Using Lightning mode (hyper fast) endpoint:', endpoint);
-
-    // Prepare request payload
-    const payload = {
-        gemini_api_key: customGeminiKey
-    };
-
-    if (sessionAdjustment) {
-        payload.session_adjustment = sessionAdjustment;
+    if (!customGeminiKey) {
+        showRecommendationError('Please add your Gemini API key in AI Settings to get recommendations.');
+        // Remove loading state
+        const currentDiscoverBtn = document.getElementById('getRecommendation');
+        if (currentDiscoverBtn) {
+            currentDiscoverBtn.disabled = false;
+            currentDiscoverBtn.innerHTML = '<i class="fas fa-magic"></i> Discover';
+            currentDiscoverBtn.classList.remove('loading');
+        }
+        return;
     }
 
-    log('Request payload prepared');
-
-    // Make AI recommendation request
-    fetch(endpoint, {
+    // First, check which endpoint is available via performance toggle
+    fetch('/api/performance-toggle', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(perfData => {
+        log('Performance toggle response:', perfData);
+        
+        const endpoint = perfData.endpoint || '/ai-recommendation';
+        const mode = perfData.mode || 'standard';
+        
+        log('Using AI recommendation endpoint:', endpoint, 'mode:', mode);
+
+        // Prepare request payload
+        const payload = {
+            gemini_api_key: customGeminiKey
+        };
+
+        if (sessionAdjustment) {
+            payload.session_adjustment = sessionAdjustment;
+        }
+
+        log('Request payload prepared');
+
+        // Make AI recommendation request
+        return fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
     })
     .then(response => {
         log('Received response from server, status:', response.status);
@@ -482,9 +510,9 @@ function handleAIRecommendation() {
         if (data.success) {
             log('Recommendation successful:', data.track.name, 'by', data.track.artist);
             
-            // Show performance banner with lightning mode stats
+            // Show performance banner with stats
             if (data.performance_stats) {
-                showPerformanceBanner(data.performance_stats, mode);
+                showPerformanceBanner(data.performance_stats, data.performance_stats.mode || 'standard');
             }
             
             // Display the recommended track immediately with placeholder reasoning
@@ -582,26 +610,46 @@ function showPerformanceBanner(stats, mode) {
         existingBanner.remove();
     }
     
-    // Create performance banner for Lightning Mode (hyper fast mode)
+    // Create performance banner
     const banner = document.createElement('div');
     banner.id = 'performanceBanner';
-    banner.className = 'alert alert-success alert-dismissible fade show mb-3 lightning';
+    banner.className = 'alert alert-success alert-dismissible fade show mb-3';
     
-    const bannerStyle = 'background: linear-gradient(45deg, #00ff88, #00ccff); border: none; color: white; font-weight: bold;';
-    const cacheStatus = stats.cached_data ? '⚡ Cached data' : '🔄 Fresh data';
-    const profileStatus = stats.cached_profile ? '🧠 Cached profile' : '🔍 New profile';
-    const bannerContent = `
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <div style="font-size: 24px;">⚡</div>
-            <div>
-                <strong>LIGHTNING MODE (HYPER FAST)</strong><br>
-                <small>Total: ${stats.total_duration}s | LLM: ${stats.total_llm_duration}s | Model: ${stats.model_used} | ${profileStatus} | ${cacheStatus}</small>
+    let bannerStyle, bannerContent;
+    
+    if (mode === 'lightning') {
+        // Lightning mode styling
+        bannerStyle = 'background: linear-gradient(45deg, #00ff88, #00ccff); border: none; color: white; font-weight: bold;';
+        const cacheStatus = stats.cached_data ? '⚡ Cached data' : '🔄 Fresh data';
+        const profileStatus = stats.cached_profile ? '🧠 Cached profile' : '🔍 New profile';
+        bannerContent = `
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 24px;">⚡</div>
+                <div>
+                    <strong>LIGHTNING MODE (HYPER FAST)</strong><br>
+                    <small>Total: ${stats.total_duration}s | LLM: ${stats.total_llm_duration}s | Model: ${stats.model_used} | ${profileStatus} | ${cacheStatus}</small>
+                </div>
+                <div style="margin-left: auto; font-size: 14px;">
+                    <strong>${stats.performance_gain_estimate || 'Ultra-fast!'}</strong>
+                </div>
             </div>
-            <div style="margin-left: auto; font-size: 14px;">
-                <strong>${stats.performance_gain_estimate}</strong>
+        `;
+    } else {
+        // Standard mode styling
+        bannerStyle = 'background: linear-gradient(45deg, #1db954, #1ed760); border: none; color: white; font-weight: bold;';
+        bannerContent = `
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 24px;">🎵</div>
+                <div>
+                    <strong>STANDARD AI MODE</strong><br>
+                    <small>Total: ${stats.total_duration}s | Model: ${stats.model_used} | Non-optimized mode active</small>
+                </div>
+                <div style="margin-left: auto; font-size: 14px;">
+                    <strong>Ready!</strong>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
     
     banner.style.cssText = bannerStyle;
     banner.innerHTML = `
