@@ -126,25 +126,47 @@ def api_loading_phrases():
         # Get user from session for personalization
         user_id = session.get('user_id')
         user_context = ""
+        comprehensive_analysis = None
         
         if user_id:
             user = User.query.get(user_id)
             if user:
-                # Get basic user info for personalization
-                spotify_client = SpotifyClient(user.access_token)
-                try:
-                    # Try to get recent listening context
-                    recent_tracks = spotify_client.get_recently_played(limit=5)
-                    if recent_tracks and 'items' in recent_tracks and recent_tracks['items']:
-                        recent_artists = []
-                        for item in recent_tracks['items'][:3]:
-                            track = item.get('track', {})
-                            if track.get('artists'):
-                                recent_artists.append(track['artists'][0]['name'])
-                        user_context = f"Recently listened to artists like {', '.join(recent_artists[:3])}"
-                except:
-                    # If we can't get recent tracks, use generic context
-                    user_context = "music lover"
+                # CHECK FOR COMPREHENSIVE PSYCHOLOGICAL ANALYSIS FIRST
+                from models import UserAnalysis
+                cached_analysis = UserAnalysis.get_latest_analysis(user.id, 'psychological', max_age_hours=24)
+                
+                if cached_analysis:
+                    analysis_data = cached_analysis.get_data()
+                    if isinstance(analysis_data, dict) and analysis_data.get('analysis_ready'):
+                        logger.info("Using comprehensive psychological analysis for personalized loading phrases")
+                        comprehensive_analysis = analysis_data
+                        
+                        # Extract key personality traits for loading phrase personalization
+                        personality = analysis_data.get('psychological_profile', {}).get('core_personality', '')
+                        musical_identity = analysis_data.get('musical_identity', {}).get('sophistication_level', '')
+                        discovery_style = analysis_data.get('behavioral_insights', {}).get('discovery_preferences', '')
+                        
+                        user_context = f"User with {personality[:100]} musical personality, {musical_identity[:50]} sophistication, who {discovery_style[:100]}"
+                        logger.info("LOADING: Using comprehensive analysis for personalized loading phrases")
+                
+                if not comprehensive_analysis:
+                    # Fallback to basic recent listening context
+                    spotify_client = SpotifyClient(user.access_token)
+                    try:
+                        # Try to get recent listening context
+                        recent_tracks = spotify_client.get_recently_played(limit=5)
+                        if recent_tracks and 'items' in recent_tracks and recent_tracks['items']:
+                            recent_artists = []
+                            for item in recent_tracks['items'][:3]:
+                                track = item.get('track', {})
+                                if track.get('artists'):
+                                    recent_artists.append(track['artists'][0]['name'])
+                            user_context = f"Recently listened to artists like {', '.join(recent_artists[:3])}"
+                            logger.info("LOADING: Using basic listening context for loading phrases")
+                    except:
+                        # If we can't get recent tracks, use generic context
+                        user_context = "music lover"
+                        logger.info("LOADING: Using generic context for loading phrases")
         
         # Configure Gemini
         if not configure_gemini(custom_gemini_key):
@@ -152,8 +174,57 @@ def api_loading_phrases():
         
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Create prompt for loading phrases
-        prompt = f"""Generate 1 exceptionally creative and varied funny one-liner for a music recommendation AI loading screen.
+        # Create enhanced prompt for loading phrases with psychological context
+        if comprehensive_analysis:
+            prompt = f"""Generate 1 exceptionally creative and personalized funny one-liner for a music recommendation AI loading screen.
+
+USER PSYCHOLOGICAL CONTEXT:
+{user_context}
+
+COMPREHENSIVE ANALYSIS INSIGHTS:
+- Musical Identity: {comprehensive_analysis.get('musical_identity', {}).get('sophistication_level', 'Music enthusiast')}
+- Discovery Style: {comprehensive_analysis.get('behavioral_insights', {}).get('discovery_preferences', 'Open to new music')}
+- Listening Psychology: {comprehensive_analysis.get('listening_psychology', {}).get('mood_regulation', 'Uses music for emotional balance')}
+- Unique Traits: {', '.join(comprehensive_analysis.get('summary_insights', {}).get('unique_traits', ['Musical explorer'])[:2])}
+
+PERSONALIZATION INSTRUCTIONS:
+- Reference their specific musical sophistication level and discovery preferences
+- Align with their listening psychology and unique traits
+- Make it feel like the AI truly understands their musical personality
+- Use their psychological profile to craft a joke that resonates
+
+AVOID these repetitive themes:
+- Generic "analyzing your taste" messages
+- Overused "musical DNA" references
+- Basic "crazy" or "wild" taste comments
+
+Instead, be creative with these diverse themes (pick ONE that fits their psychology):
+- Music discovery adventure metaphors (for exploratory users)
+- AI robot/technology humor about music (for tech-savvy users)
+- Studio/recording session jokes (for sophisticated listeners)
+- Musical instrument humor (for technically-minded users)
+- Genre-mixing comedy (for diverse taste users)
+- Artist collaboration jokes (for social listeners)
+- Music production humor (for detail-oriented users)
+
+Requirements:
+- Create 1 outstanding one-sentence headline (6-12 words)
+- Make it genuinely funny with a clever punchline or twist
+- Personalize it to their specific psychological profile above
+- Make it feel like the AI has a quirky personality AND knows them personally
+- Keep it encouraging and music-focused
+
+Return ONLY a JSON object with this exact structure:
+{{
+    "phrases": [
+        {{
+            "headline": "One personalized, creative, and funny sentence"
+        }}
+    ]
+}}"""
+        else:
+            # Fallback prompt for users without comprehensive analysis
+            prompt = f"""Generate 1 exceptionally creative and varied funny one-liner for a music recommendation AI loading screen.
 The user is a {user_context if user_context else "music enthusiast"}.
 
 AVOID these repetitive themes:
