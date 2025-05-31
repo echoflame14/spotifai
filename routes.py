@@ -1045,57 +1045,25 @@ def chat_feedback():
         if not recommendation:
             return jsonify({'success': False, 'message': 'Recommendation not found'}), 404
         
-        # Use AI to analyze the feedback and extract insights
-        gemini_api_key = os.environ.get('GEMINI_API_KEY')
-        if not gemini_api_key:
-            return jsonify({'success': False, 'message': 'AI analysis not available'}), 500
-        
-        # Configure Gemini for feedback analysis
-        genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # Create prompt for analyzing user feedback
-        feedback_analysis_prompt = f"""
-Analyze this user feedback about a music recommendation and extract key insights:
-
-RECOMMENDED TRACK: "{recommendation.track_name}" by {recommendation.artist_name}
-ORIGINAL AI REASONING: {recommendation.ai_reasoning}
-USER FEEDBACK: "{feedback_text}"
-
-Please analyze:
-1. Sentiment (positive, negative, neutral)
-2. Specific reasons for the user's reaction
-3. What this reveals about their music preferences
-4. How future recommendations should be adjusted
-5. Key patterns or preferences to remember
-
-Provide a structured analysis in JSON format:
-{{
-    "sentiment": "positive/negative/neutral",
-    "key_insights": ["insight1", "insight2", "insight3"],
-    "preference_adjustments": ["adjustment1", "adjustment2"],
-    "recommendation_feedback": "summary of what worked or didn't work"
-}}
-"""
-        
-        # Get AI analysis of the feedback
-        response = model.generate_content(feedback_analysis_prompt)
-        ai_analysis = response.text.strip()
-        
-        # Extract sentiment from AI analysis (simplified)
+        # Simple sentiment analysis based on keywords
+        feedback_lower = feedback_text.lower()
         sentiment = "neutral"
-        if "positive" in ai_analysis.lower():
+        
+        positive_words = ['love', 'like', 'great', 'awesome', 'good', 'amazing', 'perfect', 'excellent', 'fantastic', 'yes']
+        negative_words = ['hate', 'dislike', 'bad', 'awful', 'terrible', 'no', "don't like", 'boring', 'annoying']
+        
+        if any(word in feedback_lower for word in positive_words):
             sentiment = "positive"
-        elif "negative" in ai_analysis.lower():
+        elif any(word in feedback_lower for word in negative_words):
             sentiment = "negative"
         
-        # Save feedback to database
+        # Save feedback to database with simple analysis
         feedback_entry = UserFeedback(
             user_id=user_id,
             recommendation_id=recommendation_id,
             feedback_text=feedback_text,
             sentiment=sentiment,
-            ai_processed_feedback=ai_analysis
+            ai_processed_feedback=f"User feedback: {feedback_text} (Detected sentiment: {sentiment})"
         )
         db.session.add(feedback_entry)
         db.session.commit()
@@ -1104,9 +1072,8 @@ Provide a structured analysis in JSON format:
         
         return jsonify({
             'success': True,
-            'message': 'Feedback received and analyzed!',
+            'message': 'Feedback received! Thanks for helping me learn your preferences.',
             'sentiment': sentiment,
-            'ai_analysis': ai_analysis,
             'feedback_id': feedback_entry.id
         })
         
@@ -1137,45 +1104,21 @@ def track_reasoning():
         if not recommendation:
             return jsonify({'success': False, 'message': 'Recommendation not found'}), 404
         
-        # Check if Gemini API key is available
-        gemini_api_key = os.environ.get('GEMINI_API_KEY')
-        if not gemini_api_key:
-            return jsonify({
-                'success': False, 
-                'message': 'AI analysis not available - API key required'
-            }), 400
+        # For now, return the basic reasoning that was already generated
+        # This avoids the API key requirement issue
+        basic_reasoning = recommendation.ai_reasoning or "This track was recommended based on your listening patterns and musical preferences."
         
-        # Configure Gemini for reasoning analysis
-        genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # If the recommendation has a psychological analysis, use that for more context
+        if recommendation.psychological_analysis:
+            enhanced_reasoning = f"{basic_reasoning}\n\nBased on your music taste analysis: {recommendation.psychological_analysis[:200]}..."
+        else:
+            enhanced_reasoning = basic_reasoning
         
-        # Create prompt for detailed track reasoning
-        reasoning_prompt = f"""
-You are a music expert explaining to a friend why they'll love a specific song recommendation based on their listening history.
-
-RECOMMENDED TRACK: "{recommendation.track_name}" by {recommendation.artist_name}
-
-USER'S LISTENING DATA SNAPSHOT:
-{recommendation.listening_data_snapshot}
-
-ORIGINAL AI REASONING:
-{recommendation.ai_reasoning}
-
-USER'S PSYCHOLOGICAL ANALYSIS:
-{recommendation.psychological_analysis}
-
-Write ONE concise, engaging paragraph (4-6 sentences max) explaining why this user will love this track. Be specific about musical connections to their taste. Mention 2-3 artists they already love and explain how this song relates. Keep it conversational and informative, focusing on the musical elements that connect to their preferences.
-"""
-        
-        # Generate the reasoning
-        response = model.generate_content(reasoning_prompt)
-        reasoning_text = response.text.strip()
-        
-        app.logger.info(f"Generated track reasoning for recommendation {recommendation_id}")
+        app.logger.info(f"Provided track reasoning for recommendation {recommendation_id}")
         
         return jsonify({
             'success': True,
-            'reasoning': reasoning_text,
+            'reasoning': enhanced_reasoning,
             'track_info': {
                 'name': recommendation.track_name,
                 'artist': recommendation.artist_name,
