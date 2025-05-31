@@ -7,7 +7,7 @@ This module handles AI-powered playlist creation functionality.
 from flask import Blueprint, request, session, jsonify
 from datetime import datetime
 from app import app, db
-from models import User, Recommendation
+from models import User, Recommendation, UserAnalysis
 from spotify_client import SpotifyClient
 from utils.spotify_auth import refresh_user_token
 from utils.ai_analysis import configure_gemini, check_rate_limit_error
@@ -69,19 +69,46 @@ def create_ai_playlist():
         
         spotify_client = SpotifyClient(user.access_token)
         
-        # Get optimized user data for context - reduce API calls for stability
-        logger.info("Collecting optimized user music data for AI playlist creation...")
+        # Get comprehensive user analysis for playlist creation
+        logger.info("Collecting comprehensive user analysis for AI playlist creation...")
         
-        # Use basic music insights
-        try:
-            from utils.ai_analysis import generate_basic_insights
-            music_data = generate_basic_insights(spotify_client)
-            user_analysis = f"User prefers {', '.join(music_data.get('genres', {}).get('examples', ['various genres']))} with favorite artists including {', '.join(music_data.get('top_artists', {}).get('examples', ['various artists']))}."
-            logger.info("Using basic music insights for playlist creation")
-        except Exception as e:
-            logger.error(f"Error getting music insights: {e}")
-            # Ultra-minimal fallback
-            user_analysis = "User prefers rock, alternative, and pop music with some electronic elements."
+        # CHECK FOR COMPREHENSIVE PSYCHOLOGICAL ANALYSIS FIRST - FROM DATABASE
+        cached_analysis = UserAnalysis.get_latest_analysis(user.id, 'psychological', max_age_hours=24)
+        
+        user_analysis = None
+        
+        if cached_analysis:
+            analysis_data = cached_analysis.get_data()
+            if isinstance(analysis_data, dict) and analysis_data.get('analysis_ready'):
+                logger.info("Using comprehensive psychological analysis from database for playlist creation")
+                
+                # Extract key insights from comprehensive analysis for playlist prompt
+                analysis = analysis_data
+                user_analysis = f"""
+COMPREHENSIVE USER ANALYSIS FOR PLAYLIST CURATION:
+Core Personality: {analysis.get('psychological_profile', {}).get('core_personality', 'Not available')}
+Musical Identity: {analysis.get('musical_identity', {}).get('sophistication_level', 'Not available')} | {analysis.get('musical_identity', {}).get('exploration_style', 'Not available')}
+Listening Psychology: {analysis.get('listening_psychology', {}).get('mood_regulation', 'Not available')}
+Discovery Preferences: {analysis.get('behavioral_insights', {}).get('discovery_preferences', 'Not available')}
+Playlist Creation Style: {analysis.get('behavioral_insights', {}).get('playlist_creation_style', 'Not available')}
+Recommendation Strategy: {analysis.get('summary_insights', {}).get('recommendation_strategy', 'Not available')}
+Key Unique Traits: {', '.join(analysis.get('summary_insights', {}).get('unique_traits', [])[:3])}
+Musical Growth Trajectory: {analysis.get('growth_trajectory', {}).get('evolution_pattern', 'Not available')}
+Energy Management: {analysis.get('listening_psychology', {}).get('energy_management', 'Not available')}
+"""
+                logger.info("PLAYLIST: Using comprehensive psychological analysis for enhanced playlist curation")
+        
+        if not user_analysis:
+            # Fallback to basic music insights if comprehensive analysis not available
+            try:
+                from utils.ai_analysis import generate_basic_insights
+                music_data = generate_basic_insights(spotify_client)
+                user_analysis = f"User prefers {', '.join(music_data.get('genres', {}).get('examples', ['various genres']))} with favorite artists including {', '.join(music_data.get('top_artists', {}).get('examples', ['various artists']))}."
+                logger.info("PLAYLIST: Using basic music insights as fallback for playlist creation")
+            except Exception as e:
+                logger.error(f"Error getting music insights: {e}")
+                # Ultra-minimal fallback
+                user_analysis = "User prefers rock, alternative, and pop music with some electronic elements."
         
         # Get enhanced recent recommendations to avoid duplicates in playlist
         rec_tracking = get_enhanced_recent_recommendations(user, hours_back=48, include_artist_counts=True)  # Look back 48 hours for playlists
@@ -117,9 +144,9 @@ def create_ai_playlist():
         logger.info(f"Playlist creation: Avoiding {len(all_recent_tracks)} recent tracks and {len(over_used_artists)} overused artists")
         
         # Create comprehensive prompt for generating multiple tracks
-        prompt = f"""Based on this user's comprehensive Spotify listening data and psychological analysis, recommend exactly {song_count} specific songs for a personalized playlist.
+        prompt = f"""Based on this user's comprehensive psychological and musical analysis, create a highly personalized playlist of exactly {song_count} specific songs.
 
-USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
+USER COMPREHENSIVE PSYCHOLOGICAL & MUSICAL ANALYSIS:
 {user_analysis}
 
 {frequent_artists_warning}
@@ -127,25 +154,30 @@ USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
 RECENTLY RECOMMENDED TRACKS (DO NOT REPEAT THESE):
 {all_recent_tracks}
 
-PLAYLIST TITLE: {playlist_name}
-PLAYLIST DESCRIPTION AND ADDITIONAL GUIDANCE:
-{playlist_description}
+PLAYLIST CONTEXT:
+Title: {playlist_name}
+Description: {playlist_description}
 
-REQUIREMENTS:
-1. Recommend exactly {song_count} different songs
-2. Each song should be a real, existing track on Spotify
-3. Variety is important - don't repeat artists unless the user heavily favors them
-4. Consider the user's taste evolution and current preferences
-5. Include both familiar genres and potential discoveries
-6. IMPORTANT: Pay special attention to both the playlist title and description above. Adjust your recommendations to match that mood, theme, genre, or style while still respecting the user's musical taste
-7. Format each song as: "Song Title" by Artist Name
+ENHANCED REQUIREMENTS FOR PSYCHOLOGICAL ALIGNMENT:
+1. Recommend exactly {song_count} different, real songs available on Spotify
+2. **PSYCHOLOGICAL MATCHING**: Use the comprehensive analysis above to match songs to the user's:
+   - Core personality traits and emotional patterns
+   - Musical sophistication level and exploration style
+   - Mood regulation and energy management preferences
+   - Discovery preferences and listening psychology
+   - Playlist creation style and behavioral insights
+3. **CONTEXTUAL ADAPTATION**: Carefully consider both the playlist title and description to match the intended mood, theme, or occasion while respecting their psychological profile
+4. **DIVERSITY & GROWTH**: Balance familiar comfort zone tracks with growth-oriented discoveries based on their exploration style
+5. **TEMPORAL FLOW**: Consider how the user manages energy and mood through music sequencing
+6. **AVOID REPETITION**: Do not include any tracks from the avoidance list above
+7. **ARTIST VARIETY**: Limit artist repetition unless their analysis shows strong loyalty patterns
 
-Please respond with ONLY the song list, one song per line, in this exact format:
+FORMAT: Respond with ONLY the song list, one per line:
 "Song Title 1" by Artist Name 1
 "Song Title 2" by Artist Name 2
 ...and so on.
 
-Do not include any other text, explanations, or formatting."""
+Do not include explanations, numbering, or additional text."""
 
         # Generate AI recommendations with timeout protection
         try:
@@ -287,7 +319,7 @@ Do not include any other text, explanations, or formatting."""
                         track_uri=track['uri'],
                         album_name=track['album']['name'],
                         ai_reasoning=f"Added to playlist '{playlist_name}' - {playlist_description[:100]}...",
-                        psychological_analysis=f"Playlist: {user_analysis[:200]}...",
+                        psychological_analysis=user_analysis[:500] + "..." if len(user_analysis) > 500 else user_analysis,  # Truncate if too long
                         listening_data_snapshot="{}",  # Minimal for playlist tracks
                         session_adjustment=playlist_description,
                         recommendation_method='playlist'
