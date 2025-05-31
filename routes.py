@@ -641,29 +641,29 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
             limited_data = {
                 'current_track': comprehensive_music_data.get('current_track'),
                 'recent_tracks': {
-                    'items': comprehensive_music_data.get('recent_tracks', {}).get('items', [])[:20]
+                    'items': comprehensive_music_data.get('recent_tracks', {}).get('items', [])[:10]  # Reduced from 20
                 },
                 'top_artists': {
                     'short_term': {
-                        'items': comprehensive_music_data.get('top_artists', {}).get('short_term', {}).get('items', [])[:15]
+                        'items': comprehensive_music_data.get('top_artists', {}).get('short_term', {}).get('items', [])[:10]  # Reduced from 15
                     },
                     'medium_term': {
-                        'items': comprehensive_music_data.get('top_artists', {}).get('medium_term', {}).get('items', [])[:15]
+                        'items': comprehensive_music_data.get('top_artists', {}).get('medium_term', {}).get('items', [])[:10]  # Reduced from 15
                     }
                 },
                 'top_tracks': {
                     'short_term': {
-                        'items': comprehensive_music_data.get('top_tracks', {}).get('short_term', {}).get('items', [])[:15]
+                        'items': comprehensive_music_data.get('top_tracks', {}).get('short_term', {}).get('items', [])[:10]  # Reduced from 15
                     },
                     'medium_term': {
-                        'items': comprehensive_music_data.get('top_tracks', {}).get('medium_term', {}).get('items', [])[:15]
+                        'items': comprehensive_music_data.get('top_tracks', {}).get('medium_term', {}).get('items', [])[:10]  # Reduced from 15
                     }
                 },
                 'saved_tracks': {
-                    'items': comprehensive_music_data.get('saved_tracks', {}).get('items', [])[:20]
+                    'items': comprehensive_music_data.get('saved_tracks', {}).get('items', [])[:10]  # Reduced from 20
                 },
                 'user_playlists': {
-                    'items': comprehensive_music_data.get('user_playlists', {}).get('items', [])[:10]
+                    'items': comprehensive_music_data.get('user_playlists', {}).get('items', [])[:5]  # Reduced from 10
                 }
             }
             
@@ -2495,18 +2495,20 @@ def api_generate_psychological_analysis():
             current_track = spotify_client.get_current_track()
             playback_state = spotify_client.get_playback_state()
             
-            # Get listening history and preferences
-            recent_tracks = spotify_client.get_recent_tracks(limit=50)
-            top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=50)
-            top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=50)
-            top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=50)
-            top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=50)
-            top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=50)
-            top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=50)
+            # Get listening history and preferences with REDUCED limits to prevent timeouts
+            recent_tracks = spotify_client.get_recent_tracks(limit=20)  # Reduced from 50
+            top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=20)  # Reduced from 50
+            top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=20)  # Reduced from 50
+            top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=20)  # Reduced from 50
+            top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=20)  # Reduced from 50
+            top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=20)  # Reduced from 50
+            top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=20)  # Reduced from 50
             
-            # Get saved tracks and playlists
-            saved_tracks = spotify_client.get_saved_tracks(limit=50)
-            user_playlists = spotify_client.get_user_playlists(limit=50)
+            # Get saved tracks and playlists with reduced limits
+            saved_tracks = spotify_client.get_saved_tracks(limit=20)  # Reduced from 50
+            user_playlists = spotify_client.get_user_playlists(limit=20)  # Reduced from 50
+            
+            app.logger.info("Successfully collected all Spotify data for psychological analysis")
             
         except Exception as spotify_error:
             app.logger.error(f"Error collecting Spotify data: {str(spotify_error)}")
@@ -2517,32 +2519,49 @@ def api_generate_psychological_analysis():
             """Remove problematic data that might cause JSON serialization issues"""
             if data is None:
                 return None
-            if isinstance(data, dict):
-                sanitized = {}
-                for key, value in data.items():
-                    try:
-                        # Skip problematic fields that might cause issues
-                        if key in ['image', 'images'] and isinstance(value, list) and len(value) > 3:
-                            sanitized[key] = value[:3]  # Limit images
-                        elif isinstance(value, (dict, list)):
-                            sanitized[key] = sanitize_spotify_data(value)
-                        else:
-                            sanitized[key] = value
-                    except Exception as e:
-                        app.logger.warning(f"Skipping problematic field {key}: {e}")
-                        continue
-                return sanitized
-            elif isinstance(data, list):
-                sanitized = []
-                for item in data[:50]:  # Limit list size
-                    try:
-                        sanitized.append(sanitize_spotify_data(item))
-                    except Exception as e:
-                        app.logger.warning(f"Skipping problematic list item: {e}")
-                        continue
-                return sanitized
-            else:
-                return data
+            
+            try:
+                if isinstance(data, dict):
+                    sanitized = {}
+                    for key, value in data.items():
+                        try:
+                            # Skip problematic fields that might cause issues
+                            if key in ['image', 'images'] and isinstance(value, list) and len(value) > 2:
+                                sanitized[key] = value[:2]  # Limit images to 2
+                            elif key in ['available_markets'] and isinstance(value, list):
+                                continue  # Skip available_markets to reduce size
+                            elif key in ['external_ids', 'external_urls'] and isinstance(value, dict) and len(value) > 3:
+                                # Limit external data
+                                limited_external = dict(list(value.items())[:3])
+                                sanitized[key] = limited_external
+                            elif isinstance(value, (dict, list)):
+                                sanitized[key] = sanitize_spotify_data(value)
+                            elif isinstance(value, (str, int, float, bool)) or value is None:
+                                sanitized[key] = value
+                            else:
+                                # Convert problematic types to string
+                                sanitized[key] = str(value)
+                        except Exception as e:
+                            app.logger.warning(f"Skipping problematic field {key}: {e}")
+                            continue
+                    return sanitized
+                elif isinstance(data, list):
+                    sanitized = []
+                    for i, item in enumerate(data[:30]):  # Limit list size to 30
+                        try:
+                            sanitized.append(sanitize_spotify_data(item))
+                        except Exception as e:
+                            app.logger.warning(f"Skipping problematic list item {i}: {e}")
+                            continue
+                    return sanitized
+                elif isinstance(data, (str, int, float, bool)) or data is None:
+                    return data
+                else:
+                    # Convert other types to string
+                    return str(data)
+            except Exception as e:
+                app.logger.warning(f"Error sanitizing data: {e}")
+                return None
         
         # Aggregate comprehensive data with sanitization
         try:
