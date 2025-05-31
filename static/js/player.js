@@ -640,10 +640,10 @@ function showMainSpinner() {
                 setupLoadingPhrases(overlay, phrases);
             } else {
                 log('Using funny fallback phrase');
-                // Use fallback phrase if API fails
+                // Use fallback phrase
                 const fallbackPhrases = [
                     {
-                        headline: "Teaching AI Your Vibe"
+                        headline: "Mixing beats and algorithms in the studio"
                     }
                 ];
                 setupLoadingPhrases(overlay, fallbackPhrases);
@@ -653,7 +653,7 @@ function showMainSpinner() {
             // Use fallback phrase
             const fallbackPhrases = [
                 {
-                    headline: "Teaching AI Your Vibe"
+                    headline: "Mixing beats and algorithms in the studio"
                 }
             ];
             setupLoadingPhrases(overlay, fallbackPhrases);

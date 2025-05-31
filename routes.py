@@ -2420,22 +2420,39 @@ def api_loading_phrases():
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create prompt for loading phrases
-        prompt = f"""Generate 1 exceptionally witty, funny, and punchy one-liner for a music recommendation AI loading screen.
+        prompt = f"""Generate 1 exceptionally creative and varied funny one-liner for a music recommendation AI loading screen.
 The user is a {user_context if user_context else "music enthusiast"}.
 
+AVOID these repetitive themes:
+- Anything about "crazy" or "wild" tastes
+- Generic "analyzing your taste" messages
+- Overused "musical DNA" references
+
+Instead, be creative with these diverse themes (pick ONE):
+- Music discovery adventure metaphors
+- AI robot/technology humor about music
+- Musical journey/quest references  
+- Studio/recording session jokes
+- Concert/performance analogies
+- Music streaming/technology puns
+- Musical instrument humor
+- Genre-mixing comedy
+- Artist collaboration jokes
+- Music production humor
+
 Requirements:
-- Create 1 outstanding one-sentence headline (8-15 words max)
+- Create 1 outstanding one-sentence headline (6-12 words)
 - Make it genuinely funny with a clever punchline or twist
-- Should feel like the AI has personality and humor about music
-- Use puns, funny analogies, or creative metaphors about music discovery
-- Keep it encouraging but with a comedic punchline
-- Make it so good that it works perfectly as a single static message during loading
+- Use fresh, original humor - avoid clichés
+- Pick a completely different theme than typical "analyzing taste" messages
+- Make it feel like the AI has a quirky personality
+- Keep it encouraging and music-focused
 
 Return ONLY a JSON object with this exact structure:
 {{
     "phrases": [
         {{
-            "headline": "One amazing funny sentence with a punchline"
+            "headline": "One fresh, creative, and funny sentence"
         }}
     ]
 }}"""
@@ -2480,7 +2497,7 @@ Return ONLY a JSON object with this exact structure:
             # Return fallback phrases
             fallback_phrases = [
                 {
-                    "headline": "Summoning Your Musical Soulmate"
+                    "headline": "Tuning the recommendation algorithm like a vintage guitar"
                 }
             ]
             
@@ -2497,7 +2514,7 @@ Return ONLY a JSON object with this exact structure:
         # Return fallback phrases on error
         fallback_phrases = [
             {
-                "headline": "AI Having a Musical Moment"
+                "headline": "Teaching robots to appreciate good music takes time"
             }
         ]
         
