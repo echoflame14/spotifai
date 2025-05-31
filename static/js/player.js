@@ -1589,6 +1589,22 @@ async function generatePsychologicalAnalysis() {
             })
         });
         
+        // Check if response is ok
+        if (!response.ok) {
+            const errorText = await response.text();
+            log(`HTTP Error ${response.status}: ${errorText}`, 'error');
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const errorText = await response.text();
+            log(`Invalid response type. Expected JSON, got: ${contentType}`, 'error');
+            log(`Response body: ${errorText.substring(0, 500)}...`, 'error');
+            throw new Error('Server returned non-JSON response. Check server logs for details.');
+        }
+        
         const data = await response.json();
         
         if (data.success && data.analysis) {
@@ -1607,7 +1623,15 @@ async function generatePsychologicalAnalysis() {
         }
     } catch (error) {
         log('Error generating psychological analysis: ' + error.message, 'error');
-        showNotification('Error generating psychological analysis. Please try again.', 'error');
+        
+        // Provide more specific error messages
+        if (error.message.includes('Unexpected token')) {
+            showNotification('Server error occurred. Please check the console and try again.', 'error');
+        } else if (error.message.includes('Failed to fetch')) {
+            showNotification('Network error. Please check your connection and try again.', 'error');
+        } else {
+            showNotification('Error generating psychological analysis. Please try again.', 'error');
+        }
     } finally {
         showPsychAnalysisLoading(false);
     }

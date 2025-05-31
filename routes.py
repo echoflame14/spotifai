@@ -618,16 +618,74 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
         except:
             pass  # Ignore errors when clearing
         
-        genai.configure(api_key=gemini_api_key)
+        # Configure with new API key
+        try:
+            genai.configure(api_key=gemini_api_key)
+            app.logger.info("Gemini API configured successfully")
+        except Exception as config_error:
+            app.logger.error(f"Failed to configure Gemini API: {config_error}")
+            return None
+        
         # Use the most advanced model available
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        try:
+            # Try the advanced model first
+            try:
+                model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+                app.logger.info("Gemini 2.5 Flash Preview model initialized successfully")
+            except Exception as advanced_model_error:
+                app.logger.warning(f"Advanced model failed, trying fallback: {advanced_model_error}")
+                # Fallback to stable model
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                app.logger.info("Gemini 1.5 Flash model initialized successfully as fallback")
+        except Exception as model_error:
+            app.logger.error(f"Failed to initialize any Gemini model: {model_error}")
+            return None
         
         # Create an extremely detailed prompt for comprehensive analysis
+        try:
+            # Limit the data size to prevent prompt from being too large
+            limited_data = {
+                'current_track': comprehensive_music_data.get('current_track'),
+                'recent_tracks': {
+                    'items': comprehensive_music_data.get('recent_tracks', {}).get('items', [])[:20]
+                },
+                'top_artists': {
+                    'short_term': {
+                        'items': comprehensive_music_data.get('top_artists', {}).get('short_term', {}).get('items', [])[:15]
+                    },
+                    'medium_term': {
+                        'items': comprehensive_music_data.get('top_artists', {}).get('medium_term', {}).get('items', [])[:15]
+                    }
+                },
+                'top_tracks': {
+                    'short_term': {
+                        'items': comprehensive_music_data.get('top_tracks', {}).get('short_term', {}).get('items', [])[:15]
+                    },
+                    'medium_term': {
+                        'items': comprehensive_music_data.get('top_tracks', {}).get('medium_term', {}).get('items', [])[:15]
+                    }
+                },
+                'saved_tracks': {
+                    'items': comprehensive_music_data.get('saved_tracks', {}).get('items', [])[:20]
+                },
+                'user_playlists': {
+                    'items': comprehensive_music_data.get('user_playlists', {}).get('items', [])[:10]
+                }
+            }
+            
+            # Test JSON serialization of limited data
+            data_json = json.dumps(limited_data, indent=2)
+            app.logger.info(f"Limited data prepared for analysis, size: {len(data_json)} characters")
+            
+        except Exception as data_prep_error:
+            app.logger.error(f"Error preparing data for analysis: {data_prep_error}")
+            return None
+
         prompt = f"""
 You are an expert music psychologist and data analyst. Analyze this comprehensive Spotify listening data to create the most detailed psychological and musical profile possible. Be specific, insightful, and thorough.
 
 COMPREHENSIVE LISTENING DATA:
-{json.dumps(comprehensive_music_data, indent=2)}
+{data_json}
 
 ANALYSIS REQUIREMENTS:
 Create an extremely detailed analysis covering ALL of these sections. Be specific with examples and provide deep insights.
@@ -755,29 +813,43 @@ CRITICAL INSTRUCTIONS:
         app.logger.info("Generating ultra-detailed psychological music analysis with Gemini 2.5 Flash Preview...")
         start_time = time.time()
         
-        response = model.generate_content(prompt)
-        duration = time.time() - start_time
+        try:
+            response = model.generate_content(prompt)
+            duration = time.time() - start_time
+            app.logger.info(f"Gemini API call completed in {duration:.2f}s")
+        except Exception as api_error:
+            app.logger.error(f"Gemini API call failed: {api_error}")
+            return None
         
         if response and response.text:
-            # Parse the JSON response
-            import re
-            
-            # Extract JSON from the response
-            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-            if json_match:
-                insights_json = json.loads(json_match.group())
-                app.logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
-                app.logger.info(f"Analysis includes {len(insights_json)} main sections with deep psychological insights")
-                return insights_json
-            else:
-                app.logger.warning("Could not extract JSON from ultra-detailed analysis response")
+            try:
+                # Parse the JSON response
+                import re
+                
+                # Extract JSON from the response
+                json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+                if json_match:
+                    insights_json = json.loads(json_match.group())
+                    app.logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
+                    app.logger.info(f"Analysis includes {len(insights_json)} main sections with deep psychological insights")
+                    return insights_json
+                else:
+                    app.logger.warning("Could not extract JSON from ultra-detailed analysis response")
+                    app.logger.debug(f"Response text: {response.text[:500]}...")
+                    return None
+            except json.JSONDecodeError as json_error:
+                app.logger.error(f"Failed to parse JSON response: {json_error}")
+                app.logger.debug(f"Response text: {response.text[:500]}...")
+                return None
+            except Exception as parse_error:
+                app.logger.error(f"Error parsing response: {parse_error}")
                 return None
         else:
             app.logger.warning("Empty response from ultra-detailed psychological analysis")
             return None
             
     except Exception as e:
-        app.logger.error(f"Error in ultra-detailed psychological analysis: {e}")
+        app.logger.error(f"Error in ultra-detailed psychological analysis: {e}", exc_info=True)
         return None
 
 def generate_basic_insights(spotify_client):
@@ -2424,51 +2496,102 @@ def api_generate_psychological_analysis():
         # Collect comprehensive music data
         app.logger.info("Collecting comprehensive music data for psychological analysis...")
         
-        # Get current track and playback state
-        current_track = spotify_client.get_current_track()
-        playback_state = spotify_client.get_playback_state()
+        try:
+            # Get current track and playback state with error handling
+            current_track = spotify_client.get_current_track()
+            playback_state = spotify_client.get_playback_state()
+            
+            # Get listening history and preferences
+            recent_tracks = spotify_client.get_recent_tracks(limit=50)
+            top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=50)
+            top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=50)
+            top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=50)
+            top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=50)
+            top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=50)
+            top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=50)
+            
+            # Get saved tracks and playlists
+            saved_tracks = spotify_client.get_saved_tracks(limit=50)
+            user_playlists = spotify_client.get_user_playlists(limit=50)
+            
+        except Exception as spotify_error:
+            app.logger.error(f"Error collecting Spotify data: {str(spotify_error)}")
+            return jsonify({'success': False, 'message': 'Failed to collect music data from Spotify'}), 500
         
-        # Get listening history and preferences
-        recent_tracks = spotify_client.get_recent_tracks(limit=50)
-        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=50)
-        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=50)
-        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=50)
-        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=50)
-        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=50)
-        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=50)
+        # Sanitize data to prevent JSON serialization issues
+        def sanitize_spotify_data(data):
+            """Remove problematic data that might cause JSON serialization issues"""
+            if data is None:
+                return None
+            if isinstance(data, dict):
+                sanitized = {}
+                for key, value in data.items():
+                    try:
+                        # Skip problematic fields that might cause issues
+                        if key in ['image', 'images'] and isinstance(value, list) and len(value) > 3:
+                            sanitized[key] = value[:3]  # Limit images
+                        elif isinstance(value, (dict, list)):
+                            sanitized[key] = sanitize_spotify_data(value)
+                        else:
+                            sanitized[key] = value
+                    except Exception as e:
+                        app.logger.warning(f"Skipping problematic field {key}: {e}")
+                        continue
+                return sanitized
+            elif isinstance(data, list):
+                sanitized = []
+                for item in data[:50]:  # Limit list size
+                    try:
+                        sanitized.append(sanitize_spotify_data(item))
+                    except Exception as e:
+                        app.logger.warning(f"Skipping problematic list item: {e}")
+                        continue
+                return sanitized
+            else:
+                return data
         
-        # Get saved tracks and playlists
-        saved_tracks = spotify_client.get_saved_tracks(limit=50)
-        user_playlists = spotify_client.get_user_playlists(limit=50)
-        
-        # Aggregate comprehensive data
-        comprehensive_music_data = {
-            'current_track': current_track,
-            'playback_state': playback_state,
-            'recent_tracks': recent_tracks,
-            'top_artists': {
-                'short_term': top_artists_short,
-                'medium_term': top_artists_medium,
-                'long_term': top_artists_long
-            },
-            'top_tracks': {
-                'short_term': top_tracks_short,
-                'medium_term': top_tracks_medium,
-                'long_term': top_tracks_long
-            },
-            'saved_tracks': saved_tracks,
-            'user_playlists': user_playlists
-        }
+        # Aggregate comprehensive data with sanitization
+        try:
+            comprehensive_music_data = {
+                'current_track': sanitize_spotify_data(current_track),
+                'playback_state': sanitize_spotify_data(playback_state),
+                'recent_tracks': sanitize_spotify_data(recent_tracks),
+                'top_artists': {
+                    'short_term': sanitize_spotify_data(top_artists_short),
+                    'medium_term': sanitize_spotify_data(top_artists_medium),
+                    'long_term': sanitize_spotify_data(top_artists_long)
+                },
+                'top_tracks': {
+                    'short_term': sanitize_spotify_data(top_tracks_short),
+                    'medium_term': sanitize_spotify_data(top_tracks_medium),
+                    'long_term': sanitize_spotify_data(top_tracks_long)
+                },
+                'saved_tracks': sanitize_spotify_data(saved_tracks),
+                'user_playlists': sanitize_spotify_data(user_playlists)
+            }
+            
+            # Test JSON serialization
+            json.dumps(comprehensive_music_data)
+            app.logger.info("Data sanitization and JSON serialization successful")
+            
+        except Exception as data_error:
+            app.logger.error(f"Error preparing comprehensive music data: {str(data_error)}")
+            return jsonify({'success': False, 'message': 'Failed to prepare music data for analysis'}), 500
         
         # Generate psychological analysis
-        analysis = generate_ultra_detailed_psychological_analysis(comprehensive_music_data, custom_gemini_key)
-        
-        if analysis:
-            app.logger.info("Psychological analysis generated successfully")
-            return jsonify({'success': True, 'analysis': analysis})
-        else:
-            app.logger.error("Failed to generate psychological analysis")
-            return jsonify({'success': False, 'message': 'Failed to generate analysis'}), 500
+        try:
+            analysis = generate_ultra_detailed_psychological_analysis(comprehensive_music_data, custom_gemini_key)
+            
+            if analysis:
+                app.logger.info("Psychological analysis generated successfully")
+                return jsonify({'success': True, 'analysis': analysis})
+            else:
+                app.logger.error("Failed to generate psychological analysis")
+                return jsonify({'success': False, 'message': 'Failed to generate analysis'}), 500
+                
+        except Exception as analysis_error:
+            app.logger.error(f"Error during psychological analysis generation: {str(analysis_error)}")
+            return jsonify({'success': False, 'message': f'Analysis generation failed: {str(analysis_error)}'}), 500
             
     except Exception as e:
         app.logger.error(f"Error in psychological analysis API: {str(e)}")
@@ -2498,7 +2621,7 @@ def api_generate_musical_analysis():
         spotify_client = SpotifyClient(user.access_token)
         
         # Check if token is valid
-        if not spotify_client.get_current_playback():
+        if not spotify_client.get_playback_state():
             # Token might be expired, try to refresh
             if user.refresh_token:
                 refresh_result = refresh_user_token(user)
@@ -2508,8 +2631,8 @@ def api_generate_musical_analysis():
         
         # Generate comprehensive music analysis
         music_data = {
-            'top_artists': spotify_client.get_top_artists(limit=50, time_range='medium_term'),
-            'top_tracks': spotify_client.get_top_tracks(limit=50, time_range='medium_term'),
+            'top_artists': spotify_client.get_top_artists(time_range='medium_term', limit=50),
+            'top_tracks': spotify_client.get_top_tracks(time_range='medium_term', limit=50),
             'recent_tracks': spotify_client.get_recently_played(limit=50),
             'saved_tracks': spotify_client.get_saved_tracks(limit=50),
             'playlists': spotify_client.get_user_playlists(limit=30)
