@@ -88,6 +88,17 @@ def login():
         state = secrets.token_urlsafe(16)
         session['oauth_state'] = state
         
+        # Session debugging
+        app.logger.info(f"=== LOGIN SESSION DEBUG ===")
+        app.logger.info(f"Generated state: {state}")
+        app.logger.info(f"Session ID: {session.get('session_id', 'no session_id')}")
+        app.logger.info(f"Session before OAuth: {dict(session)}")
+        app.logger.info(f"Session permanent: {session.permanent}")
+        app.logger.info(f"Cookie settings - Secure: {app.config.get('SESSION_COOKIE_SECURE')}")
+        app.logger.info(f"Cookie settings - SameSite: {app.config.get('SESSION_COOKIE_SAMESITE')}")
+        app.logger.info(f"Cookie settings - Domain: {app.config.get('SESSION_COOKIE_DOMAIN')}")
+        app.logger.info("============================")
+        
         # Define required scopes including permissions for AI recommendations and playlist creation
         scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-top-read user-library-read'
         
@@ -139,7 +150,16 @@ def callback():
         app.logger.info(f"Received state: {state}")
         app.logger.info(f"Received error: {error}")
         app.logger.info(f"Error description: {error_description}")
+        
+        # Enhanced session debugging
+        app.logger.info(f"=== SESSION STATE DEBUG ===")
         app.logger.info(f"Session state: {session.get('oauth_state')}")
+        app.logger.info(f"Full session contents: {dict(session)}")
+        app.logger.info(f"Session permanent: {session.permanent}")
+        app.logger.info(f"Session modified: {session.modified}")
+        app.logger.info(f"Request cookies: {request.cookies}")
+        app.logger.info("============================")
+        
         app.logger.info(f"Request URL: {request.url}")
         app.logger.info(f"Request headers: {dict(request.headers)}")
         app.logger.info(f"All request args: {dict(request.args)}")
@@ -2726,4 +2746,40 @@ def debug_oauth():
     """
     
     return html
+    
+@app.route('/test-session')
+def test_session():
+    """Test endpoint to verify session is working"""
+    import time
+    
+    # Get or set a test value
+    if 'test_time' not in session:
+        session['test_time'] = time.time()
+        session['test_counter'] = 1
+        status = "NEW"
+    else:
+        session['test_counter'] = session.get('test_counter', 0) + 1
+        status = "EXISTING"
+    
+    app.logger.info(f"=== SESSION TEST ===")
+    app.logger.info(f"Session status: {status}")
+    app.logger.info(f"Session contents: {dict(session)}")
+    app.logger.info(f"Request cookies: {dict(request.cookies)}")
+    app.logger.info("===================")
+    
+    return f"""
+    <h1>Session Test Results</h1>
+    <p><strong>Status:</strong> {status} session</p>
+    <p><strong>Test Counter:</strong> {session.get('test_counter', 0)}</p>
+    <p><strong>Test Time:</strong> {session.get('test_time', 'Not set')}</p>
+    <p><strong>Session Contents:</strong> {dict(session)}</p>
+    <p><strong>Cookies:</strong> {dict(request.cookies)}</p>
+    <p><strong>Config:</strong></p>
+    <ul>
+        <li>SESSION_COOKIE_SECURE: {app.config.get('SESSION_COOKIE_SECURE')}</li>
+        <li>SESSION_COOKIE_SAMESITE: {app.config.get('SESSION_COOKIE_SAMESITE')}</li>
+        <li>SESSION_COOKIE_DOMAIN: {app.config.get('SESSION_COOKIE_DOMAIN')}</li>
+    </ul>
+    <p><a href="/test-session">Refresh to test persistence</a></p>
+    """
     

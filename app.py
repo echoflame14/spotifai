@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
+from datetime import timedelta
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,9 +27,25 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
 }
 
-# Configure session for storing OAuth tokens
+# Configure session for Railway production environment
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
+
+# Production session cookie settings for Railway
+if 'railway.app' in os.environ.get('RAILWAY_PUBLIC_DOMAIN', ''):
+    # Production settings for Railway
+    app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
+    app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent XSS
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Allow cross-site for OAuth
+    app.config['SESSION_COOKIE_DOMAIN'] = None  # Auto-detect domain
+    app.logger.info("Configured session for Railway production environment")
+else:
+    # Development settings
+    app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP in dev
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.logger.info("Configured session for development environment")
 
 # Import models and initialize the db
 from models import db
