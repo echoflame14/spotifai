@@ -191,7 +191,7 @@ def generate_music_insights(spotify_client):
     
     try:
         # Check if Gemini API key is available
-        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        gemini_api_key = os.environ.get('GOOGLE_API_KEY')
         if not gemini_api_key:
             # Return basic stats without AI analysis
             return generate_basic_insights(spotify_client)
@@ -1161,7 +1161,7 @@ def feedback_insights():
             })
         
         # Check if Gemini API key is available
-        gemini_api_key = os.environ.get('GEMINI_API_KEY')
+        gemini_api_key = os.environ.get('GOOGLE_API_KEY')
         if not gemini_api_key:
             return jsonify({
                 'success': False, 
