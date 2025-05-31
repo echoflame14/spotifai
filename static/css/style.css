@@ -137,14 +137,6 @@ html, body {
     transform: scale(1.05);
 }
 
-/* Why This Track section styling */
-.track-reasoning-content {
-    background: rgba(29, 185, 84, 0.05);
-    border: 1px solid rgba(29, 185, 84, 0.2);
-    border-radius: 12px;
-    padding: 20px;
-}
-
 /* AI transparency section improvements */
 #aiDataCollapse .card {
     background: rgba(26, 26, 26, 0.8);

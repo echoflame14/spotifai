@@ -121,7 +121,7 @@
                 <!-- Learned from Feedback Section -->
                 <div class="col-md-6">
                     <div id="feedbackLearningSection" class="feedback-learning-section p-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 0.5rem;">
-                        <button class="btn btn-link text-muted text-decoration-none w-100 text-start" type="button" {# Removed p-0 #}
+                        <button class="btn btn-link text-muted text-decoration-none w-100 text-start" type="button"
                                 data-bs-toggle="collapse" data-bs-target="#feedbackLearningCollapse" aria-expanded="false">
                             <h6 class="text-muted text-uppercase small mb-0 d-flex align-items-center justify-content-between">
                                 <span><i class="fas fa-brain me-2"></i>Learned from Your Feedback</span>
@@ -130,7 +130,7 @@
                         </button>
                         
                         <div class="collapse mt-3" id="feedbackLearningCollapse">
-                            <div id="feedbackLearningContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
+                            <div id="feedbackInsightsContent" class="p-3 rounded" style="background: rgba(185, 29, 84, 0.05); border: 1px solid rgba(185, 29, 84, 0.2);">
                                 <div class="d-flex align-items-center justify-content-center py-3">
                                     <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
                                     <span class="text-muted small">Loading feedback insights...</span>
@@ -192,7 +192,10 @@
                                         <div class="text-center">
                                             <i class="fas fa-brain text-spotify fa-2x mb-3"></i>
                                             <h6 class="text-white mb-2">Analyzing Your Musical Soul...</h6>
-                                            <p class="text-muted small mb-0">The AI is judging your taste and preparing some commentary</p>
+                                            <p class="text-muted small mb-3">The AI is judging your taste and preparing some commentary</p>
+                                            <button id="generateProfileBtn" class="btn btn-outline-spotify btn-sm" style="display: none;">
+                                                <i class="fas fa-magic me-2"></i>Generate AI Profile
+                                            </button>
                                         </div>
                                     </div>
                                 {% endif %}
@@ -210,31 +213,11 @@
                             <i class="fas fa-sparkles text-spotify me-2"></i>
                             AI Recommendation
                         </h5>
-                        <div id="recommendedTrack">
-                            <!-- Recommended track will be displayed here -->
-                        </div>
-                        
-                        <!-- Why This Track Section -->
-                        <div id="whyThisTrack" class="why-this-track mt-3" style="display: none;">
-                            <button class="btn btn-link text-muted text-decoration-none p-0 w-100 text-start" type="button" 
-                                    data-bs-toggle="collapse" data-bs-target="#trackReasoningCollapse" aria-expanded="false">
-                                <h6 class="text-muted small mb-0 d-flex align-items-center justify-content-between">
-                                    <span><i class="fas fa-lightbulb me-2"></i>Why This Track?</span>
-                                    <i class="fas fa-chevron-down small"></i>
-                                </h6>
-                            </button>
-                            
-                            <div class="collapse mt-3" id="trackReasoningCollapse">
-                                <div id="trackReasoningContent" class="p-3 rounded" style="background: rgba(29, 185, 84, 0.05); border: 1px solid rgba(29, 185, 84, 0.2);">
-                                    <div class="d-flex align-items-center justify-content-center py-3">
-                                        <div class="spinner-border spinner-border-sm text-spotify me-2" role="status"></div>
-                                        <span class="text-muted small">Analyzing why you'll love this track...</span>
-                                    </div>
-                                </div>
+                        <div id="recommendationContainer" data-recommendation-id="">
+                            <div id="recommendedTrack">
+                                <!-- Recommended track will be displayed here -->
                             </div>
                         </div>
-
-
                         
                         <!-- Session Preferences Section -->
                         <div id="sessionPreferences" class="session-preferences mt-4">
@@ -509,4 +492,162 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+<script>
+// Function to generate music taste profile when API key is available
+function generateMusicTasteProfile() {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    
+    // Only proceed if we have an API key and haven't already generated the profile
+    if (!apiKey || window.musicProfileGenerated) {
+        return;
+    }
+    
+    // Check if we're currently showing the loading state
+    const loadingSection = document.querySelector('#musicProfileContent .text-center');
+    if (!loadingSection) {
+        return; // Profile already generated
+    }
+    
+    console.log('Generating music taste profile with API key...');
+    
+    // Show loading state
+    const generateBtn = document.getElementById('generateProfileBtn');
+    if (generateBtn) {
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+        generateBtn.disabled = true;
+    }
+    
+    // Make API call to generate music taste profile
+    fetch('/api/generate-music-taste-profile', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            custom_gemini_key: apiKey
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.insights) {
+            // Update the music profile section with the generated insights
+            updateMusicProfileContent(data.insights);
+            window.musicProfileGenerated = true;
+            console.log('Music taste profile generated successfully');
+        } else {
+            console.warn('Music taste profile generation failed:', data.message);
+            // Reset button state on failure
+            if (generateBtn) {
+                generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate AI Profile';
+                generateBtn.disabled = false;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error generating music taste profile:', error);
+        // Reset button state on error
+        if (generateBtn) {
+            generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate AI Profile';
+            generateBtn.disabled = false;
+        }
+    });
+}
+
+// Function to update the music profile content with generated insights
+function updateMusicProfileContent(insights) {
+    const contentDiv = document.getElementById('musicProfileContent');
+    if (!contentDiv) return;
+    
+    // Create the new content HTML
+    let newContent = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title text-white mb-0">
+                <i class="fas fa-user-music text-spotify me-2"></i>
+                Your Music Taste Profile
+            </h5>
+            <button type="button" class="btn-close btn-close-white" 
+                    data-bs-toggle="collapse" data-bs-target="#musicProfileCollapse"></button>
+        </div>
+        <p class="text-muted">The AI analyzes your Spotify listening history to understand your musical preferences and personality.</p>
+    `;
+    
+    // Add musical taste profile if available
+    if (insights.user_taste_profile) {
+        newContent += `
+            <div class="mt-4 p-4 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.2);">
+                <h6 class="text-spotify mb-3">
+                    <i class="fas fa-fire me-2"></i>
+                    Musical Personality Analysis
+                </h6>
+                <p class="text-light mb-0" style="font-size: 1.1rem; line-height: 1.6;">${insights.user_taste_profile}</p>
+            </div>
+        `;
+    }
+    
+    // Add recent mood analysis if available
+    if (insights.recent_mood_analysis) {
+        newContent += `
+            <div class="mt-3 p-4 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+                <h6 class="text-white mb-3">
+                    <i class="fas fa-mood-smile text-warning me-2"></i>
+                    Recent Listening Vibes
+                </h6>
+                <p class="text-light mb-0" style="font-size: 1.1rem; line-height: 1.6;">${insights.recent_mood_analysis}</p>
+            </div>
+        `;
+    }
+    
+    // Update the content
+    contentDiv.innerHTML = newContent;
+}
+
+// Auto-generate music taste profile when page loads and API key becomes available
+document.addEventListener('DOMContentLoaded', function() {
+    // Try to generate immediately if API key is already available
+    generateMusicTasteProfile();
+    
+    // Update button visibility
+    updateGenerateButtonVisibility();
+    
+    // Handle manual generate button click
+    const generateBtn = document.getElementById('generateProfileBtn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function() {
+            generateMusicTasteProfile();
+        });
+    }
+    
+    // Also listen for storage changes in case API key is added in another tab
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'gemini_api_key' && e.newValue) {
+            generateMusicTasteProfile();
+            updateGenerateButtonVisibility();
+        }
+    });
+    
+    // Watch for when the music profile section is expanded (in case user wants to refresh)
+    const musicProfileCollapse = document.getElementById('musicProfileCollapse');
+    if (musicProfileCollapse) {
+        musicProfileCollapse.addEventListener('shown.bs.collapse', function() {
+            // Try to generate profile when section is opened
+            setTimeout(generateMusicTasteProfile, 100);
+            // Update button visibility
+            setTimeout(updateGenerateButtonVisibility, 100);
+        });
+    }
+});
+
+// Function to check if we should show the generate button
+function updateGenerateButtonVisibility() {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    const generateBtn = document.getElementById('generateProfileBtn');
+    const loadingSection = document.querySelector('#musicProfileContent .text-center');
+    
+    if (generateBtn && loadingSection && apiKey && !window.musicProfileGenerated) {
+        generateBtn.style.display = 'inline-block';
+    } else if (generateBtn) {
+        generateBtn.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

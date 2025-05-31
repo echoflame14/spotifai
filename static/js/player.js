@@ -3,43 +3,138 @@
  * Handles AI recommendation interactions and feedback
  */
 
+let isInitialized = false;
+
+// Custom logging function with truncation
+function log(message, level = 'info') {
+    const MAX_LENGTH = 100;
+    let truncatedMessage = message;
+    let lineCount = 1;
+    
+    if (typeof message === 'string') {
+        // Count lines
+        lineCount = (message.match(/\n/g) || []).length + 1;
+        
+        // Truncate if too long
+        if (message.length > MAX_LENGTH) {
+            truncatedMessage = `${message.substring(0, MAX_LENGTH)}... [truncated, total length: ${message.length} chars, lines: ${lineCount}]`;
+        }
+    } else if (typeof message === 'object') {
+        try {
+            const stringified = JSON.stringify(message);
+            if (stringified.length > MAX_LENGTH) {
+                truncatedMessage = `${stringified.substring(0, MAX_LENGTH)}... [truncated, total length: ${stringified.length} chars]`;
+            } else {
+                truncatedMessage = stringified;
+            }
+        } catch (e) {
+            truncatedMessage = '[Object cannot be stringified]';
+        }
+    }
+    
+    switch (level) {
+        case 'error':
+            console.error(truncatedMessage);
+            break;
+        case 'warn':
+            console.warn(truncatedMessage);
+            break;
+        default:
+            console.log(truncatedMessage);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    initializeAIRecommender();
+    log('DOM Content Loaded event fired');
+    log('Current initialization state:', isInitialized);
+    
+    if (!isInitialized) {
+        log('Initializing AI Recommender...');
+        try {
+            initializeAIRecommender();
+            setupChatFeedback();
+            setupSessionPreferences();
+            setupAISettings();
+            addButtonFeedback();
+            addSmoothScrolling();
+            log('All initialization functions completed');
+            
+            // Show Lightning mode (hyper fast) status
+            log('⚡ LIGHTNING MODE (HYPER FAST) ACTIVE - Ultra-fast recommendations enabled!');
+            setTimeout(() => {
+                showNotification('⚡ Lightning Mode Active - Hyper fast recommendations enabled!', 'success');
+            }, 2000);
+        } catch (error) {
+            log('Error during initialization: ' + error.message, 'error');
+        }
+    } else {
+        log('AI Recommender already initialized, skipping initialization');
+    }
 });
 
 function initializeAIRecommender() {
-    console.log('%c🎵 SpotifAI Music Recommender Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
-    console.log('%cDiscover your next favorite song with AI', 'color: #b3b3b3; font-size: 12px;');
-    console.log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
+    log('Starting AI Recommender initialization...');
+    
+    if (isInitialized) {
+        log('AI Recommender already initialized, returning early');
+        return;
+    }
 
-    // Initialize Bootstrap tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+    const discoverBtn = document.getElementById('getRecommendation');
+    const createPlaylistBtn = document.getElementById('createPlaylistBtn');
+    const feedbackLearningSection = document.getElementById('feedbackLearningSection');
+
+    log('Found elements:', {
+        discoverBtn: !!discoverBtn,
+        createPlaylistBtn: !!createPlaylistBtn,
+        feedbackLearningSection: !!feedbackLearningSection
     });
 
-    // Add AI recommendation button handler
-    const aiButton = document.getElementById('getRecommendation');
-    if (aiButton) {
-        aiButton.addEventListener('click', handleAIRecommendation);
-    }
-    
-    // Setup playlist creation
-    setupPlaylistCreation();
-    
-    // Setup session preferences
-    setupSessionPreferences();
-
-    // Auto-refresh current track info every 30 seconds
-    if (document.querySelector('.now-playing')) {
-        setInterval(refreshTrackInfo, 30000);
+    if (discoverBtn) {
+        log('Adding click listener to discover button');
+        discoverBtn.addEventListener('click', function(e) {
+            log('Discover button clicked');
+            handleAIRecommendation();
+        });
+    } else {
+        log('Discover button not found in DOM');
     }
 
-    // Initialize progress bar animation if track is playing
-    const progressBar = document.querySelector('.progress-bar');
-    if (progressBar && isTrackPlaying()) {
-        animateProgressBar();
+    if (createPlaylistBtn) {
+        log('Adding click listener to create playlist button');
+        createPlaylistBtn.addEventListener('click', function(e) {
+            log('Create playlist button clicked');
+            const modal = document.getElementById('createPlaylistModal');
+            if (modal) {
+                log('Found create playlist modal, showing it');
+                const bootstrapModal = new bootstrap.Modal(modal);
+                bootstrapModal.show();
+            } else {
+                log('Create playlist modal not found');
+            }
+        });
+    } else {
+        log('Create playlist button not found in DOM');
     }
+
+    if (feedbackLearningSection) {
+        log('Setting up feedback learning section');
+        const feedbackCollapse = document.getElementById('feedbackLearningCollapse');
+        if (feedbackCollapse) {
+            log('Adding collapse event listener to feedback section');
+            feedbackCollapse.addEventListener('show.bs.collapse', function(e) {
+                log('Feedback section expanded, fetching insights');
+                fetchFeedbackInsights();
+            });
+        } else {
+            log('Feedback collapse element not found');
+        }
+    } else {
+        log('Feedback learning section not found in DOM');
+    }
+
+    isInitialized = true;
+    log('AI Recommender initialization completed');
 }
 
 function addLoadingState(button) {
@@ -57,10 +152,11 @@ function addLoadingState(button) {
 }
 
 function refreshTrackInfo() {
+    log('Refreshing track info...');
+    
     // This would typically fetch updated track info via AJAX
     // For now, we'll just reload the page to get fresh data
     // In a production app, you'd want to implement AJAX endpoints
-    console.log('Refreshing track info...');
     
     // Check if we're still on the dashboard
     if (window.location.pathname === '/dashboard') {
@@ -117,7 +213,7 @@ function updateTrackInfoViaAjax() {
             }
         })
         .catch(error => {
-            console.error('Failed to update track info:', error);
+            log('Failed to update track info:', error, 'error');
         });
 }
 
@@ -188,7 +284,7 @@ function togglePlayPause() {
             }
         })
         .catch(error => {
-            console.error('Playback error:', error);
+            log('Playback error:', error, 'error');
             showNotification('Playback control failed', 'error');
         })
         .finally(() => {
@@ -246,7 +342,7 @@ function handlePlayPauseClick(button) {
         }, 1000);
     })
     .catch(error => {
-        console.error('Error:', error);
+        log('Error:', error, 'error');
         showNotification('Failed to control playback', 'error');
     })
     .finally(() => {
@@ -328,89 +424,228 @@ addSmoothScrolling();
 
 // AI Recommendation Functions
 function handleAIRecommendation() {
-    const button = document.getElementById('getRecommendation');
-    const resultDiv = document.getElementById('recommendationResult');
-    const trackDiv = document.getElementById('recommendedTrack');
+    log('Discover button clicked - initiating AI recommendation request');
     
-    console.log('🤖 Starting AI recommendation request...');
-    
-    // Show loading state
-    const originalHTML = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting AI Recommendation...';
-    button.disabled = true;
-    
-    // Show loading in result area
-    resultDiv.style.display = 'block';
-    trackDiv.innerHTML = `
-        <div class="recommendation-loading">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="text-white mt-3">AI is analyzing your music taste...</p>
-        </div>
-    `;
-    
+    const discoverBtn = document.getElementById('getRecommendation');
+    if (!discoverBtn) {
+        log('Discover button not found in DOM', 'error');
+        return;
+    }
+
+    // Add loading state
+    addLoadingState(discoverBtn);
+    log('Added loading state to discover button');
+
+    // Get session adjustment if any
+    const sessionAdjustment = localStorage.getItem('sessionAdjustment');
+    log('Session adjustment:', sessionAdjustment || 'None');
+
+    // Get custom Gemini API key
+    const customGeminiKey = localStorage.getItem('gemini_api_key');
+    log('Custom Gemini API key present:', !!customGeminiKey);
+
+    // Use Lightning mode (hyper fast mode) - only mode supported
+    const endpoint = '/ai-recommendation-lightning';
+    const mode = 'lightning';
+
+    log('Using Lightning mode (hyper fast) endpoint:', endpoint);
+
+    // Prepare request payload
+    const payload = {
+        gemini_api_key: customGeminiKey
+    };
+
+    if (sessionAdjustment) {
+        payload.session_adjustment = sessionAdjustment;
+    }
+
+    log('Request payload prepared');
+
     // Make AI recommendation request
-    const customApiKey = localStorage.getItem('gemini_api_key');
-    fetch('/ai-recommendation', {
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        log('Received response from server, status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        log('AI recommendation response received:', data);
+        
+        if (data.success) {
+            log('Recommendation successful:', data.track.name, 'by', data.track.artist);
+            
+            // Show performance banner with lightning mode stats
+            if (data.performance_stats) {
+                showPerformanceBanner(data.performance_stats, mode);
+            }
+            
+            // Display the recommended track immediately with placeholder reasoning
+            displayRecommendedTrack(data.track, data.ai_reasoning, data.recommendation_id);
+            
+            // If reasoning generation is required, start it now
+            if (data.requires_reasoning_generation && data.recommendation_id) {
+                log('Starting conversational reasoning generation...');
+                generateConversationalReasoning(data.recommendation_id, customGeminiKey);
+            }
+        } else {
+            log('Recommendation failed:', data.message, 'error');
+            showRecommendationError(data.message || 'Failed to get recommendation');
+        }
+    })
+    .catch(error => {
+        log('AI recommendation request failed:', error.message, 'error');
+        showRecommendationError('Network error: ' + error.message);
+    })
+    .finally(() => {
+        // Remove loading state
+        const currentDiscoverBtn = document.getElementById('getRecommendation');
+        if (currentDiscoverBtn) {
+            currentDiscoverBtn.disabled = false;
+            currentDiscoverBtn.innerHTML = '<i class="fas fa-magic"></i> Discover';
+            currentDiscoverBtn.classList.remove('loading');
+        }
+        log('Loading state removed from discover button');
+    });
+}
+
+function generateConversationalReasoning(recommendationId, geminiApiKey) {
+    log('Generating conversational reasoning for recommendation:', recommendationId);
+    
+    // Show spinner in the reasoning section
+    const reasoningElement = document.querySelector('.ai-reasoning-text');
+    if (reasoningElement) {
+        reasoningElement.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Crafting your personalized explanation...';
+    }
+    
+    // Make request to generate reasoning
+    fetch('/api/generate-conversational-reasoning', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            session_adjustment: sessionAdjustment,
-            custom_gemini_key: customApiKey
+            recommendation_id: recommendationId,
+            gemini_api_key: geminiApiKey
         })
     })
     .then(response => {
-        console.log('📡 AI recommendation response status:', response.status);
+        log('Reasoning generation response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         return response.json();
     })
     .then(data => {
-        console.log('📥 AI recommendation response data:', data);
+        log('Reasoning generation response:', data);
+        
         if (data.success) {
-            // Store AI interaction data globally
-            lastAIData = {
-                input: data.ai_input_data,
-                output: data.ai_output_data,
-                analysis: data.psychological_analysis
-            };
+            log('Reasoning generated successfully in', data.generation_time + 's');
             
-            // Store recommendation ID for feedback
-            currentRecommendationId = data.recommendation_id;
+            // Update the reasoning text
+            if (reasoningElement) {
+                reasoningElement.innerHTML = data.ai_reasoning;
+            }
             
-            displayRecommendedTrack(data.track, data.ai_reasoning);
-            
-            // Show and immediately load the "Why This Track?" section
-            showWhyThisTrack();
-            fetchTrackReasoning();
-            
-            // Load the "Learned from Feedback" section content
-            fetchFeedbackInsights();
+            // Show a subtle notification
+            showNotification('✨ Personalized explanation ready!', 'success');
         } else {
-            showRecommendationError(data.message);
+            log('Reasoning generation failed:', data.message, 'error');
+            
+            // Show fallback message
+            if (reasoningElement) {
+                reasoningElement.innerHTML = 'This track was selected based on your unique music taste and listening patterns.';
+            }
         }
     })
     .catch(error => {
-        console.error('❌ AI Recommendation Error:', error);
-        showRecommendationError('Failed to get AI recommendation. Please try again.');
-    })
-    .finally(() => {
-        // Restore button
-        button.innerHTML = originalHTML;
-        button.disabled = false;
+        log('Reasoning generation request failed:', error.message, 'error');
+        
+        // Show fallback message
+        if (reasoningElement) {
+            reasoningElement.innerHTML = 'This track was selected based on your unique music taste and listening patterns.';
+        }
     });
+}
+
+function showPerformanceBanner(stats, mode) {
+    // Remove existing banner if present
+    const existingBanner = document.getElementById('performanceBanner');
+    if (existingBanner) {
+        existingBanner.remove();
+    }
+    
+    // Create performance banner for Lightning Mode (hyper fast mode)
+    const banner = document.createElement('div');
+    banner.id = 'performanceBanner';
+    banner.className = 'alert alert-success alert-dismissible fade show mb-3 lightning';
+    
+    const bannerStyle = 'background: linear-gradient(45deg, #00ff88, #00ccff); border: none; color: white; font-weight: bold;';
+    const cacheStatus = stats.cached_data ? '⚡ Cached data' : '🔄 Fresh data';
+    const profileStatus = stats.cached_profile ? '🧠 Cached profile' : '🔍 New profile';
+    const bannerContent = `
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="font-size: 24px;">⚡</div>
+            <div>
+                <strong>LIGHTNING MODE (HYPER FAST)</strong><br>
+                <small>Total: ${stats.total_duration}s | LLM: ${stats.total_llm_duration}s | Model: ${stats.model_used} | ${profileStatus} | ${cacheStatus}</small>
+            </div>
+            <div style="margin-left: auto; font-size: 14px;">
+                <strong>${stats.performance_gain_estimate}</strong>
+            </div>
+        </div>
+    `;
+    
+    banner.style.cssText = bannerStyle;
+    banner.innerHTML = `
+        ${bannerContent}
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert banner at the top of the recommendations section
+    const container = document.querySelector('.recommendation-section') || document.querySelector('.container');
+    if (container && container.firstChild) {
+        container.insertBefore(banner, container.firstChild);
+    }
 }
 
 let lastAIData = null; // Store AI interaction data globally
 
-function displayRecommendedTrack(track, reasoning) {
+function displayRecommendedTrack(track, reasoning, recommendationId) {
+    log('Displaying recommended track...');
     const trackDiv = document.getElementById('recommendedTrack');
+    const recommendationResult = document.getElementById('recommendationResult');
     
-
+    if (!trackDiv || !recommendationResult) {
+        log('Required elements not found:', {
+            trackDiv: !!trackDiv,
+            recommendationResult: !!recommendationResult
+        }, 'error');
+        return;
+    }
     
-    console.log('AI Recommendation received:', track);
-    console.log('AI Reasoning:', reasoning);
+    log('AI Recommendation received:', track);
+    log('AI Reasoning:', reasoning);
+    
+    // Show the recommendation result section
+    recommendationResult.style.display = 'block';
+    
+    // Set the recommendation ID on the container for the track reasoning function
+    if (recommendationId) {
+        recommendationResult.dataset.recommendationId = recommendationId;
+        localStorage.setItem('currentRecommendationId', recommendationId);
+        log('Set recommendation ID on container:', recommendationId);
+        log('Stored recommendation ID in localStorage:', recommendationId);
+    } else {
+        log('No current recommendation ID found in localStorage', 'warn');
+    }
     
     trackDiv.innerHTML = `
         <div class="recommended-track-item">
@@ -420,13 +655,15 @@ function displayRecommendedTrack(track, reasoning) {
                 <h6 class="text-white mb-1">${track.name}</h6>
                 <p class="text-muted mb-1">${track.artist}</p>
                 <p class="text-muted small mb-0">${track.album}</p>
-                <p class="text-spotify small mt-2"><i class="fas fa-robot me-1"></i>AI suggested: ${reasoning}</p>
+                <p class="text-spotify small mt-2">
+                    <i class="fas fa-robot me-1"></i>why this song?: 
+                    <span class="ai-reasoning-text">${reasoning}</span>
+                </p>
             </div>
             <div>
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">
                     <i class="fas fa-play me-1"></i>Play
                 </button>
-
                 <button class="btn btn-outline-light me-2" onclick="getNextRecommendation()">
                     <i class="fas fa-forward me-1"></i>Next Rec
                 </button>
@@ -437,18 +674,16 @@ function displayRecommendedTrack(track, reasoning) {
         </div>
     `;
     
-    // Populate AI data if available
-    if (lastAIData) {
-        document.getElementById('aiAnalysisData').textContent = lastAIData.analysis || 'No psychological analysis available';
-        document.getElementById('aiInputData').textContent = lastAIData.input || 'No input data available';
-        document.getElementById('aiOutputData').textContent = lastAIData.output || 'No output data available';
-    }
+    log('Track display HTML updated');
     
     // Show chat feedback section
     const chatFeedback = document.getElementById('chatFeedback');
     if (chatFeedback) {
         chatFeedback.style.display = 'block';
+        log('Chat feedback section displayed');
         setupChatFeedback();
+    } else {
+        log('Chat feedback section not found', 'error');
     }
 }
 
@@ -490,7 +725,7 @@ function playRecommendedTrack(trackUri) {
         }
     })
     .catch(error => {
-        console.error('Play Error:', error);
+        log('Play Error:', error, 'error');
         showNotification('Failed to play recommended track', 'error');
     })
     .finally(() => {
@@ -498,9 +733,6 @@ function playRecommendedTrack(trackUri) {
         button.disabled = false;
     });
 }
-
-// Store current recommendation ID for feedback
-let currentRecommendationId = null;
 
 function setupChatFeedback() {
     const submitBtn = document.getElementById('submitFeedback');
@@ -536,6 +768,13 @@ function submitFeedback() {
         return;
     }
     
+    // Get custom Gemini API key
+    const customGeminiKey = localStorage.getItem('gemini_api_key');
+    if (!customGeminiKey) {
+        statusDiv.innerHTML = '<div class="alert alert-danger small mt-2">API key required for feedback analysis. Please set your Gemini API key in AI Settings.</div>';
+        return;
+    }
+    
     // Show loading state
     statusDiv.innerHTML = '<div class="alert alert-info small mt-2"><i class="fas fa-spinner fa-spin me-2"></i>Processing your feedback...</div>';
     
@@ -546,7 +785,8 @@ function submitFeedback() {
         },
         body: JSON.stringify({
             feedback_text: feedbackText.value.trim(),
-            recommendation_id: currentRecommendationId
+            recommendation_id: localStorage.getItem('currentRecommendationId'),
+            custom_gemini_key: customGeminiKey
         })
     })
     .then(response => response.json())
@@ -573,37 +813,18 @@ function submitFeedback() {
         }
     })
     .catch(error => {
-        console.error('Error submitting feedback:', error);
+        log('Error submitting feedback:', error, 'error');
         statusDiv.innerHTML = '<div class="alert alert-danger small mt-2">Failed to submit feedback. Please try again.</div>';
     });
 }
 
 function getNextRecommendation() {
-    console.log('🔄 Getting next recommendation...');
+    log('🔄 Getting next recommendation...');
     
     // Hide current chat feedback
     const chatFeedback = document.getElementById('chatFeedback');
     if (chatFeedback) {
         chatFeedback.style.display = 'none';
-    }
-    
-    // Hide why this track section and clear content
-    const whySection = document.getElementById('whyThisTrack');
-    if (whySection) {
-        whySection.style.display = 'none';
-    }
-    
-
-    
-    // Clear previous reasoning content
-    const contentDiv = document.getElementById('trackReasoningContent');
-    if (contentDiv) {
-        contentDiv.innerHTML = `
-            <div class="d-flex align-items-center justify-content-center py-3">
-                <div class="spinner-border spinner-border-sm text-spotify me-2" role="status"></div>
-                <span class="text-muted small">Analyzing why you'll love this track...</span>
-            </div>
-        `;
     }
     
     // Clear previous feedback insights content
@@ -617,12 +838,6 @@ function getNextRecommendation() {
         `;
     }
     
-    // Reset the reasoning loaded flag
-    const collapseElement = document.getElementById('trackReasoningCollapse');
-    if (collapseElement) {
-        collapseElement.classList.remove('reasoning-loaded');
-    }
-    
     // Clear feedback status
     const statusDiv = document.getElementById('feedbackStatus');
     if (statusDiv) {
@@ -631,75 +846,6 @@ function getNextRecommendation() {
     
     // Trigger a new recommendation
     handleAIRecommendation();
-}
-
-// Show Why This Track section
-function showWhyThisTrack() {
-    const whySection = document.getElementById('whyThisTrack');
-    if (whySection) {
-        whySection.style.display = 'block';
-        
-        // Auto-expand the section to show the reasoning immediately
-        const collapseElement = document.getElementById('trackReasoningCollapse');
-        if (collapseElement && !collapseElement.classList.contains('show')) {
-            // Use Bootstrap's collapse API to show it
-            const bsCollapse = new bootstrap.Collapse(collapseElement, {
-                show: true
-            });
-        }
-    }
-}
-
-// Fetch detailed track reasoning from backend
-function fetchTrackReasoning() {
-    if (!currentRecommendationId) {
-        console.error('No current recommendation ID available');
-        return;
-    }
-    
-    const contentDiv = document.getElementById('trackReasoningContent');
-    
-    fetch('/track-reasoning', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            recommendation_id: currentRecommendationId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            contentDiv.innerHTML = `
-                <div class="track-reasoning-content">
-                    <h6 class="text-white mb-3">
-                        <i class="fas fa-lightbulb text-spotify me-2"></i>
-                        Why "${data.track_info.name}" by ${data.track_info.artist}
-                    </h6>
-                    <div class="reasoning-text text-light" style="line-height: 1.6;">
-                        ${data.reasoning.replace(/\n/g, '<br><br>')}
-                    </div>
-                </div>
-            `;
-        } else {
-            contentDiv.innerHTML = `
-                <div class="text-center py-3">
-                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                    <span class="text-muted">Unable to generate reasoning: ${data.message}</span>
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching track reasoning:', error);
-        contentDiv.innerHTML = `
-            <div class="text-center py-3">
-                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                <span class="text-muted">Failed to load reasoning. Please try again.</span>
-            </div>
-        `;
-    });
 }
 
 // Show Feedback Learning Button
@@ -719,61 +865,71 @@ function showLearnedFeedback() {
 }
 
 // Fetch feedback insights from backend
-function fetchFeedbackInsights() {
-    const contentDiv = document.getElementById('feedbackLearningContent');
-    
-    fetch('/feedback-insights', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
+async function fetchFeedbackInsights() {
+    const contentDiv = document.getElementById('feedbackInsightsContent');
+    if (!contentDiv) {
+        log('Feedback insights content div not found - this is expected if the section is not visible');
+        return;
+    }
+
+    try {
+        // Check if we have a Gemini API key for AI-powered insights
+        const customGeminiKey = localStorage.getItem('gemini_api_key');
+        
+        let response;
+        if (customGeminiKey) {
+            // Use POST with API key for AI-powered insights
+            log('Fetching AI-powered feedback insights...');
+            response = await fetch('/feedback-insights', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    custom_gemini_key: customGeminiKey
+                })
+            });
+        } else {
+            // Use GET for basic insights
+            log('Fetching basic feedback insights...');
+            response = await fetch('/feedback-insights');
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        if (data.insights) {
+            // Show whether insights are AI-powered or basic
+            const insightType = data.ai_powered ? 
+                '<small class="text-spotify"><i class="fas fa-sparkles me-1"></i>AI-Powered Insights</small>' : 
+                '<small class="text-muted"><i class="fas fa-chart-bar me-1"></i>Basic Analysis</small>';
+            
             contentDiv.innerHTML = `
-                <div class="feedback-insights-content">
-                    <h6 class="text-white mb-3">
-                        <i class="fas fa-brain text-warning me-2"></i>
-                        What I've Learned About Your Taste
-                    </h6>
-                    <div class="insights-text text-light" style="line-height: 1.6;">
-                        ${data.insights.replace(/\n/g, '<br><br>')}
-                    </div>
-                    ${data.feedback_count ? `
-                        <div class="mt-3">
-                            <small class="text-muted">Based on ${data.feedback_count} feedback entries</small>
-                        </div>
-                    ` : ''}
+                <div class="text-white">
+                    ${insightType}
+                    <p class="mb-2 mt-2">${data.insights}</p>
+                    ${!data.ai_powered ? '<small class="text-muted">Add your Gemini API key in AI Settings for personalized conversational insights!</small>' : ''}
                 </div>
             `;
+            
+            log(`Feedback insights loaded successfully (${data.ai_powered ? 'AI-powered' : 'basic'})`);
         } else {
-            if (data.message && data.message.includes('Not authenticated')) {
-                contentDiv.innerHTML = `
-                    <div class="text-center py-3">
-                        <i class="fas fa-sign-in-alt text-warning me-2"></i>
-                        <span class="text-muted">Please refresh the page to load your feedback insights</span>
-                    </div>
-                `;
-            } else {
-                contentDiv.innerHTML = `
-                    <div class="text-center py-3">
-                        <i class="fas fa-info-circle text-warning me-2"></i>
-                        <span class="text-muted">${data.message || 'No feedback insights available yet'}</span>
-                    </div>
-                `;
-            }
+            contentDiv.innerHTML = `
+                <div class="text-muted">
+                    <p class="mb-0">No feedback insights available yet. Start rating songs to get personalized insights!</p>
+                </div>
+            `;
         }
-    })
-    .catch(error => {
-        console.error('Error fetching feedback insights:', error);
+    } catch (error) {
+        log('Error fetching feedback insights:', error, 'error');
         contentDiv.innerHTML = `
-            <div class="text-center py-3">
-                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                <span class="text-muted">Failed to load insights. Please try again.</span>
+            <div class="text-danger">
+                <p class="mb-0">Failed to load feedback insights. Please try again later.</p>
             </div>
         `;
-    });
+    }
 }
 
 // Setup feedback learning button click handler
@@ -835,7 +991,7 @@ function applySessionAdjustment(adjustment) {
     statusDiv.className = 'alert alert-success';
     messageSpan.textContent = `Session preference applied: "${adjustment}"`;
     
-    console.log('🎛️ Session adjustment applied:', adjustment);
+    log('🎛️ Session adjustment applied:', adjustment);
 }
 
 function clearSessionAdjustment() {
@@ -847,49 +1003,129 @@ function clearSessionAdjustment() {
     textArea.value = '';
     statusDiv.style.display = 'none';
     
-    console.log('🎛️ Session adjustment cleared');
+    log('🎛️ Session adjustment cleared');
 }
 
 function setupAISettings() {
-    const saveBtn = document.getElementById('saveApiKey');
-    const clearBtn = document.getElementById('clearApiKey');
-    const apiKeyInput = document.getElementById('geminiApiKey');
-    const currentModelSpan = document.getElementById('currentModel');
+    log('Setting up AI settings...');
     
-    // Load saved API key if exists
-    const savedKey = localStorage.getItem('gemini_api_key');
-    if (savedKey) {
-        apiKeyInput.value = savedKey;
-        currentModelSpan.textContent = 'Gemini 2.5 Flash Preview';
-        clearBtn.style.display = 'inline-block';
+    // Always ensure Lightning mode is enabled by default
+    if (!localStorage.getItem('ai_performance_mode')) {
+        localStorage.setItem('ai_performance_mode', 'lightning');
+        log('Initialized Lightning mode to: lightning (default)');
+    } else {
+        log('Lightning mode setting:', localStorage.getItem('ai_performance_mode'));
     }
     
-    saveBtn.addEventListener('click', function() {
+    const apiKeyInput = document.getElementById('geminiApiKey');
+    const saveKeyBtn = document.getElementById('saveApiKey');
+    const clearKeyBtn = document.getElementById('clearApiKey');
+    
+    if (!apiKeyInput || !saveKeyBtn || !clearKeyBtn) {
+        log('Required AI settings elements not found:', {
+            apiKeyInput: !!apiKeyInput,
+            saveKeyBtn: !!saveKeyBtn,
+            clearKeyBtn: !!clearKeyBtn
+        }, 'warn');
+        
+        // Still try to setup performance toggle even if main AI settings aren't found
+        setupPerformanceToggle();
+        log('Lightning mode enabled by default even without full AI settings UI');
+        return;
+    }
+
+    // Load saved API key
+    const savedKey = localStorage.getItem('gemini_api_key');
+    log('Saved API key present:', !!savedKey);
+    
+    if (savedKey) {
+        apiKeyInput.value = savedKey;
+        clearKeyBtn.style.display = 'block';
+        log('Loaded saved API key');
+    }
+
+    // Handle input changes
+    apiKeyInput.addEventListener('input', function() {
+        log('API key input changed');
+        clearKeyBtn.style.display = this.value ? 'block' : 'none';
+    });
+
+    // Handle save button click
+    saveKeyBtn.addEventListener('click', function() {
+        log('Save API key button clicked');
         const apiKey = apiKeyInput.value.trim();
-        if (apiKey) {
-            localStorage.setItem('gemini_api_key', apiKey);
-            currentModelSpan.textContent = 'Gemini 2.5 Flash Preview';
-            clearBtn.style.display = 'inline-block';
-            showNotification('API key saved! Using Gemini 2.5 Flash Preview', 'success');
-        } else {
+        
+        if (!apiKey) {
+            log('Attempted to save empty API key', 'warn');
             showNotification('Please enter a valid API key', 'error');
+            return;
+        }
+
+        try {
+            localStorage.setItem('gemini_api_key', apiKey);
+            log('API key saved successfully');
+            showNotification('API key saved successfully', 'success');
+            clearKeyBtn.style.display = 'block';
+            
+            // Refresh feedback insights to show AI-powered version
+            setTimeout(() => {
+                fetchFeedbackInsights();
+                log('Refreshed feedback insights with AI capabilities');
+            }, 500);
+            
+        } catch (error) {
+            log('Failed to save API key:', error, 'error');
+            showNotification('Failed to save API key', 'error');
         }
     });
-    
-    clearBtn.addEventListener('click', function() {
-        localStorage.removeItem('gemini_api_key');
-        apiKeyInput.value = '';
-        currentModelSpan.textContent = 'Gemini 1.5 Flash';
-        clearBtn.style.display = 'none';
-        showNotification('API key cleared! Using default Gemini 1.5 Flash', 'info');
-    });
-    
-    // Allow saving with Enter key
-    apiKeyInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            saveBtn.click();
+
+    // Handle clear button click
+    clearKeyBtn.addEventListener('click', function() {
+        log('Clear API key button clicked');
+        try {
+            localStorage.removeItem('gemini_api_key');
+            apiKeyInput.value = '';
+            clearKeyBtn.style.display = 'none';
+            log('API key cleared successfully');
+            showNotification('API key cleared', 'success');
+        } catch (error) {
+            log('Failed to clear API key:', error, 'error');
+            showNotification('Failed to clear API key', 'error');
         }
     });
+
+    // Setup performance optimization toggle
+    setupPerformanceToggle();
+
+    log('AI settings setup completed');
+}
+
+function setupPerformanceToggle() {
+    // Set Lightning mode as the only supported mode
+    localStorage.setItem('ai_performance_mode', 'lightning');
+    log('Lightning mode (hyper fast) is the only mode supported');
+}
+
+function loadPerformanceStats() {
+    const statsText = document.getElementById('statsText');
+    if (!statsText) return;
+    
+    fetch('/api/performance-stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const stats = data.stats;
+                statsText.innerHTML = `
+                    Cache entries: ${stats.cache_status.cached_entries} | 
+                    Total recommendations: ${stats.total_recommendations} | 
+                    Mode: Lightning (Hyper Fast)
+                `;
+            }
+        })
+        .catch(error => {
+            log('Failed to load performance stats:', error, 'error');
+            statsText.textContent = 'Performance stats unavailable';
+        });
 }
 
 function setupPlaylistCreation() {
@@ -898,26 +1134,26 @@ function setupPlaylistCreation() {
     const confirmBtn = document.getElementById('createPlaylistConfirm');
     
     if (!createPlaylistBtn || !modal || !confirmBtn) {
-        console.log('Playlist creation elements not found');
+        log('Playlist creation elements not found');
         return;
     }
     
     // Show modal when button is clicked
     createPlaylistBtn.addEventListener('click', function() {
-        console.log('Create playlist button clicked');
+        log('Create playlist button clicked');
         const bootstrapModal = new bootstrap.Modal(modal);
         bootstrapModal.show();
     });
     
     // Handle playlist creation confirmation
     confirmBtn.addEventListener('click', function() {
-        console.log('Create playlist confirm clicked');
+        log('Create playlist confirm clicked');
         handlePlaylistCreation();
     });
     
     // Clean up when modal is hidden (for any reason)
     modal.addEventListener('hidden.bs.modal', function() {
-        console.log('Modal hidden, cleaning up...');
+        log('Modal hidden, cleaning up...');
         // Force cleanup of any remaining modal artifacts
         setTimeout(() => {
             const backdrop = document.querySelector('.modal-backdrop');
@@ -938,20 +1174,17 @@ function handlePlaylistCreation() {
     const useSessionAdjustment = document.getElementById('useSessionAdjustment').checked;
     const customApiKey = localStorage.getItem('gemini_api_key');
     
-    console.log('Creating playlist:', { playlistName, songCount, useSessionAdjustment });
-    
     if (!customApiKey) {
-        showNotification('Please add your Gemini API key in AI Settings to create playlists', 'error');
+        showNotification('Please add your Gemini API key in AI Settings to create AI playlists', 'error');
         return;
     }
     
     // Show loading state
     const confirmBtn = document.getElementById('createPlaylistConfirm');
-    const originalText = confirmBtn.innerHTML;
+    const originalBtnText = confirmBtn.innerHTML;
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Playlist...';
     confirmBtn.disabled = true;
     
-    // Make API request to create playlist
     fetch('/create-ai-playlist', {
         method: 'POST',
         headers: {
@@ -967,7 +1200,7 @@ function handlePlaylistCreation() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Playlist creation response:', data);
+        log('Playlist creation response:', data);
         
         if (data.success) {
             showNotification(`Successfully created playlist "${data.playlist_name}" with ${data.tracks_added} songs!`, 'success');
@@ -997,27 +1230,38 @@ function handlePlaylistCreation() {
         }
     })
     .catch(error => {
-        console.error('Error creating playlist:', error);
+        log('Error creating playlist:', error, 'error');
         showNotification('Error creating playlist. Please try again.', 'error');
     })
     .finally(() => {
         // Reset button state
-        confirmBtn.innerHTML = originalText;
+        confirmBtn.innerHTML = originalBtnText;
         confirmBtn.disabled = false;
     });
 }
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    initializeAIRecommender();
-    setupChatFeedback();
-    setupSessionPreferences();
-    setupAISettings();
-    addButtonFeedback();
-    addSmoothScrolling();
+    if (!isInitialized) {
+        initializeAIRecommender();
+        setupChatFeedback();
+        setupSessionPreferences();
+        setupAISettings();
+        addButtonFeedback();
+        addSmoothScrolling();
+        
+        // Show Lightning mode (hyper fast) status
+        log('⚡ LIGHTNING MODE (HYPER FAST) ACTIVE - Ultra-fast recommendations enabled!');
+        setTimeout(() => {
+            showNotification('⚡ Lightning Mode Active - Hyper fast recommendations enabled!', 'success');
+        }, 2000);
+    }
 });
 
-// Console welcome message
-console.log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
-console.log('%cUse spacebar to play/pause music', 'color: #b3b3b3; font-size: 12px;');
-console.log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
+// Console welcome message with debug info
+log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
+log('%cDebug Mode: Enabled', 'color: #ff6b6b; font-size: 12px;');
+log('%cUse spacebar to play/pause music', 'color: #b3b3b3; font-size: 12px;');
+log('%cAI recommendations powered by Google Gemini', 'color: #1db954; font-size: 12px;');
+log('%cLogging Level: DEBUG', 'color: #ff6b6b; font-size: 12px;');
+
