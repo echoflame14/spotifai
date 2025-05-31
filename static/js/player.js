@@ -608,14 +608,7 @@ function showMainSpinner() {
     if (overlay) {
         overlay.classList.add('show');
         
-        // Set immediate loading message while we fetch dynamic phrases
-        const titleElement = overlay.querySelector('.main-spinner-title');
-        const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
-        
-        if (titleElement && subtitleElement) {
-            titleElement.textContent = "AI Brain Booting Up";
-            subtitleElement.innerHTML = "Teaching our robot your musical secrets<span class='main-spinner-dots'></span>";
-        }
+        // Don't set any immediate text - let it use the template defaults until dynamic phrases load
         
         // Add click-to-dismiss functionality (click outside the spinner content)
         overlay.onclick = function(e) {
@@ -650,8 +643,7 @@ function showMainSpinner() {
                 // Use fallback phrase if API fails
                 const fallbackPhrases = [
                     {
-                        title: "Teaching AI Your Vibe",
-                        subtitle: "Like a musical psychic, but with better algorithms<span class='main-spinner-dots'></span>"
+                        headline: "Teaching AI Your Vibe"
                     }
                 ];
                 setupLoadingPhrases(overlay, fallbackPhrases);
@@ -661,8 +653,7 @@ function showMainSpinner() {
             // Use fallback phrase
             const fallbackPhrases = [
                 {
-                    title: "Teaching AI Your Vibe",
-                    subtitle: "Like a musical psychic, but with better algorithms<span class='main-spinner-dots'></span>"
+                    headline: "Teaching AI Your Vibe"
                 }
             ];
             setupLoadingPhrases(overlay, fallbackPhrases);
@@ -707,8 +698,7 @@ async function generateDynamicLoadingPhrases() {
             
             // Add spinner dots to subtitles
             return data.phrases.map(phrase => ({
-                title: phrase.title,
-                subtitle: phrase.subtitle + "<span class='main-spinner-dots'></span>"
+                headline: phrase.headline
             }));
         } else {
             log('Failed to generate dynamic phrases:', data.message);
@@ -722,17 +712,14 @@ async function generateDynamicLoadingPhrases() {
 
 // Function to setup and cycle through loading phrases
 function setupLoadingPhrases(overlay, phrases) {
-    // Just pick the first phrase and use it for the entire duration
+    // Just set the title as a single punchy sentence
     const titleElement = overlay.querySelector('.main-spinner-title');
-    const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
     
-    if (titleElement && subtitleElement && phrases[0]) {
-        titleElement.textContent = phrases[0].title;
-        subtitleElement.innerHTML = phrases[0].subtitle;
+    if (titleElement && phrases[0]) {
+        titleElement.textContent = phrases[0].headline;
     }
     
-    // No more cycling - just keep the same phrase throughout
-    log('Using static loading phrase:', phrases[0]?.title);
+    log('Using single punchy headline:', phrases[0]?.headline);
 }
 
 // Function to hide the main spinner overlay
@@ -740,15 +727,6 @@ function hideMainSpinner() {
     const overlay = document.getElementById('mainSpinnerOverlay');
     if (overlay) {
         overlay.classList.remove('show');
-        
-        // Reset to original message
-        const titleElement = overlay.querySelector('.main-spinner-title');
-        const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
-        
-        if (titleElement && subtitleElement) {
-            titleElement.textContent = "Loading Your Experience...";
-            subtitleElement.innerHTML = "Preparing personalized content<span class='main-spinner-dots'></span>";
-        }
         
         log('Main spinner overlay hidden');
     }

@@ -2420,23 +2420,22 @@ def api_loading_phrases():
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Create prompt for loading phrases
-        prompt = f"""Generate 1 exceptionally witty, funny, and clever loading phrase for a music recommendation AI.
+        prompt = f"""Generate 1 exceptionally witty, funny, and punchy one-liner for a music recommendation AI loading screen.
 The user is a {user_context if user_context else "music enthusiast"}.
 
 Requirements:
-- Create 1 outstanding phrase with title (6-12 words) and subtitle (8-15 words)
-- Make it genuinely funny, witty, and music-focused with clever wordplay
-- Should feel like the AI has personality and humor
-- Use puns, funny analogies, or creative metaphors
-- Keep it encouraging but with a comedic twist
-- Make it so good that it works perfectly as a single static message
+- Create 1 outstanding one-sentence headline (8-15 words max)
+- Make it genuinely funny with a clever punchline or twist
+- Should feel like the AI has personality and humor about music
+- Use puns, funny analogies, or creative metaphors about music discovery
+- Keep it encouraging but with a comedic punchline
+- Make it so good that it works perfectly as a single static message during loading
 
 Return ONLY a JSON object with this exact structure:
 {{
     "phrases": [
         {{
-            "title": "One amazing funny title",
-            "subtitle": "One hilarious and engaging subtitle"
+            "headline": "One amazing funny sentence with a punchline"
         }}
     ]
 }}"""
@@ -2467,8 +2466,8 @@ Return ONLY a JSON object with this exact structure:
                 raise ValueError("Invalid phrases structure")
             
             for phrase in phrases_data['phrases']:
-                if 'title' not in phrase or 'subtitle' not in phrase:
-                    raise ValueError("Missing title or subtitle in phrase")
+                if 'headline' not in phrase:
+                    raise ValueError("Missing headline in phrase")
             
             return jsonify({
                 'success': True,
@@ -2481,8 +2480,7 @@ Return ONLY a JSON object with this exact structure:
             # Return fallback phrases
             fallback_phrases = [
                 {
-                    "title": "Summoning Your Musical Soulmate",
-                    "subtitle": "Our AI is speed-dating with millions of songs on your behalf"
+                    "headline": "Summoning Your Musical Soulmate"
                 }
             ]
             
@@ -2499,8 +2497,7 @@ Return ONLY a JSON object with this exact structure:
         # Return fallback phrases on error
         fallback_phrases = [
             {
-                "title": "AI Having a Musical Moment",
-                "subtitle": "Even robots need time to find their groove"
+                "headline": "AI Having a Musical Moment"
             }
         ]
         
