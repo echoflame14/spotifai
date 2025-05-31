@@ -578,6 +578,14 @@ def play_recommendation():
     success = spotify_client.play_track(track_uri)
     
     if success:
+        # Mark the recommendation as played if we have the current recommendation ID
+        current_rec_id = session.get('current_recommendation_id')
+        if current_rec_id:
+            recommendation = Recommendation.query.get(current_rec_id)
+            if recommendation and recommendation.user_id == user.id:
+                recommendation.mark_as_played()
+                app.logger.info(f"Marked recommendation {current_rec_id} as played")
+        
         return jsonify({'success': True, 'message': 'Playing recommended track'})
     else:
         return jsonify({
@@ -937,26 +945,38 @@ def create_ai_playlist():
             # Ultra-minimal fallback
             user_analysis = "User prefers rock, alternative, and pop music with some electronic elements."
         
-        # Get recent recommendations to avoid duplicates
-        recent_recommendations = Recommendation.query.filter_by(user_id=user.id).order_by(Recommendation.created_at.desc()).limit(20).all()
-        recent_tracks_list = [f'"{rec.track_name}" by {rec.artist_name}' for rec in recent_recommendations]
+        # Get enhanced recent recommendations to avoid duplicates in playlist
+        rec_tracking = get_enhanced_recent_recommendations(user, hours_back=48, include_artist_counts=True)  # Look back 48 hours for playlists
+        recent_recommendations = rec_tracking['formatted_list']
+        artist_frequency = rec_tracking['artist_frequency']
         
-        # Get simplified user feedback insights - limit to prevent memory issues
-        feedback_insights = ""
-        try:
-            feedback_entries = UserFeedback.query.filter_by(user_id=user.id).order_by(UserFeedback.created_at.desc()).limit(5).all()
-            if feedback_entries:
-                feedback_summary = []
-                for feedback in feedback_entries[:3]:  # Only use top 3 to reduce load
-                    rec = Recommendation.query.get(feedback.recommendation_id)
-                    if rec:
-                        feedback_summary.append(f"User {feedback.sentiment or 'neutral'} feedback on {rec.track_name} by {rec.artist_name}")
-                
-                if feedback_summary:
-                    feedback_insights = f"RECENT FEEDBACK: {'; '.join(feedback_summary)}\n\n"
-        except Exception as e:
-            app.logger.warning(f"Could not load feedback insights: {e}")
-            pass
+        # Build a more comprehensive avoidance list for playlists
+        all_recent_tracks = []
+        if recent_recommendations:
+            all_recent_tracks.extend(recent_recommendations)
+        
+        # Add tracks from recent playlists (if any) to avoid duplicating playlist content
+        recent_playlist_recs = Recommendation.query.filter_by(
+            user_id=user.id, 
+            recommendation_method='playlist'
+        ).order_by(Recommendation.created_at.desc()).limit(15).all()
+        
+        for rec in recent_playlist_recs:
+            time_ago = datetime.utcnow() - rec.created_at
+            if time_ago.total_seconds() < 7 * 24 * 3600:  # Last 7 days
+                all_recent_tracks.append(f'"{rec.track_name}" by {rec.artist_name} (from recent playlist)')
+        
+        # Create warning for over-recommended artists
+        frequent_artists_warning = ""
+        over_used_artists = []
+        for artist, count in artist_frequency.items():
+            if count >= 3:  # More than 3 times in recent period
+                over_used_artists.append(f"{artist} ({count} times)")
+        
+        if over_used_artists:
+            frequent_artists_warning = f"\nAVOID OVER-RECOMMENDING THESE ARTISTS: {', '.join(over_used_artists[:8])}"
+        
+        app.logger.info(f"Playlist creation: Avoiding {len(all_recent_tracks)} recent tracks and {len(over_used_artists)} overused artists")
         
         # Create comprehensive prompt for generating multiple tracks
         prompt = f"""Based on this user's comprehensive Spotify listening data and psychological analysis, recommend exactly {song_count} specific songs for a personalized playlist.
@@ -964,8 +984,10 @@ def create_ai_playlist():
 USER PSYCHOLOGICAL & MUSICAL ANALYSIS:
 {user_analysis}
 
-{feedback_insights}RECENTLY RECOMMENDED TRACKS (DO NOT REPEAT THESE):
-{recent_tracks_list}
+{frequent_artists_warning}
+
+RECENTLY RECOMMENDED TRACKS (DO NOT REPEAT THESE):
+{all_recent_tracks}
 
 PLAYLIST TITLE: {playlist_name}
 PLAYLIST DESCRIPTION AND ADDITIONAL GUIDANCE:
@@ -1101,6 +1123,35 @@ Do not include any other text, explanations, or formatting."""
             if not add_result:
                 app.logger.warning("Failed to add some tracks to playlist")
         
+        # Save each track as a recommendation for future duplicate prevention
+        try:
+            for track_uri in track_uris:
+                # Get track details from Spotify
+                track_search = spotify_client.search_tracks(f"spotify:track:{track_uri.split(':')[-1]}", limit=1)
+                if track_search and track_search.get('tracks', {}).get('items'):
+                    track = track_search['tracks']['items'][0]
+                    
+                    # Save as a playlist recommendation
+                    playlist_rec = Recommendation(
+                        user_id=user.id,
+                        track_name=track['name'],
+                        artist_name=track['artists'][0]['name'],
+                        track_uri=track['uri'],
+                        album_name=track['album']['name'],
+                        ai_reasoning=f"Added to playlist '{playlist_name}' - {playlist_description[:100]}...",
+                        psychological_analysis=f"Playlist: {user_analysis[:200]}...",
+                        listening_data_snapshot="{}",  # Minimal for playlist tracks
+                        session_adjustment=playlist_description,
+                        recommendation_method='playlist'
+                    )
+                    db.session.add(playlist_rec)
+            
+            db.session.commit()
+            app.logger.info(f"Saved {len(track_uris)} playlist tracks to recommendation history")
+            
+        except Exception as e:
+            app.logger.warning(f"Could not save playlist tracks to recommendation history: {e}")
+        
         return jsonify({
             'success': True,
             'playlist_name': playlist_name,
@@ -1108,7 +1159,9 @@ Do not include any other text, explanations, or formatting."""
             'playlist_url': playlist_result['external_urls']['spotify'],
             'tracks_added': len(track_uris),
             'tracks_found': successful_tracks,
-            'total_requested': song_count
+            'total_requested': song_count,
+            'duplicates_avoided': len(all_recent_tracks),
+            'artists_diversified': len(over_used_artists)
         })
         
     except Exception as e:
@@ -1438,7 +1491,10 @@ def generate_conversational_reasoning_api():
 
 @app.route('/ai-recommendation-lightning', methods=['POST'])
 def ai_recommendation_lightning():
-    """Lightning-fast AI recommendation using optimized models and cached data"""
+    """Lightning-fast AI recommendation using optimized models and cached data with enhanced duplicate prevention"""
+    from flask import jsonify, session, request
+    import json, time
+
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
 
@@ -1446,29 +1502,28 @@ def ai_recommendation_lightning():
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
 
-    # Check if optimization modules are available
-    if not OPTIMIZATION_AVAILABLE:
-        return jsonify({
-            'success': False, 
-            'message': 'Lightning mode optimization modules are not available. Please install the required dependencies or use the standard recommendation endpoint.'
-        }), 503
-
-    # Get gemini API key
+    # Get request data safely
     request_data = request.get_json() or {}
     gemini_api_key = request_data.get('gemini_api_key')
-    session_adjustment = request_data.get('session_adjustment', '')
-    
-    # Debug logging for session adjustment
+    session_adjustment = request_data.get('session_adjustment', '').strip()
+
     if session_adjustment:
-        app.logger.info(f"SESSION ADJUSTMENT RECEIVED: '{session_adjustment}'")
+        session['session_adjustment'] = session_adjustment
     else:
-        app.logger.info("SESSION ADJUSTMENT: No adjustment provided")
-    
+        session_adjustment = session.get('session_adjustment', '')
+
     if not gemini_api_key:
-        return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
+        return jsonify({'success': False, 'message': 'Gemini API key required for Lightning mode'}), 400
 
     # Configure genai
     genai.configure(api_key=gemini_api_key)
+
+    # Check if optimization is available
+    if not OPTIMIZATION_AVAILABLE:
+        return jsonify({
+            'success': False, 
+            'message': 'Lightning mode not available. Please use standard recommendation.'
+        }), 503
 
     try:
         total_start_time = time.time()
@@ -1503,12 +1558,15 @@ def ai_recommendation_lightning():
         data_collection_duration = time.time() - data_collection_start
         app.logger.info(f"LIGHTNING: Data collection complete - {data_collection_duration:.2f}s")
         
-        # Get recent recommendations to avoid duplicates
-        recent_recommendations = []
-        recent_recs = Recommendation.query.filter_by(user_id=user.id)\
-                                         .order_by(Recommendation.id.desc())\
-                                         .limit(10).all()
-        recent_recommendations = [f"{rec.track_name} by {rec.artist_name}" for rec in recent_recs]
+        # Get enhanced recent recommendations to avoid duplicates
+        rec_tracking = get_enhanced_recent_recommendations(user, hours_back=24)
+        recent_recommendations = rec_tracking['formatted_list']
+        artist_frequency = rec_tracking['artist_frequency']
+        diversity_warning = rec_tracking['warning_message']
+        
+        app.logger.info(f"LIGHTNING: Found {rec_tracking['total_count']} recent recommendations for duplicate prevention")
+        if diversity_warning:
+            app.logger.info(f"LIGHTNING: Diversity warning - {diversity_warning}")
         
         # Get optimized recommendation using hyper-fast approach
         app.logger.info("LIGHTNING: Generating optimized recommendation...")
@@ -1519,7 +1577,9 @@ def ai_recommendation_lightning():
             gemini_api_key,
             session_adjustment=session_adjustment,
             recent_recommendations=recent_recommendations,
-            user_id=user.id
+            user_id=user.id,
+            artist_frequency=artist_frequency,
+            diversity_warning=diversity_warning
         )
         
         if not optimization_result['success']:
@@ -1527,7 +1587,7 @@ def ai_recommendation_lightning():
                 'success': False, 
                 'message': f'AI recommendation failed: {optimization_result["error"]}'
             }), 500
-        
+
         recommendation_text = optimization_result['recommendation']
         user_profile = optimization_result['user_profile']
         optimization_stats = optimization_result['stats']
@@ -1596,6 +1656,17 @@ Recommendation text: {recommendation_text}
         
         parse_duration = time.time() - parse_start
         app.logger.info(f"LIGHTNING: Parsing complete - {parse_duration:.2f}s - '{song_title}' by {artist_name}")
+        
+        # Validate recommendation for duplicates
+        is_valid, validation_reason = check_recommendation_validity(user.id, song_title, artist_name)
+        if not is_valid:
+            app.logger.warning(f"LIGHTNING: Recommendation validation failed - {validation_reason}")
+            return jsonify({
+                'success': False,
+                'message': f'AI suggested a recent duplicate. {validation_reason}. Please try again for a fresh recommendation.',
+                'ai_recommendation': recommendation_text,
+                'validation_error': True
+            }), 400
         
         # Search for the track on Spotify
         app.logger.info("LIGHTNING: Searching Spotify...")
@@ -1667,22 +1738,14 @@ Recommendation text: {recommendation_text}
         app.logger.info(f"LIGHTNING: Result selection complete - {selection_duration:.2f}s")
         app.logger.info(f"LIGHTNING: Total search complete - {search_duration:.2f}s")
         
-        # Save recommendation to database with placeholder reasoning (will be generated separately)
+        # Save recommendation to database with enhanced tracking
         app.logger.info("LIGHTNING: Saving recommendation to database...")
         save_start = time.time()
         
-        recommendation = Recommendation(
-            user_id=user.id,
-            track_name=recommended_track['name'],
-            artist_name=recommended_track['artists'][0]['name'],
-            track_uri=recommended_track['uri'],
-            album_name=recommended_track['album']['name'],
-            ai_reasoning="Generating personalized explanation...",  # Placeholder
-            psychological_analysis=f"Lightning profile: {user_profile}",
-            listening_data_snapshot=json.dumps(music_data)
+        recommendation = save_enhanced_recommendation(
+            user, recommended_track, "Generating personalized explanation...", user_profile, music_data,
+            session_adjustment=session_adjustment, method="lightning"
         )
-        db.session.add(recommendation)
-        db.session.commit()
         
         session['current_recommendation_id'] = recommendation.id
         session['last_recommendation_time'] = current_time
@@ -1698,19 +1761,14 @@ Recommendation text: {recommendation_text}
         app.logger.info(f"Profile (Cached):    {optimization_stats['profile_duration']:.2f}s")
         app.logger.info(f"Recommendation:      {optimization_stats['rec_duration']:.2f}s")
         app.logger.info(f"Track Parsing:       {parse_duration:.2f}s")
-        app.logger.info(f"Spotify Search:      {search_duration - selection_duration:.2f}s")
         app.logger.info(f"Result Selection:    {selection_duration:.2f}s")
+        app.logger.info(f"Spotify Search:      {search_duration:.2f}s")
         app.logger.info(f"Database Save:       {save_duration:.2f}s")
-        app.logger.info(f"Total LLM Time:      {optimization_stats['total_llm_duration'] + parse_duration + selection_duration:.2f}s")
-        app.logger.info(f"Total Search Time:   {search_duration:.2f}s")
         app.logger.info(f"Total Request Time:  {total_duration:.2f}s")
+        app.logger.info(f"Mode:                Lightning (enhanced)")
         app.logger.info(f"Model Used:          {optimization_stats['models_used'][0]}")
-        app.logger.info(f"Approach:            lightning_structured_search_immediate")
-        app.logger.info(f"Cached Profile:      {optimization_stats['cached_profile']}")
-        app.logger.info(f"Match Score:         {match_score:.2f}")
-        app.logger.info(f"Parse Confidence:    {parse_confidence:.2f}")
-        app.logger.info(f"Selection Confidence:{selection_confidence:.2f}")
-        app.logger.info(f"Performance Gain:    ~{61/total_duration:.1f}x faster than original")
+        app.logger.info(f"Duplicates Avoided:  {len(recent_recommendations)}")
+        app.logger.info(f"Performance Gain:    {optimization_stats.get('performance_gain_estimate', 'N/A')}")
         app.logger.info(">" * 60)
         
         return jsonify({
@@ -1729,7 +1787,7 @@ Recommendation text: {recommendation_text}
             'recommendation_id': recommendation.id,
             'exact_match': match_score >= 0.5,
             'ai_recommendation': recommendation_text,
-            'requires_reasoning_generation': True,  # Signal to frontend to generate reasoning
+            'requires_reasoning_generation': True,
             'performance_stats': {
                 'total_duration': round(total_duration, 2),
                 'profile_duration': round(optimization_stats['profile_duration'], 2),
@@ -1740,18 +1798,20 @@ Recommendation text: {recommendation_text}
                 'total_llm_duration': round(optimization_stats['total_llm_duration'] + parse_duration + selection_duration, 2),
                 'search_duration': round(search_duration, 2),
                 'model_used': optimization_stats['models_used'][0],
-                'approach': 'lightning_structured_search_immediate',
+                'approach': 'lightning_enhanced_duplicate_prevention',
                 'cached_profile': optimization_stats['cached_profile'],
                 'cached_data': cached_music_data is not None,
                 'match_score': round(match_score, 2),
                 'parse_confidence': round(parse_confidence, 2),
                 'selection_confidence': round(selection_confidence, 2),
+                'duplicates_avoided': len(recent_recommendations),
+                'diversity_score': max(0, 10 - len(recent_recommendations)),
                 'performance_gain_estimate': f"{61/total_duration:.1f}x faster"
             }
         })
         
     except Exception as e:
-        app.logger.error(f"Lightning AI recommendation failed: {str(e)}", exc_info=True)
+        app.logger.error(f"Enhanced Lightning AI recommendation failed: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
 
 @app.route('/api/generate-music-taste-profile', methods=['POST'])
@@ -1805,83 +1865,79 @@ def generate_music_taste_profile():
 
 @app.route('/ai-recommendation', methods=['POST'])
 def ai_recommendation():
-    """Standard AI recommendation endpoint - fallback when Lightning mode is not available"""
+    """Enhanced standard AI recommendation with improved duplicate prevention"""
+    from flask import jsonify, session, request
+    import json, time
+    import google.generativeai as genai
+    
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-
+    
     user = User.query.get(session['user_id'])
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
-
-    # Get gemini API key
-    request_data = request.get_json() or {}
-    gemini_api_key = request_data.get('gemini_api_key')
-    session_adjustment = request_data.get('session_adjustment', '')
     
-    # Debug logging for session adjustment
+    # Get session adjustment if provided
+    session_adjustment = request.json.get('session_adjustment', '').strip() if request.json else ''
     if session_adjustment:
-        app.logger.info(f"SESSION ADJUSTMENT RECEIVED: '{session_adjustment}'")
+        session['session_adjustment'] = session_adjustment
     else:
-        app.logger.info("SESSION ADJUSTMENT: No adjustment provided")
+        session_adjustment = session.get('session_adjustment', '')
     
-    if not gemini_api_key:
-        return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
-
-    # Configure genai
-    genai.configure(api_key=gemini_api_key)
-
+    # Rate limiting
+    total_start_time = time.time()
+    current_time = time.time()
+    last_rec_time = session.get('last_recommendation_time', 0)
+    if current_time - last_rec_time < 2:  # 2 second minimum between recommendations
+        return jsonify({
+            'success': False, 
+            'message': 'Please wait a moment before requesting another recommendation.'
+        }), 429
+    
     try:
-        total_start_time = time.time()
-        current_time = time.time()
-        
-        # Rate limiting check
-        last_rec_time = session.get('last_recommendation_time', 0)
-        if current_time - last_rec_time < 2:  # 2 second minimum between recommendations for standard mode
-            return jsonify({
-                'success': False, 
-                'message': 'Please wait a moment before requesting another recommendation.'
-            }), 429
-
-        # Initialize Spotify client
-        spotify_client = SpotifyClient(user.access_token)
-        
+        # Collect music data
         app.logger.info("STANDARD: Starting standard AI recommendation...")
-        
-        # Collect basic music data (without optimization)
         app.logger.info("STANDARD: Collecting music data...")
         data_collection_start = time.time()
         
+        spotify_client = SpotifyClient(user.access_token)
+        
         try:
-            # Get user's music data
+            # Get user's current music context
             current_track = spotify_client.get_current_track()
-            recent_tracks = spotify_client.get_recently_played(limit=20)
+            recent_tracks = spotify_client.get_recent_tracks(limit=20)
             top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=10)
             top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=10)
             top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=10)
             top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=10)
             
-            # Prepare music data
+            # Extract top genres from artists
+            all_artists = (top_artists_short.get('items', []) + top_artists_medium.get('items', []))[:15]
+            top_genres = []
+            for artist in all_artists:
+                top_genres.extend(artist.get('genres', []))
+            
+            # Get unique genres, keeping order
+            seen = set()
+            unique_genres = []
+            for genre in top_genres:
+                if genre not in seen:
+                    seen.add(genre)
+                    unique_genres.append(genre)
+            
             music_data = {
                 'current_track': current_track,
-                'recent_tracks': recent_tracks.get('items', []) if recent_tracks else [],
+                'recent_tracks': recent_tracks.get('items', []),
                 'top_artists': {
-                    'short_term': top_artists_short.get('items', []) if top_artists_short else [],
-                    'medium_term': top_artists_medium.get('items', []) if top_artists_medium else []
+                    'short_term': top_artists_short.get('items', []),
+                    'medium_term': top_artists_medium.get('items', [])
                 },
                 'top_tracks': {
-                    'short_term': top_tracks_short.get('items', []) if top_tracks_short else [],
-                    'medium_term': top_tracks_medium.get('items', []) if top_tracks_medium else []
-                }
+                    'short_term': top_tracks_short.get('items', []),
+                    'medium_term': top_tracks_medium.get('items', [])
+                },
+                'top_genres': unique_genres[:15]
             }
-            
-            # Extract genres
-            all_genres = set()
-            for artist in music_data['top_artists']['short_term'][:5]:
-                all_genres.update(artist.get('genres', []))
-            for artist in music_data['top_artists']['medium_term'][:5]:
-                all_genres.update(artist.get('genres', []))
-            
-            music_data['top_genres'] = list(all_genres)[:10]
             
         except Exception as e:
             app.logger.warning(f"Error collecting music data: {e}")
@@ -1902,12 +1958,15 @@ def ai_recommendation():
         data_collection_duration = time.time() - data_collection_start
         app.logger.info(f"STANDARD: Data collection complete - {data_collection_duration:.2f}s")
         
-        # Get recent recommendations to avoid duplicates
-        recent_recommendations = []
-        recent_recs = Recommendation.query.filter_by(user_id=user.id)\
-                                         .order_by(Recommendation.id.desc())\
-                                         .limit(10).all()
-        recent_recommendations = [f"{rec.track_name} by {rec.artist_name}" for rec in recent_recs]
+        # Get enhanced recent recommendations to avoid duplicates
+        rec_tracking = get_enhanced_recent_recommendations(user, hours_back=24)
+        recent_recommendations = rec_tracking['formatted_list']
+        artist_frequency = rec_tracking['artist_frequency']
+        diversity_warning = rec_tracking['warning_message']
+        
+        app.logger.info(f"STANDARD: Found {rec_tracking['total_count']} recent recommendations for duplicate prevention")
+        if diversity_warning:
+            app.logger.info(f"STANDARD: Diversity warning - {diversity_warning}")
         
         # Generate user profile
         app.logger.info("STANDARD: Generating user profile...")
@@ -1941,12 +2000,22 @@ Keep it conversational and insightful.
         profile_duration = time.time() - profile_start
         app.logger.info(f"STANDARD: User profile complete - {profile_duration:.2f}s")
         
-        # Generate recommendation
+        # Generate recommendation with enhanced duplicate prevention
         app.logger.info("STANDARD: Generating AI recommendation...")
         rec_start = time.time()
         
+        # Build artist frequency context for the prompt
+        frequent_artists = []
+        for artist, count in artist_frequency.items():
+            if count >= 2:
+                frequent_artists.append(f"{artist} ({count} times recently)")
+        
+        artist_warning = ""
+        if frequent_artists:
+            artist_warning = f"\nAVOID THESE RECENTLY OVER-RECOMMENDED ARTISTS: {', '.join(frequent_artists[:5])}"
+        
         rec_prompt = f"""
-Based on this user's music data, recommend ONE specific song that perfectly matches their taste.
+Based on this user's music data, recommend ONE specific song that perfectly matches their taste while avoiding recent duplicates.
 
 USER PROFILE: {user_profile}
 
@@ -1955,7 +2024,9 @@ MUSIC DATA:
 - Top artists: {[artist['name'] for artist in music_data['top_artists']['short_term'][:8]]}
 - Top genres: {music_data['top_genres'][:8]}
 
-RECENT RECOMMENDATIONS (DO NOT REPEAT): {recent_recommendations}
+RECENT RECOMMENDATIONS TO AVOID (DO NOT REPEAT ANY): {recent_recommendations}
+{diversity_warning}
+{artist_warning}
 
 {"IMPORTANT SESSION ADJUSTMENT FROM USER: " + session_adjustment if session_adjustment else "No specific session preferences provided."}
 
@@ -1964,11 +2035,13 @@ SONG: [song title]
 ARTIST: [artist name]
 REASON: [one sentence explaining why this matches their taste{"and session preference" if session_adjustment else ""}]
 
-The song should:
+CRITICAL REQUIREMENTS:
+- Must be a DIFFERENT song and artist from recent recommendations
+- Prioritize musical diversity and discovery
+- Ensure the artist hasn't been recommended recently
 - Match their established preferences
 {f"- PRIORITIZE the user's session adjustment: {session_adjustment}" if session_adjustment else "- Introduce slight variation to keep things interesting"}
 - Be available on Spotify
-- Not repeat recent recommendations
 {"- Respect the specific session mood/style requested above" if session_adjustment else ""}
 """
         
@@ -2029,6 +2102,17 @@ The song should:
         parse_duration = time.time() - parse_start
         app.logger.info(f"STANDARD: Parsing complete - {parse_duration:.2f}s - '{song_title}' by {artist_name}")
         
+        # Validate recommendation for duplicates
+        is_valid, validation_reason = check_recommendation_validity(user.id, song_title, artist_name)
+        if not is_valid:
+            app.logger.warning(f"STANDARD: Recommendation validation failed - {validation_reason}")
+            return jsonify({
+                'success': False,
+                'message': f'AI suggested a recent duplicate. {validation_reason}. Please try again for a fresh recommendation.',
+                'ai_recommendation': recommendation_text,
+                'validation_error': True
+            }), 400
+        
         # Search for the track on Spotify
         app.logger.info("STANDARD: Searching Spotify...")
         search_start = time.time()
@@ -2055,22 +2139,14 @@ The song should:
         search_duration = time.time() - search_start
         app.logger.info(f"STANDARD: Search complete - {search_duration:.2f}s")
         
-        # Save recommendation to database
+        # Save recommendation to database with enhanced tracking
         app.logger.info("STANDARD: Saving recommendation to database...")
         save_start = time.time()
         
-        recommendation = Recommendation(
-            user_id=user.id,
-            track_name=recommended_track['name'],
-            artist_name=recommended_track['artists'][0]['name'],
-            track_uri=recommended_track['uri'],
-            album_name=recommended_track['album']['name'],
-            ai_reasoning=ai_reasoning,
-            psychological_analysis=f"Standard profile: {user_profile}",
-            listening_data_snapshot=json.dumps(music_data)
+        recommendation = save_enhanced_recommendation(
+            user, recommended_track, ai_reasoning, user_profile, music_data,
+            session_adjustment=session_adjustment, method="standard"
         )
-        db.session.add(recommendation)
-        db.session.commit()
         
         session['current_recommendation_id'] = recommendation.id
         session['last_recommendation_time'] = current_time
@@ -2089,8 +2165,9 @@ The song should:
         app.logger.info(f"Spotify Search:      {search_duration:.2f}s")
         app.logger.info(f"Database Save:       {save_duration:.2f}s")
         app.logger.info(f"Total Request Time:  {total_duration:.2f}s")
-        app.logger.info(f"Mode:                Standard (non-optimized)")
+        app.logger.info(f"Mode:                Standard (enhanced)")
         app.logger.info(f"Model Used:          gemini-1.5-flash")
+        app.logger.info(f"Duplicates Avoided:  {len(recent_recommendations)}")
         app.logger.info("=" * 60)
         
         return jsonify({
@@ -2116,10 +2193,85 @@ The song should:
                 'search_duration': round(search_duration, 2),
                 'save_duration': round(save_duration, 2),
                 'model_used': 'gemini-1.5-flash',
-                'mode': 'standard'
+                'mode': 'standard_enhanced',
+                'duplicates_avoided': len(recent_recommendations),
+                'diversity_score': max(0, 10 - len(recent_recommendations))  # Simple diversity score
             }
         })
         
     except Exception as e:
-        app.logger.error(f"Standard AI recommendation failed: {str(e)}", exc_info=True)
+        app.logger.error(f"Enhanced standard AI recommendation failed: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
+
+def get_enhanced_recent_recommendations(user, hours_back=24, include_artist_counts=True):
+    """
+    Get enhanced recent recommendations with better formatting and artist frequency tracking
+    """
+    recent_recs = user.get_recommendation_history_for_prompt(hours_back=hours_back, limit=15)
+    
+    if not recent_recs:
+        return {
+            'formatted_list': [],
+            'artist_frequency': {},
+            'total_count': 0,
+            'warning_message': ""
+        }
+    
+    # Count artist frequency for diversity warnings
+    artist_frequency = {}
+    if include_artist_counts:
+        for rec in user.get_recent_recommendations(hours_back=72, limit=30):  # Look back 3 days for artist frequency
+            artist_lower = rec.artist_name.lower().strip()
+            artist_frequency[artist_lower] = artist_frequency.get(artist_lower, 0) + 1
+    
+    # Generate warning message if too many recent recommendations
+    warning_message = ""
+    if len(recent_recs) >= 10:
+        warning_message = f"User has received {len(recent_recs)} recommendations in the last {hours_back} hours. Prioritize diversity and avoid repetition."
+    elif len(recent_recs) >= 5:
+        warning_message = f"User has {len(recent_recs)} recent recommendations. Ensure variety in your suggestion."
+    
+    return {
+        'formatted_list': recent_recs,
+        'artist_frequency': artist_frequency,
+        'total_count': len(recent_recs),
+        'warning_message': warning_message
+    }
+
+def check_recommendation_validity(user_id, track_name, artist_name):
+    """
+    Check if a recommended track is valid (not a recent duplicate)
+    Returns (is_valid, reason)
+    """
+    # Check exact duplicates
+    if Recommendation.is_duplicate(user_id, track_name, artist_name, hours_back=24):
+        return False, f"Exact duplicate: '{track_name}' by {artist_name} was recommended in the last 24 hours"
+    
+    # Check artist overuse (more than 2 times in 72 hours)
+    artist_count = Recommendation.get_artist_recommendation_count(user_id, artist_name, hours_back=72)
+    if artist_count >= 2:
+        return False, f"Artist overuse: {artist_name} has been recommended {artist_count} times in the last 72 hours"
+    
+    return True, "Valid recommendation"
+
+def save_enhanced_recommendation(user, recommended_track, ai_reasoning, user_profile, music_data, 
+                                session_adjustment=None, method="standard"):
+    """
+    Save recommendation with enhanced tracking fields
+    """
+    recommendation = Recommendation(
+        user_id=user.id,
+        track_name=recommended_track['name'],
+        artist_name=recommended_track['artists'][0]['name'],
+        track_uri=recommended_track['uri'],
+        album_name=recommended_track['album']['name'],
+        ai_reasoning=ai_reasoning,
+        psychological_analysis=f"{method.title()} profile: {user_profile}",
+        listening_data_snapshot=json.dumps(music_data),
+        session_adjustment=session_adjustment,
+        recommendation_method=method
+    )
+    db.session.add(recommendation)
+    db.session.commit()
+    
+    return recommendation

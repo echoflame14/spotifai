@@ -10,6 +10,13 @@ An intelligent music discovery platform that uses AI to provide personalized mus
 - **Interactive Feedback**: Help the AI learn your preferences through feedback
 - **Playlist Creation**: Generate AI-curated playlists based on your taste
 - **Real-time Playback Control**: Play, pause, and control music directly from the platform
+- **🎯 Smart Music Recommendations**: AI analyzes your listening patterns to suggest perfect tracks
+- **⚡ Lightning Mode**: Ultra-fast recommendations with advanced optimization
+- **🎨 Psychological Music Profiling**: Deep insights into your musical personality  
+- **🎼 AI Playlist Creation**: Generate curated playlists with custom themes
+- **💬 Conversational Feedback**: Natural language interaction with your AI music assistant
+- **📊 Performance Analytics**: Real-time metrics and optimization insights
+- **🔄 Enhanced Duplicate Prevention**: Advanced tracking system prevents repetitive recommendations
 
 ## Tech Stack
 
@@ -123,4 +130,29 @@ If you encounter a "403 - Insufficient client scope" error when creating playlis
 - Monitor the logs for detailed error information
 
 #### Why This Happens:
-This is a known issue in Spotify's API that affects many developers. The problem is intermittent and typically resolves without any code changes required. 
+This is a known issue in Spotify's API that affects many developers. The problem is intermittent and typically resolves without any code changes required.
+
+## Enhanced Recommendation Tracking System
+
+### Intelligent Duplicate Prevention
+Spotifai now features a sophisticated tracking system that prevents the AI from suggesting the same tracks repeatedly:
+
+#### Key Features:
+- **Time-based tracking**: Monitors recommendations over configurable time periods (24-72 hours)
+- **Artist frequency analysis**: Prevents over-recommending the same artists
+- **Cross-method tracking**: Considers recommendations from individual suggestions, playlists, and lightning mode
+- **Smart validation**: Checks for exact duplicates and artist overuse before making suggestions
+- **Enhanced prompts**: LLM receives detailed context about recent recommendations and diversity requirements
+
+#### Database Enhancements:
+- `session_adjustment`: Stores user's session-specific preferences
+- `recommendation_method`: Tracks the source (standard, lightning, playlist)  
+- `was_played`: Records if user actually played the recommendation
+- `last_played_at` & `play_count`: Tracks engagement metrics
+- Time-based queries with automatic cleanup
+
+#### Benefits:
+- **Better Discovery**: More diverse recommendations that avoid repetition
+- **Improved User Experience**: Fresher suggestions that respect listening patterns
+- **Smart Context**: AI understands what you've heard recently and adjusts accordingly
+- **Artist Diversity**: Prevents over-recommending favorite artists while maintaining taste alignment 
