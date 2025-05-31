@@ -628,6 +628,16 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
             app.logger.error(f"Failed to configure Gemini API: {config_error}")
             return None
         
+        # STEP 1: Clean the Spotify data using LLM processing
+        app.logger.info("STEP 1: Cleaning Spotify data with LLM processing...")
+        cleaned_data = clean_spotify_data_with_llm(comprehensive_music_data, gemini_api_key)
+        
+        if not cleaned_data:
+            app.logger.error("Failed to clean Spotify data")
+            return None
+        
+        app.logger.info(f"STEP 1 COMPLETE: Data cleaned and reduced for psychological analysis")
+        
         # Use the most advanced model available
         try:
             # Use stable 1.5 Flash model for better reliability
@@ -637,54 +647,19 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
             app.logger.error(f"Failed to initialize Gemini model: {model_error}")
             return None
         
-        # Create an extremely detailed prompt for comprehensive analysis
-        try:
-            # Limit the data size to prevent prompt from being too large
-            limited_data = {
-                'current_track': comprehensive_music_data.get('current_track'),
-                'recent_tracks': {
-                    'items': comprehensive_music_data.get('recent_tracks', {}).get('items', [])[:10]  # Reduced from 20
-                },
-                'top_artists': {
-                    'short_term': {
-                        'items': comprehensive_music_data.get('top_artists', {}).get('short_term', {}).get('items', [])[:10]  # Reduced from 15
-                    },
-                    'medium_term': {
-                        'items': comprehensive_music_data.get('top_artists', {}).get('medium_term', {}).get('items', [])[:10]  # Reduced from 15
-                    }
-                },
-                'top_tracks': {
-                    'short_term': {
-                        'items': comprehensive_music_data.get('top_tracks', {}).get('short_term', {}).get('items', [])[:10]  # Reduced from 15
-                    },
-                    'medium_term': {
-                        'items': comprehensive_music_data.get('top_tracks', {}).get('medium_term', {}).get('items', [])[:10]  # Reduced from 15
-                    }
-                },
-                'saved_tracks': {
-                    'items': comprehensive_music_data.get('saved_tracks', {}).get('items', [])[:10]  # Reduced from 20
-                },
-                'user_playlists': {
-                    'items': comprehensive_music_data.get('user_playlists', {}).get('items', [])[:5]  # Reduced from 10
-                }
-            }
-            
-            # Test JSON serialization of limited data
-            data_json = json.dumps(limited_data, indent=2)
-            app.logger.info(f"Limited data prepared for analysis, size: {len(data_json)} characters")
-            
-        except Exception as data_prep_error:
-            app.logger.error(f"Error preparing data for analysis: {data_prep_error}")
-            return None
-
+        # STEP 2: Generate psychological analysis using cleaned data
+        app.logger.info("STEP 2: Generating psychological analysis with cleaned data...")
+        
+        # Create focused prompt using cleaned data (much smaller and more relevant)
         prompt = f"""
-You are an expert music psychologist and data analyst. Analyze this comprehensive Spotify listening data to create the most detailed psychological and musical profile possible. Be specific, insightful, and thorough.
+You are an expert music psychologist and data analyst. Analyze this CLEANED and FOCUSED Spotify listening data to create a comprehensive psychological profile.
 
-COMPREHENSIVE LISTENING DATA:
-{data_json}
+CLEANED LISTENING DATA (technical metadata removed):
+{json.dumps(cleaned_data, indent=2)}
+
+Create an extremely detailed psychological analysis covering ALL sections below. Be specific with examples from their actual listening data.
 
 ANALYSIS REQUIREMENTS:
-Create an extremely detailed analysis covering ALL of these sections. Be specific with examples and provide deep insights.
 
 1. **CORE PSYCHOLOGICAL PROFILE**
    - Personality traits revealed through music choices
@@ -692,7 +667,6 @@ Create an extremely detailed analysis covering ALL of these sections. Be specifi
    - Cognitive preferences and thinking styles
    - Risk tolerance and openness to new experiences
    - Social vs. solitary listening patterns
-   - Life phase indicators (based on genre evolution)
 
 2. **MUSICAL IDENTITY ANALYSIS**
    - Musical sophistication level and complexity preferences
@@ -3089,4 +3063,228 @@ def test_spotify_auth():
         }), 500
     
     app.logger.info("========================")
+    
+def clean_spotify_data_with_llm(comprehensive_music_data, gemini_api_key):
+    """Use LLM to extract only psychologically relevant data from Spotify responses"""
+    try:
+        import google.generativeai as genai
+        
+        # Configure Gemini
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        app.logger.info("LLM DATA CLEANING: Starting Spotify data extraction...")
+        
+        # Create a focused prompt for data extraction
+        extraction_prompt = f"""
+Extract ONLY the psychologically and musically relevant information from this Spotify data. Remove all technical metadata, IDs, URIs, and other clutter.
+
+SPOTIFY DATA TO CLEAN:
+{json.dumps(comprehensive_music_data, indent=1)}
+
+Extract and return ONLY a clean JSON object with this structure:
+{{
+    "current_listening": {{
+        "current_track": "Song Name by Artist (if playing)",
+        "is_currently_playing": true/false
+    }},
+    "recent_listening_patterns": [
+        {{
+            "track": "Song Name",
+            "artist": "Artist Name",
+            "album": "Album Name",
+            "played_recently": true,
+            "genres": ["genre1", "genre2"]
+        }}
+    ],
+    "top_artists_analysis": {{
+        "short_term_favorites": [
+            {{
+                "name": "Artist Name",
+                "genres": ["genre1", "genre2"],
+                "popularity_level": "mainstream/niche",
+                "follower_count_category": "small/medium/large"
+            }}
+        ],
+        "medium_term_favorites": ["same structure as above"],
+        "long_term_favorites": ["same structure as above"]
+    }},
+    "top_tracks_analysis": {{
+        "short_term": [
+            {{
+                "track": "Song Name",
+                "artist": "Artist Name",
+                "album": "Album Name",
+                "popularity_level": "mainstream/underground",
+                "duration_category": "short/medium/long",
+                "explicit": true/false
+            }}
+        ],
+        "medium_term": ["same structure"],
+        "long_term": ["same structure"]
+    }},
+    "saved_music_preferences": [
+        {{
+            "track": "Song Name",
+            "artist": "Artist Name",
+            "saved_deliberately": true,
+            "genres": ["genre1", "genre2"]
+        }}
+    ],
+    "playlist_behavior": [
+        {{
+            "name": "Playlist Name",
+            "track_count": 25,
+            "is_collaborative": false,
+            "is_public": true,
+            "indicates_curation_style": "personal/social/thematic"
+        }}
+    ]
+}}
+
+IMPORTANT RULES:
+- Remove ALL technical metadata (IDs, URIs, external_urls, etc.)
+- Focus on psychological indicators (genres, popularity patterns, listening behaviors)
+- Categorize numerical data (popularity, follower counts, durations) instead of exact numbers
+- Only include data that reveals personality, taste, or listening psychology
+- Limit each array to maximum 10 items for focus
+- If data is missing, use null or empty array
+- Keep response under 15,000 characters
+
+Return ONLY the clean JSON object.
+"""
+
+        app.logger.info("LLM DATA CLEANING: Sending extraction request...")
+        cleaning_start = time.time()
+        
+        response = model.generate_content(extraction_prompt)
+        cleaning_duration = time.time() - cleaning_start
+        
+        if response and response.text:
+            try:
+                # Parse the cleaned response
+                response_text = response.text.strip()
+                
+                # Remove markdown if present
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]
+                elif response_text.startswith('```'):
+                    response_text = response_text[3:]
+                
+                # Find JSON
+                json_start = response_text.find('{')
+                if json_start != -1:
+                    # Find matching closing brace
+                    brace_count = 0
+                    json_end = -1
+                    for i, char in enumerate(response_text[json_start:], json_start):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                json_end = i + 1
+                                break
+                    
+                    if json_end != -1:
+                        json_text = response_text[json_start:json_end]
+                        cleaned_data = json.loads(json_text)
+                        
+                        app.logger.info(f"LLM DATA CLEANING: Completed in {cleaning_duration:.2f}s")
+                        app.logger.info(f"LLM DATA CLEANING: Reduced data size from {len(json.dumps(comprehensive_music_data))} to {len(json_text)} characters")
+                        
+                        return cleaned_data
+                    
+            except json.JSONDecodeError as e:
+                app.logger.warning(f"LLM DATA CLEANING: JSON parsing failed: {e}")
+            except Exception as e:
+                app.logger.warning(f"LLM DATA CLEANING: Processing failed: {e}")
+        
+        app.logger.warning("LLM DATA CLEANING: Failed, using fallback basic cleaning")
+        return create_basic_cleaned_data(comprehensive_music_data)
+        
+    except Exception as e:
+        app.logger.error(f"LLM DATA CLEANING: Error - {e}")
+        return create_basic_cleaned_data(comprehensive_music_data)
+
+def create_basic_cleaned_data(comprehensive_music_data):
+    """Fallback: Create basic cleaned data if LLM cleaning fails"""
+    try:
+        app.logger.info("Creating basic cleaned data as fallback...")
+        
+        cleaned = {
+            "current_listening": {
+                "current_track": "None",
+                "is_currently_playing": False
+            },
+            "recent_listening_patterns": [],
+            "top_artists_analysis": {
+                "short_term_favorites": [],
+                "medium_term_favorites": [],
+                "long_term_favorites": []
+            },
+            "top_tracks_analysis": {
+                "short_term": [],
+                "medium_term": [],
+                "long_term": []
+            },
+            "saved_music_preferences": [],
+            "playlist_behavior": []
+        }
+        
+        # Extract basic info from current track
+        current_track = comprehensive_music_data.get('current_track')
+        if current_track and isinstance(current_track, dict) and current_track.get('item'):
+            track = current_track['item']
+            cleaned["current_listening"]["current_track"] = f"{track.get('name', 'Unknown')} by {track.get('artists', [{}])[0].get('name', 'Unknown')}"
+            cleaned["current_listening"]["is_currently_playing"] = current_track.get('is_playing', False)
+        
+        # Extract basic recent tracks
+        recent_tracks = comprehensive_music_data.get('recent_tracks', {}).get('items', [])
+        for item in recent_tracks[:8]:
+            track = item.get('track', {})
+            if track.get('name'):
+                cleaned["recent_listening_patterns"].append({
+                    "track": track.get('name'),
+                    "artist": track.get('artists', [{}])[0].get('name', 'Unknown'),
+                    "album": track.get('album', {}).get('name', 'Unknown'),
+                    "played_recently": True,
+                    "genres": []
+                })
+        
+        # Extract basic top artists
+        for term in ['short_term', 'medium_term', 'long_term']:
+            artists = comprehensive_music_data.get('top_artists', {}).get(term, {}).get('items', [])
+            cleaned_artists = []
+            for artist in artists[:6]:
+                if artist.get('name'):
+                    cleaned_artists.append({
+                        "name": artist.get('name'),
+                        "genres": artist.get('genres', [])[:3],
+                        "popularity_level": "mainstream" if artist.get('popularity', 0) > 70 else "niche",
+                        "follower_count_category": "large" if artist.get('followers', {}).get('total', 0) > 1000000 else "medium"
+                    })
+            
+            if term == 'short_term':
+                cleaned["top_artists_analysis"]["short_term_favorites"] = cleaned_artists
+            elif term == 'medium_term':
+                cleaned["top_artists_analysis"]["medium_term_favorites"] = cleaned_artists
+            else:
+                cleaned["top_artists_analysis"]["long_term_favorites"] = cleaned_artists
+        
+        app.logger.info("Basic cleaned data created successfully")
+        return cleaned
+        
+    except Exception as e:
+        app.logger.error(f"Failed to create basic cleaned data: {e}")
+        return {
+            "current_listening": {"current_track": "None", "is_currently_playing": False},
+            "recent_listening_patterns": [],
+            "top_artists_analysis": {"short_term_favorites": [], "medium_term_favorites": [], "long_term_favorites": []},
+            "top_tracks_analysis": {"short_term": [], "medium_term": [], "long_term": []},
+            "saved_music_preferences": [],
+            "playlist_behavior": []
+        }
     
