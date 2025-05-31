@@ -1978,6 +1978,21 @@ Recommendation text: {recommendation_text}
                 if len(lines) >= 2:
                     song_title = lines[0].replace('SONG:', '').strip()
                     artist_name = lines[1].replace('ARTIST:', '').strip()
+                    
+                    # Clean up song title and artist name by removing explanatory text in parentheses
+                    # Remove any content in parentheses that looks like explanations (long text)
+                    import re
+                    
+                    # For song title: remove any parenthetical explanations longer than 10 characters
+                    song_title = re.sub(r'\([^)]{10,}\)', '', song_title).strip()
+                    
+                    # For artist name: remove any parenthetical explanations longer than 10 characters
+                    artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
+                    
+                    # Additional cleanup: remove quotes and extra whitespace
+                    song_title = song_title.strip('"\'').strip()
+                    artist_name = artist_name.strip('"\'').strip()
+                    
                     parse_confidence = 0.6
                 else:
                     raise Exception("Could not parse recommendation")
@@ -1992,6 +2007,9 @@ Recommendation text: {recommendation_text}
                     remaining = parts[2]
                     if ' by ' in remaining:
                         artist_name = remaining.split(' by ')[1].split('.')[0].split(',')[0].strip()
+                        # Clean parenthetical explanations from fallback parsing too
+                        import re
+                        artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
                     else:
                         artist_name = "Unknown Artist"
                     parse_confidence = 0.3
@@ -2026,6 +2044,21 @@ Recommendation text: {recommendation_text}
         
         # Use simple concatenated search query
         search_query = f"{song_title} {artist_name}"
+        
+        # Ensure search query doesn't exceed Spotify's 250-character limit
+        max_query_length = 250
+        if len(search_query) > max_query_length:
+            app.logger.warning(f"LIGHTNING: Search query too long ({len(search_query)} chars), truncating to {max_query_length} chars")
+            # Prioritize keeping the song title, then truncate artist name if needed
+            if len(song_title) < max_query_length - 10:  # Leave some space for artist
+                remaining_length = max_query_length - len(song_title) - 1  # -1 for space
+                truncated_artist = artist_name[:remaining_length] if remaining_length > 0 else ""
+                search_query = f"{song_title} {truncated_artist}".strip()
+            else:
+                # If song title is too long, truncate it
+                search_query = song_title[:max_query_length]
+            app.logger.info(f"LIGHTNING: Truncated search query: {search_query}")
+
         app.logger.info(f"LIGHTNING: Search query: {search_query}")
         
         # Get more results for LLM to choose from
@@ -2370,21 +2403,38 @@ Keep it conversational and insightful.
         profile_duration = time.time() - profile_start
         app.logger.info(f"STANDARD: User profile complete - {profile_duration:.2f}s")
         
-        # Generate recommendation with enhanced duplicate prevention
+        # Generate recommendation with enhanced duplicate prevention and retry logic
         app.logger.info("STANDARD: Generating AI recommendation...")
         rec_start = time.time()
         
         # Build artist frequency context for the prompt
         frequent_artists = []
         for artist, count in artist_frequency.items():
-            if count >= 2:
+            if count >= 1:  # Updated to match new limit
                 frequent_artists.append(f"{artist} ({count} times recently)")
         
         artist_warning = ""
         if frequent_artists:
-            artist_warning = f"\nAVOID THESE RECENTLY OVER-RECOMMENDED ARTISTS: {', '.join(frequent_artists[:5])}"
+            artist_warning = f"\nAVOID THESE RECENTLY RECOMMENDED ARTISTS: {', '.join(frequent_artists[:5])}"
         
-        rec_prompt = f"""
+        # Retry logic for recommendation generation with progressive relaxation
+        max_retries = 5  # Increased from 3 to 5
+        retry_count = 0
+        recommendation_successful = False
+        
+        while retry_count < max_retries and not recommendation_successful:
+            if retry_count > 0:
+                app.logger.info(f"STANDARD: Retry attempt {retry_count} for recommendation generation...")
+                # Add additional context for retries
+                artist_warning += f"\nIMPORTANT: This is retry #{retry_count} - avoid ALL previously mentioned artists and songs even more strictly."
+                
+                # Progressive relaxation of prompts for difficult cases
+                if retry_count >= 2:
+                    artist_warning += f"\nURGENT: Consider more obscure artists, remixes, covers, or different genres to avoid overused artists."
+                if retry_count >= 3:
+                    artist_warning += f"\nCRITICAL: Explore completely different musical directions, underground artists, or international music to find something fresh."
+            
+            rec_prompt = f"""
 Based on this user's music data, recommend ONE specific song that perfectly matches their taste while avoiding recent duplicates.
 
 USER PROFILE: {user_profile}
@@ -2408,86 +2458,174 @@ REASON: [one sentence explaining why this matches their taste{"and session prefe
 CRITICAL REQUIREMENTS:
 - Must be a DIFFERENT song and artist from recent recommendations
 - Prioritize musical diversity and discovery
-- Ensure the artist hasn't been recommended recently
+- Ensure the artist hasn't been recommended recently AT ALL
 - Match their established preferences
 {f"- PRIORITIZE the user's session adjustment: {session_adjustment}" if session_adjustment else "- Introduce slight variation to keep things interesting"}
 - Be available on Spotify
 {"- Respect the specific session mood/style requested above" if session_adjustment else ""}
+- AVOID ANY ARTIST that has been recommended in the last 72 hours
+{f"- RETRY #{retry_count}: Try more obscure/underground artists if needed" if retry_count >= 2 else ""}
 """
-        
-        # Debug log the full prompt (truncated for readability)
-        app.logger.info(f"STANDARD: Recommendation prompt includes session adjustment: {bool(session_adjustment)}")
-        if session_adjustment:
-            app.logger.info(f"STANDARD: Session adjustment in prompt: '{session_adjustment}'")
-        
-        try:
-            rec_response = model.generate_content(rec_prompt)
-            recommendation_text = rec_response.text.strip() if rec_response and rec_response.text else ""
-        except Exception as e:
-            app.logger.error(f"Recommendation generation failed: {e}")
-            return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
-        
-        rec_duration = time.time() - rec_start
-        app.logger.info(f"STANDARD: Recommendation generation complete - {rec_duration:.2f}s")
-        
-        # Parse recommendation
-        app.logger.info("STANDARD: Parsing recommendation...")
-        parse_start = time.time()
-        
-        try:
-            # Extract song and artist
-            song_line = [line for line in recommendation_text.split('\n') if line.startswith('SONG:')]
-            artist_line = [line for line in recommendation_text.split('\n') if line.startswith('ARTIST:')]
-            reason_line = [line for line in recommendation_text.split('\n') if line.startswith('REASON:')]
             
-            if song_line and artist_line:
-                song_title = song_line[0].replace('SONG:', '').strip()
-                artist_name = artist_line[0].replace('ARTIST:', '').strip()
-                ai_reasoning = reason_line[0].replace('REASON:', '').strip() if reason_line else "Perfect match for your taste!"
-            else:
-                raise Exception("Could not parse recommendation")
+            # Debug log the full prompt (truncated for readability)
+            app.logger.info(f"STANDARD: Recommendation prompt includes session adjustment: {bool(session_adjustment)}")
+            if session_adjustment:
+                app.logger.info(f"STANDARD: Session adjustment in prompt: '{session_adjustment}'")
+            
+            try:
+                rec_response = model.generate_content(rec_prompt)
+                recommendation_text = rec_response.text.strip() if rec_response and rec_response.text else ""
+            except Exception as e:
+                app.logger.error(f"Recommendation generation failed: {e}")
+                return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
+            
+            # Parse recommendation
+            app.logger.info("STANDARD: Parsing recommendation...")
+            parse_start = time.time()
+            
+            try:
+                # Extract song and artist
+                song_line = [line for line in recommendation_text.split('\n') if line.startswith('SONG:')]
+                artist_line = [line for line in recommendation_text.split('\n') if line.startswith('ARTIST:')]
+                reason_line = [line for line in recommendation_text.split('\n') if line.startswith('REASON:')]
                 
-        except Exception as e:
-            app.logger.warning(f"STANDARD: Parse failed, using fallback: {str(e)}")
-            # Simple fallback parsing
-            if '"' in recommendation_text:
-                parts = recommendation_text.split('"')
-                if len(parts) >= 3:
-                    song_title = parts[1]
-                    remaining = parts[2]
-                    if ' by ' in remaining:
-                        artist_name = remaining.split(' by ')[1].split('.')[0].split(',')[0].strip()
+                if song_line and artist_line:
+                    song_title = song_line[0].replace('SONG:', '').strip()
+                    artist_name = artist_line[0].replace('ARTIST:', '').strip()
+                    ai_reasoning = reason_line[0].replace('REASON:', '').strip() if reason_line else "Perfect match for your taste!"
+                    
+                    # Clean up song title and artist name by removing explanatory text in parentheses
+                    # Remove any content in parentheses that looks like explanations (long text)
+                    import re
+                    
+                    # For song title: remove any parenthetical explanations longer than 10 characters
+                    song_title = re.sub(r'\([^)]{10,}\)', '', song_title).strip()
+                    
+                    # For artist name: remove any parenthetical explanations longer than 10 characters
+                    artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
+                    
+                    # Additional cleanup: remove quotes and extra whitespace
+                    song_title = song_title.strip('"\'').strip()
+                    artist_name = artist_name.strip('"\'').strip()
+                    
+                else:
+                    raise Exception("Could not parse recommendation")
+                    
+            except Exception as e:
+                app.logger.warning(f"STANDARD: Parse failed, using fallback: {str(e)}")
+                # Simple fallback parsing
+                if '"' in recommendation_text:
+                    parts = recommendation_text.split('"')
+                    if len(parts) >= 3:
+                        song_title = parts[1]
+                        remaining = parts[2]
+                        if ' by ' in remaining:
+                            artist_name = remaining.split(' by ')[1].split('.')[0].split(',')[0].strip()
+                            # Clean parenthetical explanations from fallback parsing too
+                            import re
+                            artist_name = re.sub(r'\([^)]{10,}\)', '', artist_name).strip()
+                        else:
+                            artist_name = "Unknown Artist"
+                        ai_reasoning = "Great match for your taste!"
                     else:
+                        song_title = "Unknown Song"
                         artist_name = "Unknown Artist"
-                    ai_reasoning = "Great match for your taste!"
+                        ai_reasoning = "Perfect discovery for you!"
                 else:
                     song_title = "Unknown Song"
                     artist_name = "Unknown Artist"
                     ai_reasoning = "Perfect discovery for you!"
+            
+            parse_duration = time.time() - parse_start
+            app.logger.info(f"STANDARD: Parsing complete - {parse_duration:.2f}s - '{song_title}' by {artist_name}")
+            
+            # Progressive validation relaxation for difficult cases
+            is_valid = False
+            validation_reason = ""
+            
+            if retry_count < 3:
+                # Strict validation for first 3 attempts
+                is_valid, validation_reason = check_recommendation_validity(user.id, song_title, artist_name)
+            elif retry_count == 3:
+                # Relaxed validation - allow artist repetition after 24 hours instead of 72
+                app.logger.info("STANDARD: Using relaxed validation (24h artist limit) for retry attempt 4")
+                if Recommendation.is_duplicate(user.id, song_title, artist_name, hours_back=24):
+                    is_valid = False
+                    validation_reason = f"Exact duplicate: '{song_title}' by {artist_name} was recommended in the last 24 hours"
+                else:
+                    # Check artist overuse with relaxed rules (within 24 hours instead of 72)
+                    artist_count_24h = Recommendation.get_artist_recommendation_count(user.id, artist_name, hours_back=24)
+                    if artist_count_24h >= 2:  # Allow 1 recent recommendation within 24h
+                        is_valid = False
+                        validation_reason = f"Artist overuse (relaxed): {artist_name} has been recommended {artist_count_24h} times in the last 24 hours"
+                    else:
+                        is_valid = True
+                        validation_reason = "Valid recommendation (relaxed validation)"
             else:
-                song_title = "Unknown Song"
-                artist_name = "Unknown Artist"
-                ai_reasoning = "Perfect discovery for you!"
+                # Final attempt - only check for exact duplicates in last 12 hours
+                app.logger.info("STANDARD: Using minimal validation (12h duplicate check only) for final attempt")
+                if Recommendation.is_duplicate(user.id, song_title, artist_name, hours_back=12):
+                    is_valid = False
+                    validation_reason = f"Recent duplicate: '{song_title}' by {artist_name} was recommended in the last 12 hours"
+                else:
+                    is_valid = True
+                    validation_reason = "Valid recommendation (minimal validation - final attempt)"
+            
+            if not is_valid:
+                app.logger.warning(f"STANDARD: Recommendation validation failed (attempt {retry_count + 1}) - {validation_reason}")
+                retry_count += 1
+                if retry_count >= max_retries:
+                    app.logger.error(f"STANDARD: Failed to generate valid recommendation after {max_retries} attempts")
+                    
+                    # Fallback strategy: try to find any track from user's top genres that hasn't been recommended
+                    app.logger.info("STANDARD: Attempting fallback strategy with genre-based recommendation...")
+                    try:
+                        fallback_success = attempt_fallback_recommendation(user, music_data, session_adjustment)
+                        if fallback_success:
+                            return fallback_success
+                    except Exception as fallback_error:
+                        app.logger.error(f"STANDARD: Fallback strategy also failed: {fallback_error}")
+                    
+                    return jsonify({
+                        'success': False,
+                        'message': f'Unable to generate a fresh recommendation after {max_retries} attempts due to extensive recent listening history. Please try again in a few hours for the best diversity, or clear your recent recommendations.',
+                        'ai_recommendation': recommendation_text,
+                        'validation_error': True,
+                        'retry_count': retry_count,
+                        'suggestion': 'Your music discovery is very active! Try again later for maximum diversity.'
+                    }), 400
+                # Continue the loop to retry
+                continue
+            else:
+                recommendation_successful = True
+                validation_msg = f"on attempt {retry_count + 1}"
+                if retry_count >= 3:
+                    validation_msg += " (using relaxed validation)"
+                app.logger.info(f"STANDARD: Recommendation validation successful {validation_msg}")
         
-        parse_duration = time.time() - parse_start
-        app.logger.info(f"STANDARD: Parsing complete - {parse_duration:.2f}s - '{song_title}' by {artist_name}")
-        
-        # Validate recommendation for duplicates
-        is_valid, validation_reason = check_recommendation_validity(user.id, song_title, artist_name)
-        if not is_valid:
-            app.logger.warning(f"STANDARD: Recommendation validation failed - {validation_reason}")
-            return jsonify({
-                'success': False,
-                'message': f'AI suggested a recent duplicate. {validation_reason}. Please try again for a fresh recommendation.',
-                'ai_recommendation': recommendation_text,
-                'validation_error': True
-            }), 400
+        rec_duration = time.time() - rec_start
+        app.logger.info(f"STANDARD: Recommendation generation complete - {rec_duration:.2f}s")
         
         # Search for the track on Spotify
         app.logger.info("STANDARD: Searching Spotify...")
         search_start = time.time()
         
         search_query = f"{song_title} {artist_name}"
+        
+        # Ensure search query doesn't exceed Spotify's 250-character limit
+        max_query_length = 250
+        if len(search_query) > max_query_length:
+            app.logger.warning(f"STANDARD: Search query too long ({len(search_query)} chars), truncating to {max_query_length} chars")
+            # Prioritize keeping the song title, then truncate artist name if needed
+            if len(song_title) < max_query_length - 10:  # Leave some space for artist
+                remaining_length = max_query_length - len(song_title) - 1  # -1 for space
+                truncated_artist = artist_name[:remaining_length] if remaining_length > 0 else ""
+                search_query = f"{song_title} {truncated_artist}".strip()
+            else:
+                # If song title is too long, truncate it
+                search_query = song_title[:max_query_length]
+            app.logger.info(f"STANDARD: Truncated search query: {search_query}")
+
         app.logger.info(f"STANDARD: Search query: {search_query}")
         
         search_results = spotify_client.search_tracks(search_query, limit=5)
@@ -2573,6 +2711,75 @@ CRITICAL REQUIREMENTS:
         app.logger.error(f"Enhanced standard AI recommendation failed: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'AI recommendation failed: {str(e)}'}), 500
 
+def attempt_fallback_recommendation(user, music_data, session_adjustment):
+    """
+    Fallback strategy: generate a recommendation based on user's top genres
+    """
+    app.logger.info("STANDARD: Executing fallback recommendation strategy...")
+    
+    try:
+        # Use a simple genre-based search to find something fresh
+        top_genres = music_data.get('top_genres', ['pop', 'rock'])[:3]
+        
+        spotify_client = SpotifyClient(user.access_token)
+        
+        # Try searching for tracks in their top genres
+        for genre in top_genres:
+            search_query = f"genre:{genre}"
+            if session_adjustment:
+                search_query = f"{session_adjustment} genre:{genre}"
+            
+            search_results = spotify_client.search_tracks(search_query, limit=20)
+            
+            if search_results and search_results.get('tracks', {}).get('items'):
+                # Look for a track that hasn't been recommended recently
+                for track in search_results['tracks']['items']:
+                    track_name = track['name']
+                    artist_name = track['artists'][0]['name']
+                    
+                    # Check if this would be a valid recommendation (relaxed check)
+                    if not Recommendation.is_duplicate(user.id, track_name, artist_name, hours_back=6):  # Only 6 hours for fallback
+                        app.logger.info(f"STANDARD: Fallback found track: '{track_name}' by {artist_name}")
+                        
+                        # Save the fallback recommendation
+                        fallback_reasoning = f"Fallback discovery from your {genre} preferences"
+                        if session_adjustment:
+                            fallback_reasoning += f" matching your request for {session_adjustment}"
+                        
+                        recommendation = save_enhanced_recommendation(
+                            user, track, fallback_reasoning, f"Fallback based on {genre} preference", music_data,
+                            session_adjustment=session_adjustment, method="standard_fallback"
+                        )
+                        
+                        session['current_recommendation_id'] = recommendation.id
+                        session['last_recommendation_time'] = time.time()
+                        
+                        return jsonify({
+                            'success': True,
+                            'track': {
+                                'name': track['name'],
+                                'artist': track['artists'][0]['name'],
+                                'album': track['album']['name'],
+                                'image': track['album']['images'][0]['url'] if track['album']['images'] else None,
+                                'uri': track['uri'],
+                                'external_url': track['external_urls']['spotify'],
+                                'preview_url': track.get('preview_url')
+                            },
+                            'ai_reasoning': fallback_reasoning,
+                            'user_profile': f"Fallback discovery based on {genre} preferences",
+                            'recommendation_id': recommendation.id,
+                            'fallback_used': True,
+                            'fallback_genre': genre,
+                            'message': 'Found a fresh discovery using fallback strategy!'
+                        })
+        
+        app.logger.warning("STANDARD: All fallback attempts failed")
+        return None
+        
+    except Exception as e:
+        app.logger.error(f"STANDARD: Fallback strategy failed: {e}")
+        return None
+
 def get_enhanced_recent_recommendations(user, hours_back=24, include_artist_counts=True):
     """
     Get enhanced recent recommendations with better formatting and artist frequency tracking
@@ -2617,9 +2824,9 @@ def check_recommendation_validity(user_id, track_name, artist_name):
     if Recommendation.is_duplicate(user_id, track_name, artist_name, hours_back=24):
         return False, f"Exact duplicate: '{track_name}' by {artist_name} was recommended in the last 24 hours"
     
-    # Check artist overuse (more than 2 times in 72 hours)
+    # Check artist overuse (more than 0 times in 72 hours - limit to 1)
     artist_count = Recommendation.get_artist_recommendation_count(user_id, artist_name, hours_back=72)
-    if artist_count >= 2:
+    if artist_count >= 1:
         return False, f"Artist overuse: {artist_name} has been recommended {artist_count} times in the last 72 hours"
     
     return True, "Valid recommendation"
