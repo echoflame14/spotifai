@@ -1910,7 +1910,9 @@ Analyze this user's Spotify data and create a concise psychological music profil
 RECENT TRACKS: {[f"{track['track']['name']} by {track['track']['artists'][0]['name']}" for track in music_data['recent_tracks'][:10]]}
 TOP ARTISTS: {[artist['name'] for artist in music_data['top_artists']['short_term'][:8]]}
 TOP GENRES: {music_data['top_genres'][:8]}
-CURRENT TRACK: {music_data['current_track']['item']['name'] + ' by ' + music_data['current_track']['item']['artists'][0]['name'] if music_data['current_track'] and music_data['current_track'].get('item') else 'None'}
+CURRENT TRACK: {music_data['current_track']['item']['name'] + ' by ' + music_data['current_track']['item']['artists'][0]['name']
+                if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item')
+                else 'None'}
 
 Create a 2-3 sentence psychological profile focusing on:
 - Musical personality traits
@@ -1955,7 +1957,9 @@ USER PSYCHOLOGICAL PROFILE:
 {user_profile}
 
 CURRENT MUSICAL CONTEXT:
-- Current track: {music_data['current_track']['item']['name'] + ' by ' + music_data['current_track']['item']['artists'][0]['name'] if music_data['current_track'] and music_data['current_track'].get('item') else 'None'}
+- Current track: {music_data['current_track']['item']['name'] + ' by ' + music_data['current_track']['item']['artists'][0]['name']
+                if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item')
+                else 'None'}
 - Recent tracks: {[f"{track['track']['name']} by {track['track']['artists'][0]['name']}" for track in music_data['recent_tracks'][:5]]}
 - Top artists: {[artist['name'] for artist in music_data['top_artists']['short_term'][:5]]}
 - Top genres: {music_data['top_genres'][:5]}
@@ -2071,7 +2075,9 @@ Explain in 2-3 sentences why you recommended "{selected_track.track_name}" by {s
 
 Consider their:
 - Psychological profile: {user_profile}
-- Current musical context: {music_data['current_track']['item']['name'] if music_data['current_track'] and music_data['current_track'].get('item') else 'None'}
+- Current musical context: {music_data['current_track']['item']['name']
+                          if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item')
+                          else 'None'}
 - Session context: {session_adjustment if session_adjustment else 'General discovery'}
 
 Keep it personal and insightful.
@@ -2096,7 +2102,9 @@ Keep it personal and insightful.
             listening_data_snapshot=json.dumps({
                 'recent_tracks_count': len(music_data['recent_tracks']),
                 'top_genres': music_data['top_genres'][:5],
-                'current_track': music_data['current_track']['item']['name'] if music_data['current_track'] and music_data['current_track'].get('item') else None
+                'current_track': music_data['current_track']['item']['name']
+                                if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item')
+                                else None
             }),
             session_adjustment=session_adjustment,
             recommendation_method='standard'
