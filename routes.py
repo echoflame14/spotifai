@@ -2017,6 +2017,13 @@ def logout():
     session.pop('profile_timestamp', None)
     session.pop('current_recommendation_id', None)
     session.pop('last_recommendation_time', None)
+    # Clear analysis caches
+    session.pop('cached_psychological_analysis', None)
+    session.pop('cached_psychological_timestamp', None)
+    session.pop('cached_detailed_psychological_analysis', None)
+    session.pop('cached_detailed_psychological_timestamp', None)
+    session.pop('cached_musical_analysis', None)
+    session.pop('cached_musical_timestamp', None)
     flash('You have been logged out', 'info')
     return redirect(url_for('index'))
 
@@ -2170,15 +2177,24 @@ def ai_recommendation():
         if diversity_warning:
             app.logger.info(f"STANDARD: Diversity warning - {diversity_warning}")
         
-        # Generate user profile
-        app.logger.info("STANDARD: Generating user profile...")
-        profile_start = time.time()
+        # CHECK FOR CACHED PSYCHOLOGICAL ANALYSIS
+        cached_psych_analysis = session.get('cached_psychological_analysis')
+        cached_psych_timestamp = session.get('cached_psychological_timestamp', 0)
+        psych_cache_valid = (time.time() - cached_psych_timestamp) < 1800  # 30 minutes
         
-        # Create model AFTER configuration with fresh API key
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        profile_prompt = f"""
-Analyze this user's Spotify data and create a concise psychological music profile:
+        if cached_psych_analysis and psych_cache_valid:
+            app.logger.info("STANDARD: Using cached psychological analysis")
+            psychological_profile = cached_psych_analysis
+        else:
+            app.logger.info("STANDARD: No valid cached psychological analysis, generating basic profile...")
+            # Generate basic psychological profile for recommendations
+            profile_start = time.time()
+            
+            # Create model AFTER configuration with fresh API key
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            profile_prompt = f"""
+Analyze this user's Spotify data and create a concise psychological music profile for recommendations:
 
 RECENT TRACKS: {[f"{track['track']['name']} by {track['track']['artists'][0]['name']}" for track in music_data['recent_tracks'][:10]]}
 TOP ARTISTS: {[artist['name'] for artist in music_data['top_artists']['short_term'][:8]]}
@@ -2194,40 +2210,46 @@ Create a 2-3 sentence psychological profile focusing on:
 
 Keep it conversational and insightful.
 """
-        
-        try:
-            profile_response = model.generate_content(profile_prompt)
-            user_profile = profile_response.text.strip() if profile_response and profile_response.text else "Music lover with diverse taste who enjoys discovering new sounds."
-        except Exception as e:
-            # Check for rate limit errors in profile generation
-            error_str = str(e).lower()
-            if any(rate_limit_indicator in error_str for rate_limit_indicator in [
-                'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
-            ]):
-                app.logger.warning(f"STANDARD: Gemini rate limit detected during profile generation - {str(e)}")
-                return jsonify({
-                    'success': False, 
-                    'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before requesting another recommendation to allow your quota to refresh.',
-                    'rate_limit_error': True,
-                    'suggested_wait_time': '2-3 minutes'
-                }), 429
             
-            app.logger.warning(f"Profile generation failed: {e}")
-            user_profile = "Music lover with diverse taste who enjoys discovering new sounds."
-        
-        profile_duration = time.time() - profile_start
-        app.logger.info(f"STANDARD: User profile complete - {profile_duration:.2f}s")
+            try:
+                profile_response = model.generate_content(profile_prompt)
+                psychological_profile = profile_response.text.strip() if profile_response and profile_response.text else "Music lover with diverse taste who enjoys discovering new sounds."
+                
+                # Cache the basic profile for 30 minutes
+                session['cached_psychological_analysis'] = psychological_profile
+                session['cached_psychological_timestamp'] = time.time()
+                app.logger.info("STANDARD: Generated and cached basic psychological profile")
+                
+            except Exception as e:
+                # Check for rate limit errors in profile generation
+                error_str = str(e).lower()
+                if any(rate_limit_indicator in error_str for rate_limit_indicator in [
+                    'rate limit', 'quota', '429', 'too many requests', 'resource_exhausted'
+                ]):
+                    app.logger.warning(f"STANDARD: Gemini rate limit detected during profile generation - {str(e)}")
+                    return jsonify({
+                        'success': False, 
+                        'message': 'You\'ve reached your Gemini API rate limit. Please wait a few minutes before requesting another recommendation to allow your quota to refresh.',
+                        'rate_limit_error': True,
+                        'suggested_wait_time': '2-3 minutes'
+                    }), 429
+                
+                app.logger.warning(f"Profile generation failed: {e}")
+                psychological_profile = "Music lover with diverse taste who enjoys discovering new sounds."
+            
+            profile_duration = time.time() - profile_start
+            app.logger.info(f"STANDARD: User profile complete - {profile_duration:.2f}s")
 
         # Generate AI recommendation
         app.logger.info("STANDARD: Generating AI recommendation...")
         recommendation_start = time.time()
         
-        # Create comprehensive prompt for recommendation
+        # Create comprehensive prompt for recommendation including psychological analysis
         recommendation_prompt = f"""
-Based on this user's comprehensive music data, recommend ONE specific song that perfectly matches their taste.
+Based on this user's comprehensive music data and psychological analysis, recommend ONE specific song that perfectly matches their taste.
 
 USER PSYCHOLOGICAL PROFILE:
-{user_profile}
+{psychological_profile}
 
 CURRENT MUSICAL CONTEXT:
 - Current track: {music_data['current_track']['item']['name'] + ' by ' + music_data['current_track']['item']['artists'][0]['name']
@@ -2347,7 +2369,7 @@ Do not include any explanation, reasoning, or additional text.
 Explain in 2-3 sentences why you recommended "{selected_track.track_name}" by {selected_track.artist_name} for this user.
 
 Consider their:
-- Psychological profile: {user_profile}
+- Psychological profile: {psychological_profile}
 - Current musical context: {music_data['current_track']['item']['name']
                           if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item')
                           else 'None'}
@@ -2371,7 +2393,7 @@ Keep it personal and insightful.
             track_uri=selected_track.track_uri,
             album_name=selected_track.album_name,
             ai_reasoning=ai_reasoning,
-            psychological_analysis=user_profile,
+            psychological_analysis=psychological_profile,
             listening_data_snapshot=json.dumps({
                 'recent_tracks_count': len(music_data['recent_tracks']),
                 'top_genres': music_data['top_genres'][:5],
@@ -2409,14 +2431,15 @@ Keep it personal and insightful.
             'performance': {
                 'total_duration': round(total_duration, 2),
                 'data_collection': round(data_collection_duration, 2),
-                'profile_generation': round(profile_duration, 2),
+                'profile_generation': round(profile_duration if 'profile_duration' in locals() else 0, 2),
                 'recommendation_generation': round(recommendation_duration, 2),
                 'duplicate_prevention': {
                     'tracks_avoided': len(blacklist_tracks),
                     'total_recent_recommendations': rec_tracking['total_count']
-                }
+                },
+                'used_cached_analysis': cached_psych_analysis and psych_cache_valid
             },
-            'psychological_analysis': user_profile,
+            'psychological_analysis': psychological_profile,
             'session_context': session_adjustment if session_adjustment else None
         })
         
@@ -2652,11 +2675,32 @@ def api_generate_psychological_analysis():
         
         # Generate psychological analysis
         try:
+            # Check for cached detailed psychological analysis first
+            cached_detailed_analysis = session.get('cached_detailed_psychological_analysis')
+            cached_detailed_timestamp = session.get('cached_detailed_psychological_timestamp', 0)
+            detailed_cache_valid = (time.time() - cached_detailed_timestamp) < 3600  # 1 hour cache
+            
+            if cached_detailed_analysis and detailed_cache_valid:
+                app.logger.info("Using cached detailed psychological analysis")
+                return jsonify({'success': True, 'analysis': cached_detailed_analysis, 'from_cache': True})
+            
+            # Generate new analysis
             analysis = generate_ultra_detailed_psychological_analysis(comprehensive_music_data, custom_gemini_key)
             
             if analysis:
-                app.logger.info("Psychological analysis generated successfully")
-                return jsonify({'success': True, 'analysis': analysis})
+                # Cache the detailed analysis for 1 hour
+                session['cached_detailed_psychological_analysis'] = analysis
+                session['cached_detailed_psychological_timestamp'] = time.time()
+                app.logger.info("Psychological analysis generated successfully and cached")
+                
+                # Also update the basic cache used by recommendations
+                if analysis.get('psychological_profile', {}).get('core_personality'):
+                    basic_summary = analysis['psychological_profile']['core_personality'][:200] + "..."
+                    session['cached_psychological_analysis'] = basic_summary
+                    session['cached_psychological_timestamp'] = time.time()
+                    app.logger.info("Updated basic psychological cache for recommendations")
+                
+                return jsonify({'success': True, 'analysis': analysis, 'from_cache': False})
             else:
                 app.logger.error("Failed to generate psychological analysis")
                 return jsonify({'success': False, 'message': 'Failed to generate analysis'}), 500
@@ -2710,12 +2754,28 @@ def api_generate_musical_analysis():
             'playlists': spotify_client.get_user_playlists(limit=30)
         }
         
+        # Check for cached musical analysis first
+        cached_musical_analysis = session.get('cached_musical_analysis')
+        cached_musical_timestamp = session.get('cached_musical_timestamp', 0)
+        musical_cache_valid = (time.time() - cached_musical_timestamp) < 3600  # 1 hour cache
+        
+        if cached_musical_analysis and musical_cache_valid:
+            app.logger.info("Using cached musical analysis")
+            return jsonify({'success': True, 'analysis': cached_musical_analysis, 'from_cache': True})
+        
         # Generate analysis using Gemini
         analysis = generate_ai_music_analysis(music_data, custom_gemini_key)
         
+        if analysis:
+            # Cache the musical analysis for 1 hour
+            session['cached_musical_analysis'] = analysis
+            session['cached_musical_timestamp'] = time.time()
+            app.logger.info("Musical analysis generated successfully and cached")
+        
         return jsonify({
             'success': True,
-            'analysis': analysis
+            'analysis': analysis,
+            'from_cache': False
         })
         
     except Exception as e:
@@ -3287,4 +3347,41 @@ def create_basic_cleaned_data(comprehensive_music_data):
             "saved_music_preferences": [],
             "playlist_behavior": []
         }
+    
+@app.route('/api/clear-analysis-cache', methods=['POST'])
+def clear_analysis_cache():
+    """Clear cached analyses to force fresh generation"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+        
+        # Clear all analysis caches
+        caches_cleared = []
+        
+        if 'cached_psychological_analysis' in session:
+            session.pop('cached_psychological_analysis', None)
+            session.pop('cached_psychological_timestamp', None)
+            caches_cleared.append('basic_psychological')
+        
+        if 'cached_detailed_psychological_analysis' in session:
+            session.pop('cached_detailed_psychological_analysis', None)
+            session.pop('cached_detailed_psychological_timestamp', None)
+            caches_cleared.append('detailed_psychological')
+        
+        if 'cached_musical_analysis' in session:
+            session.pop('cached_musical_analysis', None)
+            session.pop('cached_musical_timestamp', None)
+            caches_cleared.append('musical_analysis')
+        
+        app.logger.info(f"Cleared analysis caches: {caches_cleared}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleared {len(caches_cleared)} cache(s)',
+            'caches_cleared': caches_cleared
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error clearing analysis cache: {str(e)}")
+        return jsonify({'success': False, 'message': f'Failed to clear cache: {str(e)}'}), 500
     
