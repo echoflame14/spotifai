@@ -17,11 +17,22 @@ SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
 # Dynamic redirect URI based on request
 def get_redirect_uri():
     """Get the appropriate redirect URI - use consistent URL for all devices"""
-    # Always use the same registered redirect URI for consistency
-    # This ensures it works on both desktop and mobile
-    return os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
+    # Use environment variable or construct from request
+    redirect_uri = os.environ.get('SPOTIFY_REDIRECT_URI')
+    if redirect_uri:
+        return redirect_uri
+    
+    # If no environment variable, construct from request (for Railway)
+    from flask import request
+    if request:
+        scheme = request.scheme
+        host = request.host
+        return f"{scheme}://{host}/callback"
+    
+    # Fallback for Railway deployment
+    return 'https://spotifai.up.railway.app/callback'
 
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://deb2334e-2767-4af0-932d-2c07564b350b-00-3cd1k0h3k7xtx.worf.replit.dev/callback')
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://spotifai.up.railway.app/callback')
 
 @app.route('/')
 def index():
@@ -798,7 +809,7 @@ Do not include any other text, explanations, or formatting."""
             real_tracks = search_results['tracks']['items'][:5]
             track_list = [f"- {track['name']}" for track in real_tracks]
             
-            # Ask AI to recommend a real song that exists
+            # Ask AI to recommend a real song by {artist_name} that exists on Spotify and matches the user's taste
             real_song_prompt = f"""Your previous recommendation "{recommendation_text}" could not be found on Spotify.
 
 Here are some actual songs by {artist_name} that exist on Spotify:
