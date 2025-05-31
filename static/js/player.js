@@ -925,6 +925,14 @@ async function fetchFeedbackInsights() {
         return;
     }
 
+    // Show loading state
+    contentDiv.innerHTML = `
+        <div class="d-flex align-items-center justify-content-center py-4">
+            <div class="spinner-border spinner-border-sm text-warning me-3" role="status"></div>
+            <span class="text-muted">Analyzing your feedback patterns and generating detailed insights...</span>
+        </div>
+    `;
+
     try {
         // Check if we have a Gemini API key for AI-powered insights
         const customGeminiKey = localStorage.getItem('gemini_api_key');
@@ -932,7 +940,7 @@ async function fetchFeedbackInsights() {
         let response;
         if (customGeminiKey) {
             // Use POST with API key for AI-powered insights
-            log('Fetching AI-powered feedback insights...');
+            log('Fetching ultra-detailed AI-powered feedback insights...');
             response = await fetch('/feedback-insights', {
                 method: 'POST',
                 headers: {
@@ -943,8 +951,8 @@ async function fetchFeedbackInsights() {
                 })
             });
         } else {
-            // Use GET for basic insights
-            log('Fetching basic feedback insights...');
+            // Use GET for enhanced basic insights
+            log('Fetching enhanced basic feedback insights...');
             response = await fetch('/feedback-insights');
         }
         
@@ -954,34 +962,114 @@ async function fetchFeedbackInsights() {
         const data = await response.json();
         
         if (data.insights) {
-            // Show whether insights are AI-powered or basic
+            // Enhanced formatting for ultra-detailed insights
             const insightType = data.ai_powered ? 
-                '<small class="text-spotify"><i class="fas fa-sparkles me-1"></i>AI-Powered Insights</small>' : 
-                '<small class="text-muted"><i class="fas fa-chart-bar me-1"></i>Basic Analysis</small>';
+                '<div class="badge bg-gradient" style="background: linear-gradient(45deg, #1db954, #1ed760); color: white; font-weight: bold;"><i class="fas fa-sparkles me-1"></i>Ultra-Detailed AI Analysis</div>' : 
+                '<div class="badge bg-secondary"><i class="fas fa-chart-bar me-1"></i>Enhanced Statistical Analysis</div>';
+            
+            // Process the insights for better formatting
+            const formattedInsights = formatDetailedInsights(data.insights, data.ai_powered);
             
             contentDiv.innerHTML = `
-                <div class="text-white">
-                    ${insightType}
-                    <p class="mb-2 mt-2">${data.insights}</p>
-                    ${!data.ai_powered ? '<small class="text-muted">Add your Gemini API key in AI Settings for personalized conversational insights!</small>' : ''}
+                <div class="detailed-insights-container">
+                    <div class="mb-3 d-flex align-items-center justify-content-between">
+                        ${insightType}
+                        <small class="text-muted"><i class="fas fa-clock me-1"></i>Updated now</small>
+                    </div>
+                    
+                    <div class="insights-content" style="line-height: 1.6; color: #e9ecef;">
+                        ${formattedInsights}
+                    </div>
+                    
+                    ${!data.ai_powered ? `
+                        <div class="mt-4 p-3 rounded" style="background: rgba(29, 185, 84, 0.1); border: 1px solid rgba(29, 185, 84, 0.3);">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-info-circle text-spotify me-2"></i>
+                                <small class="text-spotify">
+                                    <strong>Unlock AI-Powered Insights:</strong> Add your Gemini API key in AI Settings for ultra-detailed psychological analysis, personalized recommendations, and comprehensive musical preference mapping!
+                                </small>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="mt-4 p-3 rounded" style="background: rgba(29, 185, 84, 0.05); border: 1px solid rgba(29, 185, 84, 0.2);">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-brain text-spotify me-2"></i>
+                                <small class="text-spotify">
+                                    <strong>Continuous Learning:</strong> Your feedback helps the AI understand your evolving musical taste and improve future recommendations with each interaction.
+                                </small>
+                            </div>
+                        </div>
+                    `}
                 </div>
             `;
             
-            log(`Feedback insights loaded successfully (${data.ai_powered ? 'AI-powered' : 'basic'})`);
+            log(`Ultra-detailed feedback insights loaded successfully (${data.ai_powered ? 'AI-powered' : 'enhanced basic'}) - ${data.insights.length} characters`);
         } else {
             contentDiv.innerHTML = `
-                <div class="text-muted">
-                    <p class="mb-0">No feedback insights available yet. Start rating songs to get personalized insights!</p>
+                <div class="text-center py-4">
+                    <div class="text-muted mb-3">
+                        <i class="fas fa-music fa-2x mb-3 opacity-50"></i>
+                        <h6 class="text-white">No Feedback Data Available</h6>
+                        <p class="mb-0">Start providing feedback on recommendations to unlock detailed insights about your musical preferences and taste patterns!</p>
+                    </div>
+                    <small class="text-muted">
+                        Rate songs using the feedback section after getting recommendations to begin building your personalized insight profile.
+                    </small>
                 </div>
             `;
         }
     } catch (error) {
         log('Error fetching feedback insights:', error, 'error');
         contentDiv.innerHTML = `
-            <div class="text-danger">
-                <p class="mb-0">Failed to load feedback insights. Please try again later.</p>
+            <div class="text-center py-4">
+                <div class="text-danger mb-3">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <h6>Failed to Load Insights</h6>
+                    <p class="mb-3">Unable to analyze your feedback patterns at this time.</p>
+                    <button class="btn btn-outline-light btn-sm" onclick="fetchFeedbackInsights()">
+                        <i class="fas fa-redo me-1"></i>Try Again
+                    </button>
+                </div>
             </div>
         `;
+    }
+}
+
+function formatDetailedInsights(insights, isAIPowered) {
+    // Format insights text for better visual presentation
+    
+    if (!insights) return insights;
+    
+    // If it's AI-powered insights, format as comprehensive analysis
+    if (isAIPowered) {
+        // Split into paragraphs and format markdown-style headers
+        let formatted = insights
+            // Format bold markdown-style headers
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-spotify">$1</strong>')
+            // Format numbered/bullet sections
+            .replace(/^(\d+\.\s*\*\*.*?\*\*:)/gm, '<h6 class="text-white mt-4 mb-2">$1</h6>')
+            // Format sub-bullets with better spacing
+            .replace(/^\s*-\s*(.+)/gm, '<div class="ms-3 mb-2"><i class="fas fa-angle-right text-spotify me-2"></i>$1</div>')
+            // Add proper paragraph breaks
+            .replace(/\n\n/g, '</p><p class="mb-3">')
+            // Format specific insights sections
+            .replace(/(MUSICAL TASTE PATTERNS|BEHAVIORAL & LISTENING|RECOMMENDATION SYSTEM|LEARNING INSIGHTS|PSYCHOLOGICAL MUSIC|FORWARD-LOOKING)/g, '<strong class="text-warning">$1</strong>');
+        
+        return `<div class="ultra-detailed-insights"><p class="mb-3">${formatted}</p></div>`;
+    } else {
+        // Enhanced basic insights formatting
+        let formatted = insights
+            // Format bold sections for enhanced basic insights
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-spotify">$1</strong>')
+            // Add proper spacing between sections
+            .replace(/(\.\s)([A-Z*])/g, '$1</p><p class="mb-3">$2')
+            // Highlight percentages and numbers
+            .replace(/(\d+\.?\d*%)/g, '<span class="text-warning fw-bold">$1</span>')
+            .replace(/(\d+ out of \d+)/g, '<span class="text-info fw-bold">$1</span>')
+            // Format artist names in parentheses
+            .replace(/\((\d+ times?)\)/g, '<small class="text-muted">($1)</small>');
+        
+        return `<div class="enhanced-basic-insights"><p class="mb-3">${formatted}</p></div>`;
     }
 }
 

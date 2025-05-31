@@ -756,91 +756,206 @@ def get_track_reasoning(recommendation_id):
         return jsonify({'error': 'Failed to get track reasoning'}), 500
 
 def process_feedback_insights(feedbacks, gemini_api_key=None):
-    """Process user feedback entries to generate AI-powered conversational insights"""
+    """Process user feedback entries to generate ultra-detailed AI-powered insights"""
     if not feedbacks:
         return "No feedback available yet. Start rating songs to get personalized insights!"
     
-    # If no API key, fall back to basic insights
+    # If no API key, fall back to enhanced basic insights
     if not gemini_api_key:
-        return generate_basic_feedback_insights(feedbacks)
+        return generate_enhanced_basic_feedback_insights(feedbacks)
     
     try:
-        # Prepare feedback data for AI analysis
+        # Prepare comprehensive feedback data for AI analysis
         feedback_data = []
-        for feedback in feedbacks[:10]:  # Limit to recent 10 feedback entries
+        all_genres = set()
+        all_artists = set()
+        temporal_patterns = {}
+        
+        for feedback in feedbacks[:25]:  # Analyze more feedback entries for deeper insights
             # Get the recommendation details
             from models import Recommendation
             recommendation = Recommendation.query.get(feedback.recommendation_id)
             if recommendation:
+                # Extract creation date for temporal analysis
+                creation_date = feedback.created_at.strftime('%Y-%m-%d') if feedback.created_at else 'unknown'
+                if creation_date not in temporal_patterns:
+                    temporal_patterns[creation_date] = {'positive': 0, 'negative': 0, 'neutral': 0}
+                temporal_patterns[creation_date][feedback.sentiment or 'neutral'] += 1
+                
+                # Collect artists and potential genres for pattern analysis
+                all_artists.add(recommendation.artist_name)
+                
                 feedback_entry = {
                     'track_name': recommendation.track_name,
                     'artist_name': recommendation.artist_name,
+                    'album_name': recommendation.album_name,
                     'feedback_text': feedback.feedback_text,
                     'sentiment': feedback.sentiment,
-                    'created_at': feedback.created_at.isoformat() if feedback.created_at else None
+                    'ai_processed_feedback': feedback.ai_processed_feedback,
+                    'created_at': feedback.created_at.isoformat() if feedback.created_at else None,
+                    'recommendation_method': recommendation.recommendation_method,
+                    'session_adjustment': recommendation.session_adjustment,
+                    'was_played': recommendation.was_played,
+                    'play_count': recommendation.play_count or 0
                 }
                 feedback_data.append(feedback_entry)
         
-        # Generate AI insights using Gemini
+        # Generate ultra-detailed AI insights using the more advanced model
         import google.generativeai as genai
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')  # Fast model for quick insights
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')  # Use advanced model for detailed analysis
         
-        # Create conversational prompt for feedback analysis
+        # Create comprehensive prompt for ultra-detailed feedback analysis
         prompt = f"""
-Analyze this user's feedback on music recommendations and create a conversational, friendly summary of what you've learned about their taste. Be personal, insightful, and encouraging.
+You are a sophisticated music psychology AI analyzing a user's feedback patterns to provide comprehensive insights about their musical preferences, listening behavior, and taste evolution. 
 
-FEEDBACK DATA:
+COMPREHENSIVE FEEDBACK DATA:
 {json.dumps(feedback_data, indent=2)}
 
-Create a conversational response (2-3 sentences max) that:
-1. Shows you understand their music preferences based on their feedback
-2. Mentions specific patterns you've noticed (genres, artists, moods they like/dislike)
-3. Sounds encouraging and personal, like talking to a friend
-4. Acknowledges how their feedback is helping you learn
+TEMPORAL PATTERNS:
+{json.dumps(temporal_patterns, indent=2)}
 
-Examples of good tone:
-- "I'm picking up that you really vibe with indie rock but aren't feeling the heavier metal tracks I've been suggesting..."
-- "You seem to love anything with strong vocals and emotional depth - I've noticed you light up for artists like..."
-- "I can tell you're in a more mellow mood lately based on your recent feedback..."
+STATISTICAL OVERVIEW:
+- Total feedback entries analyzed: {len(feedback_data)}
+- Unique artists in feedback: {len(all_artists)}
+- Artists mentioned: {list(all_artists)[:10]}
+- Feedback span: {min(temporal_patterns.keys()) if temporal_patterns else 'N/A'} to {max(temporal_patterns.keys()) if temporal_patterns else 'N/A'}
 
-Respond with ONLY the conversational insight text, no other formatting or labels.
+ANALYSIS REQUIREMENTS:
+Create an ultra-detailed, comprehensive analysis covering these specific areas:
+
+1. **MUSICAL TASTE PATTERNS & PREFERENCES**:
+   - Identify specific musical characteristics the user consistently loves/dislikes
+   - Analyze artist preferences and any emerging patterns
+   - Detect genre preferences and aversions based on feedback
+   - Note any contradictions or interesting combinations in their taste
+
+2. **BEHAVIORAL & LISTENING INSIGHTS**:
+   - Analyze their feedback style and engagement level
+   - Identify patterns in what they choose to play vs. skip
+   - Examine their openness to new discoveries vs. familiar territory
+   - Look for mood-based or contextual preferences
+
+3. **RECOMMENDATION SYSTEM PERFORMANCE**:
+   - Evaluate which recommendation methods (standard/lightning/playlist) work best
+   - Identify what session adjustments lead to positive feedback
+   - Analyze the success rate of different musical approaches
+   - Note any recommendation improvements over time
+
+4. **DETAILED LEARNING INSIGHTS**:
+   - Specific improvements you've made based on their feedback
+   - Concrete examples of how their input shaped future recommendations
+   - Detailed explanations of preference patterns you've discovered
+   - Specific artists, genres, or characteristics to emphasize/avoid
+
+5. **PSYCHOLOGICAL MUSIC PROFILE**:
+   - Analyze their relationship with music discovery
+   - Identify their preferred musical complexity levels
+   - Examine their emotional connections to different musical elements
+   - Note any personality traits reflected in their musical choices
+
+6. **FORWARD-LOOKING RECOMMENDATIONS**:
+   - Specific musical directions to explore based on their feedback
+   - Detailed suggestions for expanding their taste while respecting preferences
+   - Concrete artists or genres to introduce gradually
+   - Specific musical characteristics to emphasize in future recommendations
+
+FORMAT YOUR RESPONSE as a comprehensive, conversational analysis using multiple detailed paragraphs. Be specific, use exact examples from their feedback data, mention specific songs and artists, and provide actionable insights. Aim for 500-800 words of detailed analysis that shows deep understanding of their musical journey.
+
+Do NOT be concise - be thorough, specific, and comprehensive. Include specific examples and detailed observations.
 """
         
-        app.logger.info("Generating AI-powered feedback insights...")
+        app.logger.info("Generating ultra-detailed AI-powered feedback insights...")
         response = model.generate_content(prompt)
         
         if response and response.text:
             ai_insights = response.text.strip()
-            app.logger.info("AI feedback insights generated successfully")
+            app.logger.info(f"Ultra-detailed AI feedback insights generated successfully ({len(ai_insights)} characters)")
             return ai_insights
         else:
-            app.logger.warning("AI feedback analysis failed, using fallback")
-            return generate_basic_feedback_insights(feedbacks)
+            app.logger.warning("Advanced AI feedback analysis failed, using enhanced fallback")
+            return generate_enhanced_basic_feedback_insights(feedbacks)
             
     except Exception as e:
-        app.logger.error(f"Error generating AI feedback insights: {e}")
-        return generate_basic_feedback_insights(feedbacks)
+        app.logger.error(f"Error generating ultra-detailed AI feedback insights: {e}")
+        return generate_enhanced_basic_feedback_insights(feedbacks)
 
-def generate_basic_feedback_insights(feedbacks):
-    """Generate basic feedback insights when AI is not available"""
-    # Count sentiments
+def generate_enhanced_basic_feedback_insights(feedbacks):
+    """Generate enhanced detailed feedback insights when AI is not available"""
+    if not feedbacks:
+        return "No feedback available yet. Start rating songs to get personalized insights!"
+    
+    # Comprehensive statistical analysis
     positive_count = sum(1 for f in feedbacks if f.sentiment and 'positive' in f.sentiment.lower())
     negative_count = sum(1 for f in feedbacks if f.sentiment and 'negative' in f.sentiment.lower())
+    neutral_count = len(feedbacks) - positive_count - negative_count
     total_feedback = len(feedbacks)
     
-    # Create insights summary
-    if positive_count > negative_count:
-        sentiment_summary = f"You've been loving most recommendations ({positive_count} positive out of {total_feedback} total)"
-    elif negative_count > positive_count:
-        sentiment_summary = f"You've been selective with recommendations ({negative_count} not quite right out of {total_feedback} total)"
-    else:
-        sentiment_summary = f"You've given mixed feedback on {total_feedback} recommendations"
+    # Analyze artists and tracks
+    artists_mentioned = {}
+    tracks_with_feedback = []
+    recent_feedback_trends = []
     
-    # Add learning note
-    learning_note = "Based on your feedback, I'm learning your preferences and will improve future recommendations to better match your taste."
+    for feedback in feedbacks[-10:]:  # Last 10 feedback entries
+        from models import Recommendation
+        recommendation = Recommendation.query.get(feedback.recommendation_id)
+        if recommendation:
+            artist = recommendation.artist_name
+            artists_mentioned[artist] = artists_mentioned.get(artist, 0) + 1
+            tracks_with_feedback.append({
+                'track': recommendation.track_name,
+                'artist': artist,
+                'sentiment': feedback.sentiment,
+                'played': recommendation.was_played
+            })
+            recent_feedback_trends.append(feedback.sentiment or 'neutral')
     
-    return f"{sentiment_summary}. {learning_note}"
+    # Generate comprehensive insights
+    insights = []
+    
+    # Overall feedback patterns
+    if total_feedback >= 5:
+        feedback_ratio = positive_count / total_feedback
+        if feedback_ratio > 0.7:
+            insights.append(f"**Excellent Recommendation Success Rate**: You've expressed positive sentiment on {positive_count} out of {total_feedback} recommendations ({feedback_ratio:.1%} success rate), indicating the AI is learning your taste exceptionally well.")
+        elif feedback_ratio > 0.5:
+            insights.append(f"**Good Learning Progress**: With {positive_count} positive responses out of {total_feedback} total feedback entries ({feedback_ratio:.1%}), the system is steadily improving at understanding your musical preferences.")
+        else:
+            insights.append(f"**Calibration Phase**: The AI is still learning your unique taste profile. Out of {total_feedback} feedback entries, {positive_count} were positive, {negative_count} were negative, and {neutral_count} were neutral. This feedback is crucial for improvement.")
+    
+    # Artist preference analysis
+    if artists_mentioned:
+        favorite_artists = sorted(artists_mentioned.items(), key=lambda x: x[1], reverse=True)[:3]
+        if len(favorite_artists) >= 2:
+            insights.append(f"**Artist Preference Patterns**: Based on your feedback, you've engaged most with recommendations featuring {', '.join([f'{artist} ({count} times)' for artist, count in favorite_artists])}. This helps the AI understand your artist affinity patterns.")
+    
+    # Recent trends analysis
+    if len(recent_feedback_trends) >= 5:
+        recent_positive = recent_feedback_trends.count('positive')
+        recent_negative = recent_feedback_trends.count('negative')
+        if recent_positive > recent_negative:
+            insights.append(f"**Recent Improvement Trend**: Your last {len(recent_feedback_trends)} feedback entries show {recent_positive} positive responses, suggesting the recommendation system is getting significantly better at matching your taste preferences.")
+        elif recent_negative > recent_positive:
+            insights.append(f"**Learning Opportunity Detected**: Your recent feedback shows {recent_negative} negative responses out of {len(recent_feedback_trends)} entries. This pattern indicates the system needs to adjust its approach to better align with your current musical preferences.")
+    
+    # Engagement analysis
+    played_tracks = sum(1 for track in tracks_with_feedback if track['played'])
+    if played_tracks > 0:
+        play_rate = played_tracks / len(tracks_with_feedback)
+        insights.append(f"**Listening Engagement Analysis**: You've actually played {played_tracks} out of {len(tracks_with_feedback)} recently recommended tracks ({play_rate:.1%} play rate), which provides valuable behavioral data beyond just sentiment feedback.")
+    
+    # Learning and improvement notes
+    insights.append(f"**Comprehensive Learning Profile**: With {total_feedback} total feedback entries analyzed, the system has built a detailed preference profile including sentiment patterns, artist affinities, and listening behaviors. Each piece of feedback helps refine future recommendations to better match your evolving musical taste.")
+    
+    # Future recommendations guidance
+    if negative_count > 0:
+        insights.append(f"**Adaptive Learning Focus**: The {negative_count} negative feedback entries provide crucial information about musical directions to avoid, helping the AI eliminate unsuitable recommendation patterns and focus on styles that resonate with your preferences.")
+    
+    return " ".join(insights)
+
+def generate_basic_feedback_insights(feedbacks):
+    """Generate basic feedback insights when AI is not available (kept for compatibility)"""
+    return generate_enhanced_basic_feedback_insights(feedbacks)
 
 @app.route('/feedback-insights', methods=['GET', 'POST'])
 def get_feedback_insights():
