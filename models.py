@@ -32,10 +32,16 @@ class User(db.Model):
         """Get recent recommendations to prevent duplicates"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
         
-        return Recommendation.query.filter(
+        query = Recommendation.query.filter(
             Recommendation.user_id == self.id,
             Recommendation.created_at >= cutoff_time
-        ).order_by(Recommendation.created_at.desc()).limit(limit).all()
+        ).order_by(Recommendation.created_at.desc())
+        
+        # Only apply limit if it's not None
+        if limit is not None:
+            query = query.limit(limit)
+            
+        return query.all()
     
     def get_recommendation_history_for_prompt(self, hours_back=24, limit=15):
         """Get formatted recommendation history for LLM prompts"""

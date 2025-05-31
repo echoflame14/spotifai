@@ -2784,7 +2784,8 @@ def get_enhanced_recent_recommendations(user, hours_back=24, include_artist_coun
     """
     Get enhanced recent recommendations with better formatting and artist frequency tracking
     """
-    recent_recs = user.get_recommendation_history_for_prompt(hours_back=hours_back, limit=15)
+    # Get ALL recent recommendations within the time period, not just 15
+    recent_recs = user.get_recommendation_history_for_prompt(hours_back=hours_back, limit=None)
     
     if not recent_recs:
         return {
@@ -2794,24 +2795,37 @@ def get_enhanced_recent_recommendations(user, hours_back=24, include_artist_coun
             'warning_message': ""
         }
     
-    # Count artist frequency for diversity warnings
+    # Count artist frequency for diversity warnings - get ALL recommendations in 72 hours
     artist_frequency = {}
     if include_artist_counts:
-        for rec in user.get_recent_recommendations(hours_back=72, limit=30):  # Look back 3 days for artist frequency
+        # Get ALL recommendations in the last 72 hours for accurate artist frequency counting
+        all_recent_recs = user.get_recent_recommendations(hours_back=72, limit=None)
+        app.logger.info(f"DUPLICATE PREVENTION: Analyzing {len(all_recent_recs)} total recommendations from last 72 hours")
+        
+        for rec in all_recent_recs:
             artist_lower = rec.artist_name.lower().strip()
             artist_frequency[artist_lower] = artist_frequency.get(artist_lower, 0) + 1
     
-    # Generate warning message if too many recent recommendations
+    # Get the actual total count of recommendations in the specified time period
+    total_count = len(recent_recs)
+    
+    # For display purposes, limit to the most recent 15 for the formatted list
+    # but keep the accurate total count for warnings
+    display_recs = recent_recs[:15] if len(recent_recs) > 15 else recent_recs
+    
+    # Generate warning message based on the ACTUAL total count
     warning_message = ""
-    if len(recent_recs) >= 10:
-        warning_message = f"User has received {len(recent_recs)} recommendations in the last {hours_back} hours. Prioritize diversity and avoid repetition."
-    elif len(recent_recs) >= 5:
-        warning_message = f"User has {len(recent_recs)} recent recommendations. Ensure variety in your suggestion."
+    if total_count >= 10:
+        warning_message = f"User has received {total_count} recommendations in the last {hours_back} hours. Prioritize diversity and avoid repetition."
+    elif total_count >= 5:
+        warning_message = f"User has {total_count} recent recommendations. Ensure variety in your suggestion."
+    
+    app.logger.info(f"DUPLICATE PREVENTION: Found {total_count} recommendations in last {hours_back}h, showing {len(display_recs)} in prompt")
     
     return {
-        'formatted_list': recent_recs,
+        'formatted_list': display_recs,  # Limited for prompt display
         'artist_frequency': artist_frequency,
-        'total_count': len(recent_recs),
+        'total_count': total_count,  # Accurate total count
         'warning_message': warning_message
     }
 
