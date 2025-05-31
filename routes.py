@@ -2328,118 +2328,198 @@ def api_generate_psychological_analysis():
 
 @app.route('/api/generate-musical-analysis', methods=['POST'])
 def api_generate_musical_analysis():
-    """Generate a comprehensive musical analysis of the user's taste and patterns"""
+    """Generate comprehensive musical analysis for the user"""
     try:
-        if 'user_id' not in session:
-            return jsonify({'success': False, 'message': 'Authentication required'}), 401
-        
-        user = User.query.get(session['user_id'])
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
         data = request.get_json()
-        custom_gemini_key = data.get('custom_gemini_key') if data else None
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'})
         
+        custom_gemini_key = data.get('custom_gemini_key')
         if not custom_gemini_key:
-            return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
+            return jsonify({'success': False, 'message': 'Gemini API key is required'})
         
-        # Initialize Spotify client
-        spotify_client = SpotifyClient(
-            access_token=user.access_token
-        )
+        # Get user from session
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'message': 'User not authenticated'})
         
-        # Collect comprehensive music data
-        app.logger.info("Collecting comprehensive music data for musical analysis...")
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'})
         
-        # Get current track and playback state
-        current_track = spotify_client.get_current_track()
-        playback_state = spotify_client.get_playback_state()
+        spotify_client = SpotifyClient(user.access_token)
         
-        # Get listening history and preferences
-        recent_tracks = spotify_client.get_recent_tracks(limit=50)
-        top_artists_short = spotify_client.get_top_artists(time_range='short_term', limit=50)
-        top_artists_medium = spotify_client.get_top_artists(time_range='medium_term', limit=50)
-        top_artists_long = spotify_client.get_top_artists(time_range='long_term', limit=50)
-        top_tracks_short = spotify_client.get_top_tracks(time_range='short_term', limit=50)
-        top_tracks_medium = spotify_client.get_top_tracks(time_range='medium_term', limit=50)
-        top_tracks_long = spotify_client.get_top_tracks(time_range='long_term', limit=50)
+        # Check if token is valid
+        if not spotify_client.get_current_playback():
+            # Token might be expired, try to refresh
+            if user.refresh_token:
+                refresh_result = refresh_user_token(user)
+                if not refresh_result:
+                    return jsonify({'success': False, 'message': 'Unable to refresh Spotify token'})
+                spotify_client = SpotifyClient(user.access_token)
         
-        # Get saved tracks and playlists
-        saved_tracks = spotify_client.get_saved_tracks(limit=50)
-        user_playlists = spotify_client.get_user_playlists(limit=50)
-        
-        # Get audio features for comprehensive analysis
-        track_ids = []
-        
-        # Collect track IDs from various sources
-        if recent_tracks and 'items' in recent_tracks:
-            track_ids.extend([item['track']['id'] for item in recent_tracks['items'] if item.get('track') and item['track'].get('id')])
-        
-        # Collect from all time ranges
-        if top_tracks_short and 'items' in top_tracks_short:
-            track_ids.extend([track['id'] for track in top_tracks_short['items'] if track.get('id')])
-        
-        if top_tracks_medium and 'items' in top_tracks_medium:
-            track_ids.extend([track['id'] for track in top_tracks_medium['items'] if track.get('id')])
-        
-        if top_tracks_long and 'items' in top_tracks_long:
-            track_ids.extend([track['id'] for track in top_tracks_long['items'] if track.get('id')])
-        
-        if saved_tracks and 'items' in saved_tracks:
-            track_ids.extend([item['track']['id'] for item in saved_tracks['items'] if item.get('track') and item['track'].get('id')])
-        
-        # Remove duplicates and limit to avoid API limits
-        track_ids = list(set(track_ids))[:100]
-        
-        # Get audio features
-        audio_features = []
-        if track_ids:
-            # Spotify API accepts max 100 tracks at once
-            for i in range(0, len(track_ids), 100):
-                batch = track_ids[i:i+100]
-                try:
-                    features_batch = spotify_client.get_audio_features(batch)
-                    if features_batch and features_batch.get('audio_features'):
-                        audio_features.extend([f for f in features_batch['audio_features'] if f is not None])
-                    elif features_batch:
-                        # Handle case where API returns features directly as a list
-                        audio_features.extend([f for f in features_batch if f is not None])
-                except Exception as e:
-                    app.logger.warning(f"Failed to get audio features for batch: {str(e)}")
-                    # Continue without audio features rather than failing the entire analysis
-                    continue
-        
-        # Aggregate comprehensive data
+        # Generate comprehensive music analysis
         music_data = {
-            'current_track': current_track,
-            'playback_state': playback_state,
-            'recent_tracks': recent_tracks,
-            'top_artists': {
-                'short_term': top_artists_short,
-                'medium_term': top_artists_medium,
-                'long_term': top_artists_long
-            },
-            'top_tracks': {
-                'short_term': top_tracks_short,
-                'medium_term': top_tracks_medium,
-                'long_term': top_tracks_long
-            },
-            'saved_tracks': saved_tracks,
-            'user_playlists': user_playlists,
-            'audio_features': audio_features
+            'top_artists': spotify_client.get_top_artists(limit=50, time_range='medium_term'),
+            'top_tracks': spotify_client.get_top_tracks(limit=50, time_range='medium_term'),
+            'recent_tracks': spotify_client.get_recently_played(limit=50),
+            'saved_tracks': spotify_client.get_saved_tracks(limit=50),
+            'playlists': spotify_client.get_user_playlists(limit=30)
         }
         
-        # Generate musical analysis
+        # Generate analysis using Gemini
         analysis = generate_ai_music_analysis(music_data, custom_gemini_key)
         
-        if analysis:
-            app.logger.info("Musical analysis generated successfully")
-            return jsonify({'success': True, 'analysis': analysis})
-        else:
-            app.logger.error("Failed to generate musical analysis")
-            return jsonify({'success': False, 'message': 'Failed to generate analysis'}), 500
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Musical analysis generation failed: {str(e)}")
+        return jsonify({'success': False, 'message': f'Analysis generation failed: {str(e)}'})
+
+@app.route('/api/loading-phrases', methods=['POST'])
+def api_loading_phrases():
+    """Generate dynamic loading phrases for the spinner using Gemini AI"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'})
+        
+        custom_gemini_key = data.get('custom_gemini_key')
+        if not custom_gemini_key:
+            return jsonify({'success': False, 'message': 'Gemini API key is required'})
+        
+        # Get user from session for personalization
+        user_id = session.get('user_id')
+        user_context = ""
+        
+        if user_id:
+            user = User.query.get(user_id)
+            if user:
+                # Get basic user info for personalization
+                spotify_client = SpotifyClient(user.access_token)
+                try:
+                    # Try to get recent listening context
+                    recent_tracks = spotify_client.get_recently_played(limit=5)
+                    if recent_tracks and 'items' in recent_tracks and recent_tracks['items']:
+                        recent_genres = []
+                        recent_artists = []
+                        for item in recent_tracks['items'][:3]:
+                            track = item.get('track', {})
+                            if track.get('artists'):
+                                recent_artists.append(track['artists'][0]['name'])
+                        user_context = f"Recently listened to artists like {', '.join(recent_artists[:3])}"
+                except:
+                    # If we can't get recent tracks, use generic context
+                    user_context = "music lover"
+        
+        # Configure Gemini
+        genai.configure(api_key=custom_gemini_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Create prompt for loading phrases
+        prompt = f"""Generate 2 witty, funny, and clever loading phrases for a music recommendation AI.
+The user is a {user_context if user_context else "music enthusiast"}.
+
+Requirements:
+- Each phrase should be 6-12 words for the title, 8-15 words for subtitle  
+- Make them humorous, witty, and music-focused
+- Use clever wordplay, puns, or funny analogies
+- Should feel like the AI has personality and humor
+- Keep them encouraging but with a comedic twist
+- Progressive feeling (first phase → second phase)
+
+Return ONLY a JSON object with this exact structure:
+{{
+    "phrases": [
+        {{
+            "title": "First funny phase title",
+            "subtitle": "First funny phase description"
+        }},
+        {{
+            "title": "Second funny phase title", 
+            "subtitle": "Second funny phase description"
+        }}
+    ]
+}}"""
+
+        start_time = time.time()
+        
+        # Generate phrases
+        response = model.generate_content(prompt)
+        
+        duration = time.time() - start_time
+        app.logger.info(f"Loading phrases generated in {duration:.2f}s")
+        
+        # Parse response
+        try:
+            # Extract JSON from response
+            response_text = response.text.strip()
+            
+            # Remove markdown code blocks if present
+            if response_text.startswith('```json'):
+                response_text = response_text[7:-3]
+            elif response_text.startswith('```'):
+                response_text = response_text[3:-3]
+            
+            phrases_data = json.loads(response_text)
+            
+            # Validate structure
+            if 'phrases' not in phrases_data or len(phrases_data['phrases']) != 2:
+                raise ValueError("Invalid phrases structure")
+            
+            for phrase in phrases_data['phrases']:
+                if 'title' not in phrase or 'subtitle' not in phrase:
+                    raise ValueError("Missing title or subtitle in phrase")
+            
+            return jsonify({
+                'success': True,
+                'phrases': phrases_data['phrases'],
+                'generation_time': duration
+            })
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            app.logger.error(f"Failed to parse loading phrases response: {str(e)}")
+            # Return fallback phrases
+            fallback_phrases = [
+                {
+                    "title": "Summoning Your Musical Soulmate",
+                    "subtitle": "Our AI is speed-dating with millions of songs on your behalf"
+                },
+                {
+                    "title": "Decoding Your Sonic DNA",
+                    "subtitle": "Like 23andMe, but for your questionable music choices"
+                }
+            ]
+            
+            return jsonify({
+                'success': True,
+                'phrases': fallback_phrases,
+                'generation_time': duration,
+                'fallback_used': True
+            })
             
     except Exception as e:
-        app.logger.error(f"Error in musical analysis API: {str(e)}")
-        return jsonify({'success': False, 'message': f'Internal server error: {str(e)}'}), 500
+        app.logger.error(f"Loading phrases generation failed: {str(e)}")
+        
+        # Return fallback phrases on error
+        fallback_phrases = [
+            {
+                "title": "AI Brain Freeze Detected",
+                "subtitle": "Our robots are having a creative disagreement about your music"
+            },
+            {
+                "title": "Loading Musical Magic", 
+                "subtitle": "Please hold while we consult the ancient Spotify scrolls"
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'phrases': fallback_phrases,
+            'fallback_used': True,
+            'error': str(e)
+        })
     

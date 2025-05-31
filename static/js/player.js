@@ -143,16 +143,24 @@ function initializeAIRecommender() {
 
 function addLoadingState(button) {
     const originalHTML = button.innerHTML;
-    const loadingHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+    const loadingHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
     
     button.innerHTML = loadingHTML;
     button.disabled = true;
+    button.classList.add('loading', 'pulse-animation');
     
-    // Remove loading state after 2 seconds (or when page reloads)
+    // Store original HTML for restoration
+    button.dataset.originalHtml = originalHTML;
+    
+    // Remove loading state after 30 seconds as fallback (in case of network issues)
     setTimeout(() => {
-        button.innerHTML = originalHTML;
-        button.disabled = false;
-    }, 2000);
+        if (button.disabled && button.classList.contains('loading')) {
+            button.innerHTML = originalHTML;
+            button.disabled = false;
+            button.classList.remove('loading', 'pulse-animation');
+            delete button.dataset.originalHtml;
+        }
+    }, 30000);
 }
 
 function refreshTrackInfo() {
@@ -436,7 +444,10 @@ function handleAIRecommendation() {
         return;
     }
 
-    // Add loading state
+    // Show main loading spinner overlay
+    showRecommendationLoading();
+
+    // Add loading state to button
     addLoadingState(discoverBtn);
     log('Added loading state to discover button');
 
@@ -449,13 +460,16 @@ function handleAIRecommendation() {
     log('Custom Gemini API key present:', !!customGeminiKey);
 
     if (!customGeminiKey) {
+        hideRecommendationLoading();
         showRecommendationError('Please add your Gemini API key in AI Settings to get recommendations.');
         // Remove loading state
         const currentDiscoverBtn = document.getElementById('getRecommendation');
         if (currentDiscoverBtn) {
+            const originalHtml = currentDiscoverBtn.dataset.originalHtml;
             currentDiscoverBtn.disabled = false;
-            currentDiscoverBtn.innerHTML = '<i class="fas fa-magic"></i> Discover';
-            currentDiscoverBtn.classList.remove('loading');
+            currentDiscoverBtn.innerHTML = originalHtml || '<i class="fas fa-sparkles me-2"></i>Discover New Music';
+            currentDiscoverBtn.classList.remove('loading', 'pulse-animation');
+            delete currentDiscoverBtn.dataset.originalHtml;
         }
         return;
     }
@@ -525,6 +539,9 @@ Timestamp: ${new Date().toLocaleString()}`;
     .then(data => {
         log('AI recommendation response received:', data);
         
+        // Hide loading states
+        hideRecommendationLoading();
+        
         if (data.success) {
             log('Recommendation successful:', data.track.name, 'by', data.track.artist);
             
@@ -558,6 +575,10 @@ Timestamp: ${new Date().toLocaleString()}`;
     })
     .catch(error => {
         log('AI recommendation request failed:', error.message, 'error');
+        
+        // Hide loading states
+        hideRecommendationLoading();
+        
         showRecommendationError('Network error: ' + error.message);
         
         // Update AI data with error info
@@ -571,12 +592,232 @@ Timestamp: ${new Date().toLocaleString()}`;
         // Remove loading state
         const currentDiscoverBtn = document.getElementById('getRecommendation');
         if (currentDiscoverBtn) {
+            const originalHtml = currentDiscoverBtn.dataset.originalHtml;
             currentDiscoverBtn.disabled = false;
-            currentDiscoverBtn.innerHTML = '<i class="fas fa-magic"></i> Discover';
-            currentDiscoverBtn.classList.remove('loading');
+            currentDiscoverBtn.innerHTML = originalHtml || '<i class="fas fa-sparkles me-2"></i>Discover New Music';
+            currentDiscoverBtn.classList.remove('loading', 'pulse-animation');
+            delete currentDiscoverBtn.dataset.originalHtml;
         }
         log('Loading state removed from discover button');
     });
+}
+
+// Function to show the main spinner overlay
+function showMainSpinner() {
+    const overlay = document.getElementById('mainSpinnerOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+        
+        // Add click-to-dismiss functionality (click outside the spinner content)
+        overlay.onclick = function(e) {
+            if (e.target === overlay) {
+                // Only allow dismissing if we're not in a critical loading state
+                if (confirm('Are you sure you want to cancel the AI recommendation?')) {
+                    hideMainSpinner();
+                    hideRecommendationLoading();
+                    
+                    // Reset button state
+                    const discoverBtn = document.getElementById('getRecommendation');
+                    if (discoverBtn) {
+                        const originalHtml = discoverBtn.dataset.originalHtml;
+                        discoverBtn.disabled = false;
+                        discoverBtn.innerHTML = originalHtml || '<i class="fas fa-sparkles me-2"></i>Discover New Music';
+                        discoverBtn.classList.remove('loading', 'pulse-animation');
+                        delete discoverBtn.dataset.originalHtml;
+                    }
+                    
+                    log('User cancelled AI recommendation');
+                }
+            }
+        };
+        
+        // Try to get dynamic loading phrases from Gemini
+        generateDynamicLoadingPhrases().then(phrases => {
+            if (phrases && phrases.length === 2) {
+                setupLoadingPhrases(overlay, phrases);
+            } else {
+                // Use fallback phrases if API fails
+                const fallbackPhrases = [
+                    {
+                        title: "Teaching AI Your Vibe",
+                        subtitle: "Like a musical psychic, but with better algorithms<span class='main-spinner-dots'></span>"
+                    },
+                    {
+                        title: "Unleashing the Beat Oracle",
+                        subtitle: "Your new favorite song is hiding... we're playing musical hide-and-seek<span class='main-spinner-dots'></span>"
+                    }
+                ];
+                setupLoadingPhrases(overlay, fallbackPhrases);
+            }
+        }).catch(error => {
+            log('Failed to get dynamic loading phrases, using fallback:', error);
+            // Use fallback phrases
+            const fallbackPhrases = [
+                {
+                    title: "Teaching AI Your Vibe",
+                    subtitle: "Like a musical psychic, but with better algorithms<span class='main-spinner-dots'></span>"
+                },
+                {
+                    title: "Unleashing the Beat Oracle",
+                    subtitle: "Your new favorite song is hiding... we're playing musical hide-and-seek<span class='main-spinner-dots'></span>"
+                }
+            ];
+            setupLoadingPhrases(overlay, fallbackPhrases);
+        });
+        
+        log('Main spinner overlay shown');
+    }
+}
+
+// Function to generate dynamic loading phrases using Gemini
+async function generateDynamicLoadingPhrases() {
+    try {
+        const customGeminiKey = localStorage.getItem('gemini_api_key');
+        if (!customGeminiKey) {
+            log('No Gemini API key available for dynamic phrases');
+            return null;
+        }
+        
+        log('Generating dynamic loading phrases...');
+        
+        const response = await fetch('/api/loading-phrases', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                custom_gemini_key: customGeminiKey
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.phrases) {
+            log('Dynamic loading phrases generated successfully');
+            if (data.fallback_used) {
+                log('Fallback phrases were used due to API parsing issues');
+            }
+            
+            // Add spinner dots to subtitles
+            return data.phrases.map(phrase => ({
+                title: phrase.title,
+                subtitle: phrase.subtitle + "<span class='main-spinner-dots'></span>"
+            }));
+        } else {
+            log('Failed to generate dynamic phrases:', data.message);
+            return null;
+        }
+    } catch (error) {
+        log('Error generating dynamic loading phrases:', error);
+        return null;
+    }
+}
+
+// Function to setup and cycle through loading phrases
+function setupLoadingPhrases(overlay, phrases) {
+    let currentMessage = 0;
+    
+    // Set initial message
+    const titleElement = overlay.querySelector('.main-spinner-title');
+    const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
+    
+    if (titleElement && subtitleElement && phrases[0]) {
+        titleElement.textContent = phrases[0].title;
+        subtitleElement.innerHTML = phrases[0].subtitle;
+    }
+    
+    // Update message every 5 seconds
+    const messageInterval = setInterval(() => {
+        currentMessage = (currentMessage + 1) % phrases.length;
+        
+        if (titleElement && subtitleElement && phrases[currentMessage]) {
+            // Add smooth transition effect
+            titleElement.style.opacity = '0.5';
+            subtitleElement.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                titleElement.textContent = phrases[currentMessage].title;
+                subtitleElement.innerHTML = phrases[currentMessage].subtitle;
+                titleElement.style.opacity = '1';
+                subtitleElement.style.opacity = '1';
+            }, 150);
+        }
+    }, 5000); // 5 second intervals
+    
+    // Store interval ID to clear it later
+    overlay.dataset.messageInterval = messageInterval;
+}
+
+// Function to hide the main spinner overlay
+function hideMainSpinner() {
+    const overlay = document.getElementById('mainSpinnerOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        
+        // Clear message interval
+        const intervalId = overlay.dataset.messageInterval;
+        if (intervalId) {
+            clearInterval(parseInt(intervalId));
+            delete overlay.dataset.messageInterval;
+        }
+        
+        // Reset to original message
+        const titleElement = overlay.querySelector('.main-spinner-title');
+        const subtitleElement = overlay.querySelector('.main-spinner-subtitle');
+        
+        if (titleElement && subtitleElement) {
+            titleElement.textContent = "Generating AI Recommendation";
+            subtitleElement.innerHTML = "Our AI is analyzing your music taste to find the perfect song<span class='main-spinner-dots'></span>";
+        }
+        
+        log('Main spinner overlay hidden');
+    }
+}
+
+// Function to hide inline loading state
+function hideInlineLoading() {
+    const recommendationLoading = document.getElementById('recommendationLoading');
+    if (recommendationLoading) {
+        recommendationLoading.style.display = 'none';
+    }
+}
+
+// Enhanced function to show loading with options
+function showRecommendationLoading(useOverlay = true) {
+    if (useOverlay) {
+        showMainSpinner();
+    } else {
+        // Show recommendation section and inline loading
+        const recommendationResult = document.getElementById('recommendationResult');
+        const recommendationLoading = document.getElementById('recommendationLoading');
+        const recommendationContainer = document.getElementById('recommendationContainer');
+        
+        if (recommendationResult) {
+            recommendationResult.style.display = 'block';
+        }
+        if (recommendationLoading) {
+            recommendationLoading.style.display = 'block';
+        }
+        if (recommendationContainer) {
+            recommendationContainer.style.display = 'none';
+        }
+    }
+}
+
+// Enhanced function to hide all loading states
+function hideRecommendationLoading() {
+    hideMainSpinner();
+    hideInlineLoading();
+    
+    // Show recommendation container
+    const recommendationContainer = document.getElementById('recommendationContainer');
+    if (recommendationContainer) {
+        recommendationContainer.style.display = 'block';
+    }
 }
 
 function showPerformanceBanner(stats, mode) {
