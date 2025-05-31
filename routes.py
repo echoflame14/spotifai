@@ -50,25 +50,27 @@ def get_redirect_uri():
     # Use environment variable if explicitly set
     env_redirect_uri = os.environ.get('SPOTIFY_REDIRECT_URI')
     if env_redirect_uri:
-        app.logger.info(f"Using environment SPOTIFY_REDIRECT_URI: {env_redirect_uri}")
+        # Clean the environment variable in case it has extra characters
+        env_redirect_uri = env_redirect_uri.strip().rstrip(';').rstrip()
+        app.logger.info(f"Using environment SPOTIFY_REDIRECT_URI: '{env_redirect_uri}'")
         return env_redirect_uri
     
     # For Railway deployment, always use the Railway URL
     from flask import request
     if request and request.host:
         if 'railway.app' in request.host:
-            app.logger.info(f"Detected Railway deployment, using: {railway_url}")
+            app.logger.info(f"Detected Railway deployment, using: '{railway_url}'")
             return railway_url
         else:
             # Dynamic detection for other platforms
             scheme = request.scheme
             host = request.host
             dynamic_uri = f"{scheme}://{host}/callback"
-            app.logger.info(f"Using dynamic URI: {dynamic_uri}")
+            app.logger.info(f"Using dynamic URI: '{dynamic_uri}'")
             return dynamic_uri
     
     # Default fallback for Railway
-    app.logger.info(f"Using Railway fallback: {railway_url}")
+    app.logger.info(f"Using Railway fallback: '{railway_url}'")
     return railway_url
 
 SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://spotifai.up.railway.app/callback')
@@ -223,6 +225,9 @@ def callback():
         # Use the same dynamic redirect URI for consistency
         redirect_uri = get_redirect_uri()
         
+        # Ensure redirect_uri is clean (remove any potential trailing characters)
+        redirect_uri = redirect_uri.strip().rstrip(';').rstrip()
+        
         data = {
             'grant_type': 'authorization_code',
             'code': code,
@@ -231,12 +236,16 @@ def callback():
         
         app.logger.info("=== TOKEN EXCHANGE DEBUG INFO ===")
         app.logger.info(f"Token URL: {token_url}")
-        app.logger.info(f"Redirect URI: {redirect_uri}")
+        app.logger.info(f"Redirect URI: '{redirect_uri}'")
+        app.logger.info(f"Redirect URI length: {len(redirect_uri)}")
+        app.logger.info(f"Redirect URI repr: {repr(redirect_uri)}")
         app.logger.info(f"Client ID: {SPOTIFY_CLIENT_ID}")
         app.logger.info(f"Client Secret length: {len(SPOTIFY_CLIENT_SECRET) if SPOTIFY_CLIENT_SECRET else 0}")
         app.logger.info(f"Auth header length: {len(auth_b64)}")
         app.logger.info(f"Authorization code length: {len(code)}")
-        app.logger.info(f"Request data: {data}")
+        app.logger.info(f"Request data grant_type: {data['grant_type']}")
+        app.logger.info(f"Request data redirect_uri: '{data['redirect_uri']}'")
+        app.logger.info(f"Request data code length: {len(data['code'])}")
         app.logger.info(f"Request headers: {headers}")
         app.logger.info("===============================")
         
@@ -293,16 +302,50 @@ def callback():
             app.logger.info(f"Refresh token: {'Yes' if refresh_token else 'No'}")
             app.logger.info(f"Expires in: {expires_in} seconds")
             
-            # Get user profile
-            app.logger.info("Attempting to get user profile from Spotify...")
-            spotify_client = SpotifyClient(access_token)
-            user_profile = spotify_client.get_user_profile()
-            
-            if not user_profile:
-                app.logger.error("Failed to get user profile from Spotify")
-                app.logger.error("This could indicate an invalid access token or API issue")
-                flash('Failed to get user profile from Spotify. Please try again.', 'error')
+            # Validate access token format before using it
+            if not access_token or len(access_token) < 50:
+                app.logger.error(f"Invalid access token format - Length: {len(access_token) if access_token else 0}")
+                flash('Invalid access token received from Spotify. Please try again.', 'error')
                 return redirect(url_for('index'))
+            
+            # Get user profile with enhanced debugging
+            app.logger.info("=== USER PROFILE RETRIEVAL DEBUG ===")
+            app.logger.info(f"Access token (first 20 chars): {access_token[:20]}...")
+            app.logger.info("Attempting to get user profile from Spotify...")
+            
+            try:
+                spotify_client = SpotifyClient(access_token)
+                user_profile = spotify_client.get_user_profile()
+                
+                app.logger.info(f"User profile request completed - Result: {'Success' if user_profile else 'Failed'}")
+                
+                if not user_profile:
+                    app.logger.error("Failed to get user profile from Spotify")
+                    app.logger.error("This could indicate an invalid access token or API issue")
+                    app.logger.error(f"Access token being used: {access_token[:30]}...")
+                    
+                    # Try to make a direct test request to Spotify to debug the issue
+                    test_headers = {'Authorization': f'Bearer {access_token}'}
+                    try:
+                        test_response = requests.get('https://api.spotify.com/v1/me', headers=test_headers, timeout=10)
+                        app.logger.error(f"Direct test request status: {test_response.status_code}")
+                        app.logger.error(f"Direct test response: {test_response.text}")
+                        app.logger.error(f"Direct test headers: {dict(test_response.headers)}")
+                    except Exception as test_e:
+                        app.logger.error(f"Direct test request failed: {test_e}")
+                    
+                    flash('Failed to get user profile from Spotify. Please try again.', 'error')
+                    return redirect(url_for('index'))
+                
+            except Exception as profile_e:
+                app.logger.error(f"Exception during user profile retrieval: {str(profile_e)}")
+                app.logger.error(f"Exception type: {type(profile_e).__name__}")
+                import traceback
+                app.logger.error(f"Profile retrieval traceback: {traceback.format_exc()}")
+                flash('Error retrieving user profile. Please try again.', 'error')
+                return redirect(url_for('index'))
+            
+            app.logger.info("===================================")
             
             app.logger.info(f"Successfully retrieved user profile for: {user_profile.get('id')}")
             app.logger.info(f"User profile keys: {list(user_profile.keys())}")
@@ -2749,37 +2792,80 @@ def debug_oauth():
     
 @app.route('/test-session')
 def test_session():
-    """Test endpoint to verify session is working"""
-    import time
-    
-    # Get or set a test value
-    if 'test_time' not in session:
-        session['test_time'] = time.time()
-        session['test_counter'] = 1
-        status = "NEW"
-    else:
-        session['test_counter'] = session.get('test_counter', 0) + 1
-        status = "EXISTING"
-    
-    app.logger.info(f"=== SESSION TEST ===")
-    app.logger.info(f"Session status: {status}")
+    """Test session persistence and debugging"""
+    # Log request details
+    app.logger.info("=== SESSION TEST ===")
+    app.logger.info(f"Session status: {'NEW' if not session else 'EXISTING'}")
     app.logger.info(f"Session contents: {dict(session)}")
     app.logger.info(f"Request cookies: {dict(request.cookies)}")
     app.logger.info("===================")
     
-    return f"""
-    <h1>Session Test Results</h1>
-    <p><strong>Status:</strong> {status} session</p>
-    <p><strong>Test Counter:</strong> {session.get('test_counter', 0)}</p>
-    <p><strong>Test Time:</strong> {session.get('test_time', 'Not set')}</p>
-    <p><strong>Session Contents:</strong> {dict(session)}</p>
-    <p><strong>Cookies:</strong> {dict(request.cookies)}</p>
-    <p><strong>Config:</strong></p>
-    <ul>
-        <li>SESSION_COOKIE_SECURE: {app.config.get('SESSION_COOKIE_SECURE')}</li>
-        <li>SESSION_COOKIE_SAMESITE: {app.config.get('SESSION_COOKIE_SAMESITE')}</li>
-        <li>SESSION_COOKIE_DOMAIN: {app.config.get('SESSION_COOKIE_DOMAIN')}</li>
-    </ul>
-    <p><a href="/test-session">Refresh to test persistence</a></p>
-    """
+    # Test session persistence
+    if 'test_time' not in session:
+        session['test_time'] = time.time()
+        session['test_counter'] = 1
+    else:
+        session['test_counter'] = session.get('test_counter', 0) + 1
+    
+    return jsonify({
+        'session_working': True,
+        'test_time': session['test_time'],
+        'test_counter': session['test_counter'],
+        'session_data': dict(session),
+        'cookies': dict(request.cookies)
+    })
+
+@app.route('/test-spotify-auth')
+def test_spotify_auth():
+    """Test Spotify API connectivity with current session token"""
+    app.logger.info("=== SPOTIFY AUTH TEST ===")
+    
+    if 'user_id' not in session:
+        return jsonify({
+            'error': 'No active session',
+            'message': 'Please log in first'
+        }), 401
+    
+    try:
+        user = User.query.get(session['user_id'])
+        if not user or not user.access_token:
+            return jsonify({
+                'error': 'No access token',
+                'message': 'User found but no access token available'
+            }), 401
+        
+        app.logger.info(f"Testing with user: {user.id}")
+        app.logger.info(f"Token length: {len(user.access_token)}")
+        app.logger.info(f"Token expires at: {user.token_expires_at}")
+        
+        # Test direct API call
+        headers = {'Authorization': f'Bearer {user.access_token}'}
+        response = requests.get('https://api.spotify.com/v1/me', headers=headers, timeout=10)
+        
+        app.logger.info(f"API test response status: {response.status_code}")
+        app.logger.info(f"API test response: {response.text}")
+        
+        if response.status_code == 200:
+            profile_data = response.json()
+            return jsonify({
+                'success': True,
+                'user_id': profile_data.get('id'),
+                'display_name': profile_data.get('display_name'),
+                'api_status': 'working'
+            })
+        else:
+            return jsonify({
+                'error': 'API call failed',
+                'status_code': response.status_code,
+                'response': response.text
+            }), response.status_code
+            
+    except Exception as e:
+        app.logger.error(f"Spotify auth test failed: {e}")
+        return jsonify({
+            'error': 'Test failed',
+            'exception': str(e)
+        }), 500
+    
+    app.logger.info("========================")
     

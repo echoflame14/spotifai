@@ -19,22 +19,51 @@ class SpotifyClient:
         try:
             response = requests.request(method, url, headers=self.headers, **kwargs)
             
+            # Enhanced logging for debugging user profile issues
+            logging.info(f"Spotify API Request: {method} {url}")
+            logging.info(f"Response Status: {response.status_code}")
+            
             if response.status_code == 204:  # No content
                 return True
             
             if response.status_code in [200, 201]:
                 if response.content:
                     try:
-                        return response.json()
-                    except ValueError:
-                        return True
+                        result = response.json()
+                        logging.info(f"Spotify API Success: {method} {endpoint}")
+                        return result
+                    except ValueError as e:
+                        logging.error(f"Failed to parse JSON response: {e}")
+                        logging.error(f"Raw response: {response.text}")
+                        return None
                 return True
             
-            logging.error(f"Spotify API error: {response.status_code} - {response.text}")
+            # Enhanced error logging
+            logging.error(f"Spotify API error: {method} {url}")
+            logging.error(f"Status Code: {response.status_code}")
+            logging.error(f"Response Text: {response.text}")
+            logging.error(f"Response Headers: {dict(response.headers)}")
+            
+            # Check for specific error cases
+            if response.status_code == 401:
+                logging.error("Unauthorized - Access token may be invalid or expired")
+                if response.content:
+                    try:
+                        error_data = response.json()
+                        logging.error(f"Error details: {error_data}")
+                    except:
+                        pass
+            elif response.status_code == 403:
+                logging.error("Forbidden - Insufficient permissions/scope")
+            elif response.status_code == 429:
+                logging.error("Rate limited - Too many requests")
+            
             return None
             
         except requests.RequestException as e:
             logging.error(f"Request failed: {e}")
+            logging.error(f"URL: {url}")
+            logging.error(f"Headers: {self.headers}")
             return None
     
     def get_user_profile(self):
