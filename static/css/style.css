@@ -879,3 +879,49 @@ html, body {
 .recommendation-loading .spinner-border {
     color: var(--spotify-green);
 }
+
+/* Analysis Dropdown Styles */
+.analysis-dropdown-toggle {
+    transition: all 0.3s ease;
+}
+
+.analysis-dropdown-toggle:hover {
+    transform: translateY(-1px);
+}
+
+.analysis-dropdown-toggle[aria-expanded="true"] .fa-chevron-down {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+
+.analysis-dropdown-toggle[aria-expanded="false"] .fa-chevron-down {
+    transform: rotate(0deg);
+    transition: transform 0.3s ease;
+}
+
+.analysis-section {
+    border-left: 3px solid transparent;
+    padding-left: 15px;
+    transition: border-color 0.3s ease;
+}
+
+.analysis-section:hover {
+    border-left-color: var(--spotify-green);
+}
+
+/* Enhanced Alert Styles for Analysis Results */
+.alert.analysis-complete {
+    animation: slideInFromTop 0.5s ease-out;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

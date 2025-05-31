@@ -168,47 +168,71 @@
                                             </div>
                                             
                                             <div id="psychAnalysisContent" style="display: none;">
-                                                <!-- Psychological analysis content will be populated here -->
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-spotify mb-2">
-                                                        <i class="fas fa-user me-1"></i>
-                                                        Core Personality
-                                                    </h6>
-                                                    <p class="text-light" id="corePersonality">Analysis will appear here...</p>
+                                                <!-- Success message with collapsible content -->
+                                                <div class="alert alert-success analysis-complete border-0 mb-3" style="background-color: rgba(29, 185, 84, 0.1); border-left: 3px solid #1db954 !important;">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div>
+                                                            <i class="fas fa-check-circle text-spotify me-2"></i>
+                                                            <strong>Psychological Analysis Complete!</strong>
+                                                            <small class="d-block text-muted mt-1">Your musical psychology has been analyzed and insights are ready.</small>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-outline-spotify analysis-dropdown-toggle" type="button" 
+                                                                data-bs-toggle="collapse" data-bs-target="#psychAnalysisDetails" 
+                                                                aria-expanded="false" aria-controls="psychAnalysisDetails">
+                                                            <i class="fas fa-eye me-1"></i>View Details
+                                                            <i class="fas fa-chevron-down ms-1"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-spotify mb-2">
-                                                        <i class="fas fa-heart me-1"></i>
-                                                        Emotional Patterns
-                                                    </h6>
-                                                    <p class="text-light" id="emotionalPatterns">Analysis will appear here...</p>
-                                                </div>
-                                                
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-spotify mb-2">
-                                                        <i class="fas fa-lightbulb me-1"></i>
-                                                        Cognitive Style
-                                                    </h6>
-                                                    <p class="text-light" id="cognitiveStyle">Analysis will appear here...</p>
-                                                </div>
-                                                
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-spotify mb-2">
-                                                        <i class="fas fa-users me-1"></i>
-                                                        Social Tendencies
-                                                    </h6>
-                                                    <p class="text-light" id="socialTendencies">Analysis will appear here...</p>
-                                                </div>
-                                                
-                                                <div class="analysis-section mb-3">
-                                                    <h6 class="text-spotify mb-2">
-                                                        <i class="fas fa-chart-line me-1"></i>
-                                                        Key Insights
-                                                    </h6>
-                                                    <ul class="text-light" id="keyFindings">
-                                                        <li>Insights will appear here...</li>
-                                                    </ul>
+
+                                                <!-- Collapsible detailed analysis -->
+                                                <div class="collapse" id="psychAnalysisDetails">
+                                                    <div class="card bg-dark border-secondary">
+                                                        <div class="card-body">
+                                                            <!-- Psychological analysis content will be populated here -->
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-spotify mb-2">
+                                                                    <i class="fas fa-user me-1"></i>
+                                                                    Core Personality
+                                                                </h6>
+                                                                <p class="text-light" id="corePersonality">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-spotify mb-2">
+                                                                    <i class="fas fa-heart me-1"></i>
+                                                                    Emotional Patterns
+                                                                </h6>
+                                                                <p class="text-light" id="emotionalPatterns">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-spotify mb-2">
+                                                                    <i class="fas fa-lightbulb me-1"></i>
+                                                                    Cognitive Style
+                                                                </h6>
+                                                                <p class="text-light" id="cognitiveStyle">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-spotify mb-2">
+                                                                    <i class="fas fa-users me-1"></i>
+                                                                    Social Tendencies
+                                                                </h6>
+                                                                <p class="text-light" id="socialTendencies">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-3">
+                                                                <h6 class="text-spotify mb-2">
+                                                                    <i class="fas fa-chart-line me-1"></i>
+                                                                    Key Insights
+                                                                </h6>
+                                                                <ul class="text-light" id="keyFindings">
+                                                                    <li>Insights will appear here...</li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                             
@@ -252,47 +276,71 @@
                                             </div>
                                             
                                             <div id="musicalAnalysisContent" style="display: none;">
-                                                <!-- Musical analysis content will be populated here -->
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-warning mb-2">
-                                                        <i class="fas fa-graduation-cap me-1"></i>
-                                                        Genre Mastery
-                                                    </h6>
-                                                    <p class="text-light" id="genreMastery">Analysis will appear here...</p>
+                                                <!-- Success message with collapsible content -->
+                                                <div class="alert alert-warning analysis-complete border-0 mb-3" style="background-color: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107 !important;">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div>
+                                                            <i class="fas fa-check-circle text-warning me-2"></i>
+                                                            <strong>Musical Analysis Complete!</strong>
+                                                            <small class="d-block text-muted mt-1">Your musical expertise and taste profile has been analyzed.</small>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-outline-warning analysis-dropdown-toggle" type="button" 
+                                                                data-bs-toggle="collapse" data-bs-target="#musicalAnalysisDetails" 
+                                                                aria-expanded="false" aria-controls="musicalAnalysisDetails">
+                                                            <i class="fas fa-eye me-1"></i>View Details
+                                                            <i class="fas fa-chevron-down ms-1"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-warning mb-2">
-                                                        <i class="fas fa-star me-1"></i>
-                                                        Artist Dynamics
-                                                    </h6>
-                                                    <p class="text-light" id="artistDynamics">Analysis will appear here...</p>
-                                                </div>
-                                                
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-warning mb-2">
-                                                        <i class="fas fa-cogs me-1"></i>
-                                                        Musical Sophistication
-                                                    </h6>
-                                                    <p class="text-light" id="musicalSophistication">Analysis will appear here...</p>
-                                                </div>
-                                                
-                                                <div class="analysis-section mb-4">
-                                                    <h6 class="text-warning mb-2">
-                                                        <i class="fas fa-headphones me-1"></i>
-                                                        Listening Contexts
-                                                    </h6>
-                                                    <p class="text-light" id="listeningContexts">Analysis will appear here...</p>
-                                                </div>
-                                                
-                                                <div class="analysis-section mb-3">
-                                                    <h6 class="text-warning mb-2">
-                                                        <i class="fas fa-compass me-1"></i>
-                                                        Unique Traits
-                                                    </h6>
-                                                    <ul class="text-light" id="uniqueTraits">
-                                                        <li>Traits will appear here...</li>
-                                                    </ul>
+
+                                                <!-- Collapsible detailed analysis -->
+                                                <div class="collapse" id="musicalAnalysisDetails">
+                                                    <div class="card bg-dark border-secondary">
+                                                        <div class="card-body">
+                                                            <!-- Musical analysis content will be populated here -->
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-warning mb-2">
+                                                                    <i class="fas fa-graduation-cap me-1"></i>
+                                                                    Genre Mastery
+                                                                </h6>
+                                                                <p class="text-light" id="genreMastery">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-warning mb-2">
+                                                                    <i class="fas fa-star me-1"></i>
+                                                                    Artist Dynamics
+                                                                </h6>
+                                                                <p class="text-light" id="artistDynamics">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-warning mb-2">
+                                                                    <i class="fas fa-cogs me-1"></i>
+                                                                    Musical Sophistication
+                                                                </h6>
+                                                                <p class="text-light" id="musicalSophistication">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-4">
+                                                                <h6 class="text-warning mb-2">
+                                                                    <i class="fas fa-headphones me-1"></i>
+                                                                    Listening Contexts
+                                                                </h6>
+                                                                <p class="text-light" id="listeningContexts">Analysis will appear here...</p>
+                                                            </div>
+                                                            
+                                                            <div class="analysis-section mb-3">
+                                                                <h6 class="text-warning mb-2">
+                                                                    <i class="fas fa-compass me-1"></i>
+                                                                    Unique Traits
+                                                                </h6>
+                                                                <ul class="text-light" id="uniqueTraits">
+                                                                    <li>Traits will appear here...</li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                             
