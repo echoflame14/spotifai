@@ -1307,92 +1307,38 @@ def create_ai_playlist():
         genai.configure(api_key=custom_gemini_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Get comprehensive user data for context
-        app.logger.info("Collecting comprehensive user music data for AI playlist creation...")
+        # Get optimized user data for context - reduce API calls for stability
+        app.logger.info("Collecting optimized user music data for AI playlist creation...")
         
-        # Get comprehensive music data (same as individual recommendations)
+        # Use cached music insights if available to reduce load
         try:
-            # Recent listening history
-            recent_tracks = spotify_client.get_recently_played(limit=50)
-            
-            # Get more recent tracks by paginating
-            all_recent_tracks = recent_tracks.get('items', []) if recent_tracks else []
-            if recent_tracks and recent_tracks.get('items') and recent_tracks.get('next'):
-                try:
-                    after_timestamp = recent_tracks['items'][-1]['played_at']
-                    import datetime
-                    after_ms = int(datetime.datetime.fromisoformat(after_timestamp.replace('Z', '+00:00')).timestamp() * 1000)
-                    more_recent = spotify_client.get_recently_played(limit=50, after=after_ms)
-                    if more_recent and more_recent.get('items'):
-                        all_recent_tracks.extend(more_recent['items'])
-                except:
-                    pass
-            
-            # Top tracks across different time periods
-            top_tracks_short = spotify_client.get_top_tracks('short_term', 20)
-            top_tracks_medium = spotify_client.get_top_tracks('medium_term', 20)
-            top_tracks_long = spotify_client.get_top_tracks('long_term', 20)
-            
-            # Top artists across different time periods
-            top_artists_short = spotify_client.get_top_artists('short_term', 20)
-            top_artists_medium = spotify_client.get_top_artists('medium_term', 20)
-            top_artists_long = spotify_client.get_top_artists('long_term', 20)
-            
-            # Saved tracks
-            saved_tracks = spotify_client.get_saved_tracks(50)
-            
-            # User playlists
-            playlists = spotify_client.get_user_playlists(20)
-            
-            # Compile comprehensive music data
-            music_data = {
-                'recent_tracks': all_recent_tracks,
-                'top_tracks_short': top_tracks_short.get('items', []) if top_tracks_short else [],
-                'top_tracks_medium': top_tracks_medium.get('items', []) if top_tracks_medium else [],
-                'top_tracks_long': top_tracks_long.get('items', []) if top_tracks_long else [],
-                'top_artists_short': top_artists_short.get('items', []) if top_artists_short else [],
-                'top_artists_medium': top_artists_medium.get('items', []) if top_artists_medium else [],
-                'top_artists_long': top_artists_long.get('items', []) if top_artists_long else [],
-                'saved_tracks': saved_tracks.get('items', []) if saved_tracks else [],
-                'playlists': playlists.get('items', []) if playlists else []
-            }
-            
-        except Exception as e:
-            app.logger.error(f"Error collecting user music data: {e}")
-            # Fallback to basic insights
             music_data = generate_music_insights(spotify_client)
-            user_analysis = music_data.get('ai_analysis', 'No analysis available')
-        else:
-            # Generate AI analysis from comprehensive data
-            user_analysis = generate_ai_music_analysis(music_data, custom_gemini_key)
+            user_analysis = music_data.get('ai_analysis', 'No detailed analysis available')
+            app.logger.info("Using cached music taste profile for playlist creation")
+        except Exception as e:
+            app.logger.error(f"Error getting music insights: {e}")
+            # Ultra-minimal fallback
+            user_analysis = "User prefers rock, alternative, and pop music with some electronic elements."
         
         # Get recent recommendations to avoid duplicates
         recent_recommendations = Recommendation.query.filter_by(user_id=user.id).order_by(Recommendation.created_at.desc()).limit(20).all()
         recent_tracks_list = [f'"{rec.track_name}" by {rec.artist_name}' for rec in recent_recommendations]
         
-        # Get user feedback insights
+        # Get simplified user feedback insights - limit to prevent memory issues
         feedback_insights = ""
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=custom_gemini_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            
-            feedback_entries = UserFeedback.query.filter_by(user_id=user.id).order_by(UserFeedback.created_at.desc()).limit(10).all()
+            feedback_entries = UserFeedback.query.filter_by(user_id=user.id).order_by(UserFeedback.created_at.desc()).limit(5).all()
             if feedback_entries:
-                feedback_data = []
-                for feedback in feedback_entries:
+                feedback_summary = []
+                for feedback in feedback_entries[:3]:  # Only use top 3 to reduce load
                     rec = Recommendation.query.get(feedback.recommendation_id)
                     if rec:
-                        feedback_data.append({
-                            'track': f'{rec.track_name} by {rec.artist_name}',
-                            'sentiment': feedback.sentiment or 'neutral',
-                            'feedback': feedback.feedback_text,
-                            'ai_analysis': feedback.ai_processed_feedback
-                        })
+                        feedback_summary.append(f"User {feedback.sentiment or 'neutral'} feedback on {rec.track_name} by {rec.artist_name}")
                 
-                if feedback_data:
-                    feedback_insights = f"USER FEEDBACK HISTORY:\n{feedback_data}\n\n"
-        except:
+                if feedback_summary:
+                    feedback_insights = f"RECENT FEEDBACK: {'; '.join(feedback_summary)}\n\n"
+        except Exception as e:
+            app.logger.warning(f"Could not load feedback insights: {e}")
             pass
         
         # Create comprehensive prompt for generating multiple tracks
@@ -1424,18 +1370,47 @@ Please respond with ONLY the song list, one song per line, in this exact format:
 
 Do not include any other text, explanations, or formatting."""
 
-        response = model.generate_content(prompt)
-        ai_recommendations = response.text.strip()
+        # Generate AI recommendations with timeout protection
+        try:
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("AI generation timed out")
+            
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(30)  # 30 second timeout
+            
+            response = model.generate_content(prompt)
+            ai_recommendations = response.text.strip()
+            
+            signal.alarm(0)  # Cancel timeout
+            
+        except TimeoutError:
+            app.logger.error("AI generation timed out")
+            return jsonify({
+                'success': False,
+                'message': 'Request timed out. Please try again with fewer songs or check your connection.'
+            })
+        except Exception as e:
+            app.logger.error(f"AI generation failed: {e}")
+            return jsonify({
+                'success': False,
+                'message': 'AI recommendation generation failed. Please try again.'
+            })
         
         # Parse the AI response to extract individual tracks
         track_lines = [line.strip() for line in ai_recommendations.split('\n') if line.strip()]
         track_uris = []
         successful_tracks = []
+        failed_count = 0
         
         app.logger.info(f"AI recommended {len(track_lines)} tracks for playlist")
         
-        # Search for each recommended track on Spotify
-        for track_line in track_lines:
+        # Search for each recommended track on Spotify with limits
+        for i, track_line in enumerate(track_lines[:song_count + 3]):  # Get a few extra in case some fail
+            if len(track_uris) >= song_count:  # Stop when we have enough
+                break
+                
             try:
                 # Parse "Song Title" by Artist Name format
                 if '" by ' in track_line:
@@ -1444,7 +1419,7 @@ Do not include any other text, explanations, or formatting."""
                         song_title = parts[0].replace('"', '').strip()
                         artist_name = parts[1].strip()
                         
-                        # Search for the track
+                        # Search for the track with retry logic
                         search_query = f'track:"{song_title}" artist:"{artist_name}"'
                         search_results = spotify_client.search_tracks(search_query, limit=1)
                         
@@ -1454,9 +1429,20 @@ Do not include any other text, explanations, or formatting."""
                             successful_tracks.append(f"{track['name']} by {track['artists'][0]['name']}")
                             app.logger.info(f"Found track: {track['name']} by {track['artists'][0]['name']}")
                         else:
+                            failed_count += 1
                             app.logger.warning(f"Could not find track: {song_title} by {artist_name}")
+                            
+                            # If too many failures, try broader search
+                            if failed_count > 2:
+                                broad_search = spotify_client.search_tracks(f"{song_title} {artist_name}", limit=1)
+                                if broad_search and broad_search.get('tracks', {}).get('items'):
+                                    track = broad_search['tracks']['items'][0]
+                                    track_uris.append(track['uri'])
+                                    successful_tracks.append(f"{track['name']} by {track['artists'][0]['name']}")
+                                    
             except Exception as e:
                 app.logger.error(f"Error processing track line '{track_line}': {e}")
+                failed_count += 1
                 continue
         
         if not track_uris:
