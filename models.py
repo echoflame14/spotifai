@@ -1,5 +1,8 @@
-from app import db
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+
+# This will be initialized in app.py
+db = SQLAlchemy()
 
 class User(db.Model):
     id = db.Column(db.String(50), primary_key=True)  # Spotify user ID

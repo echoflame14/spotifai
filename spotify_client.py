@@ -143,16 +143,41 @@ class SpotifyClient:
         # First get user profile to get user ID
         profile = self.get_user_profile()
         if not profile:
+            logging.error("Failed to get user profile for playlist creation")
             return None
         
         user_id = profile['id']
+        logging.info(f"Creating playlist '{name}' for user {user_id} (public: {public})")
+        
         data = {
             'name': name,
             'description': description,
-            'public': public
+            'public': public  # Make sure this is a boolean, not a string
         }
         
-        return self._make_request('POST', f'/users/{user_id}/playlists', json=data)
+        # Use direct request with enhanced error handling for this specific operation
+        url = f"{self.base_url}/users/{user_id}/playlists"
+        
+        try:
+            response = requests.post(url, headers=self.headers, json=data)
+            
+            if response.status_code == 201:
+                result = response.json()
+                logging.info(f"Successfully created playlist: {result.get('id')}")
+                return result
+            elif response.status_code == 403:
+                logging.error(f"Playlist creation failed - Insufficient client scope. Status: {response.status_code}")
+                logging.error(f"Response: {response.text}")
+                logging.error(f"This may be a temporary Spotify API issue. Required scopes: playlist-modify-public, playlist-modify-private")
+                return None
+            else:
+                logging.error(f"Playlist creation failed - Status: {response.status_code}")
+                logging.error(f"Response: {response.text}")
+                return None
+            
+        except requests.RequestException as e:
+            logging.error(f"Request failed during playlist creation: {e}")
+            return None
     
     def add_tracks_to_playlist(self, playlist_id, track_uris):
         """Add tracks to a playlist"""

@@ -2,7 +2,6 @@ import os
 import logging
 from dotenv import load_dotenv
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -14,8 +13,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Base(DeclarativeBase):
     pass
-
-db = SQLAlchemy(model_class=Base)
 
 # Create the app
 app = Flask(__name__)
@@ -33,19 +30,21 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = False
 
+# Import models and initialize the db
+from models import db
+
 # Initialize the app with the extension
 db.init_app(app)
 
-# Import routes after app creation to avoid circular imports
+# Import models explicitly so they're available for routes
+import models  # noqa: F401
+
+# Create tables
 with app.app_context():
-    # Import models so their tables are created
-    import models  # noqa: F401
-    
-    # Create all tables
     db.create_all()
-    
-    # Import and register routes
-    import routes  # noqa: F401
+
+# Import routes after everything is set up
+import routes  # noqa: F401
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

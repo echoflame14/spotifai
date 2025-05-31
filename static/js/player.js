@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setupChatFeedback();
             setupSessionPreferences();
             setupAISettings();
+            setupPlaylistCreation();
             addButtonFeedback();
             addSmoothScrolling();
             log('All initialization functions completed');
@@ -1301,6 +1302,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupChatFeedback();
         setupSessionPreferences();
         setupAISettings();
+        setupPlaylistCreation();
         addButtonFeedback();
         addSmoothScrolling();
         

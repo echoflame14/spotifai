@@ -88,8 +88,8 @@ def login():
         state = secrets.token_urlsafe(16)
         session['oauth_state'] = state
         
-        # Define required scopes including permissions for AI recommendations
-        scope = 'user-read-private user-read-email playlist-read-private user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-top-read user-library-read'
+        # Define required scopes including permissions for AI recommendations and playlist creation
+        scope = 'user-read-private user-read-email playlist-read-private playlist-modify-public playlist-modify-private user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-top-read user-library-read'
         
         # Get dynamic redirect URI for mobile compatibility
         redirect_uri = get_redirect_uri()
@@ -989,25 +989,41 @@ Do not include any other text, explanations, or formatting."""
 
         # Generate AI recommendations with timeout protection
         try:
-            import signal
+            # Use threading.Timer for cross-platform timeout (Windows compatible)
+            import threading
             
-            def timeout_handler(signum, frame):
-                raise TimeoutError("AI generation timed out")
+            response = None
+            error_occurred = None
             
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(30)  # 30 second timeout
+            def generate_with_timeout():
+                nonlocal response, error_occurred
+                try:
+                    response = model.generate_content(prompt)
+                except Exception as e:
+                    error_occurred = e
             
-            response = model.generate_content(prompt)
+            # Start the generation in a separate thread
+            thread = threading.Thread(target=generate_with_timeout)
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=30)  # 30 second timeout
+            
+            if thread.is_alive():
+                # Thread is still running, timeout occurred
+                app.logger.error("AI generation timed out")
+                return jsonify({
+                    'success': False,
+                    'message': 'Request timed out. Please try again with fewer songs or check your connection.'
+                })
+            
+            if error_occurred:
+                raise error_occurred
+            
+            if response is None:
+                raise Exception("No response generated")
+                
             ai_recommendations = response.text.strip()
             
-            signal.alarm(0)  # Cancel timeout
-            
-        except TimeoutError:
-            app.logger.error("AI generation timed out")
-            return jsonify({
-                'success': False,
-                'message': 'Request timed out. Please try again with fewer songs or check your connection.'
-            })
         except Exception as e:
             app.logger.error(f"AI generation failed: {e}")
             return jsonify({

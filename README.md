@@ -104,4 +104,23 @@ This application is optimized for deployment on various platforms:
 
 ## License
 
-This project is open source and available under the MIT License. 
+This project is open source and available under the MIT License.
+
+## Troubleshooting
+
+### Spotify Playlist Creation Error (403 - Insufficient Client Scope)
+
+If you encounter a "403 - Insufficient client scope" error when creating playlists, this is a known intermittent issue with Spotify's API. Here's how to resolve it:
+
+#### Immediate Solutions:
+1. **Re-authenticate**: Log out and log back in to refresh your Spotify permissions
+2. **Wait and retry**: The issue often resolves itself within a few hours
+3. **Check Spotify status**: This may be a temporary API issue on Spotify's side
+
+#### For Developers:
+- Ensure your app includes these scopes: `playlist-modify-public`, `playlist-modify-private`, `playlist-read-private`
+- The error often occurs due to intermittent issues with Spotify's scope validation
+- Monitor the logs for detailed error information
+
+#### Why This Happens:
+This is a known issue in Spotify's API that affects many developers. The problem is intermittent and typically resolves without any code changes required. 
