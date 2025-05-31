@@ -15,7 +15,7 @@ An intelligent music discovery platform that uses AI to provide personalized mus
 
 - **Backend**: Flask (Python)
 - **Database**: PostgreSQL with SQLAlchemy ORM
-- **AI**: Google Gemini 1.5 Flash (user-provided API key)
+- **AI**: Google Gemini 1.5 Flash
 - **Authentication**: Spotify OAuth 2.0
 - **Frontend**: HTML, CSS, JavaScript
 - **Deployment**: Gunicorn WSGI server
@@ -26,6 +26,9 @@ An intelligent music discovery platform that uses AI to provide personalized mus
 # Spotify API Credentials
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+
+# Google AI
+GOOGLE_API_KEY=your_google_gemini_api_key
 
 # Database
 DATABASE_URL=postgresql://username:password@host:port/database
@@ -56,10 +59,10 @@ Create a `.env` file with the required environment variables (see `.env.example`
 3. Add redirect URI: `http://localhost:5000/callback` (for local) or your production URL
 4. Copy Client ID and Client Secret to your environment variables
 
-### 5. Get Your Gemini API Key
+### 5. Set Up Google AI
 1. Go to [Google AI Studio](https://aistudio.google.com/)
 2. Create an API key for Gemini
-3. Add your API key in the app's AI Settings section after logging in
+3. Add it to your environment variables
 
 ### 6. Run the Application
 ```bash
