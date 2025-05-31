@@ -1,76 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Spotify LLM{% endblock %}
+{% block title %}Login - SpotifAI{% endblock %}
+
+{% block head %}
+<style>
+    .login-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #1db954 0%, #191414 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .login-card {
+        background: rgba(25, 20, 20, 0.95);
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+    }
+    
+    .btn-spotify {
+        background: #1db954;
+        border-color: #1db954;
+        font-weight: 600;
+        text-transform: none;
+    }
+    
+    .btn-spotify:hover {
+        background: #1ed760;
+        border-color: #1ed760;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid h-100">
-    <div class="row h-100">
-        <!-- Left side - Hero image -->
-        <div class="col-lg-6 d-none d-lg-block p-0">
-            <div class="login-hero">
-                <div class="hero-overlay">
-                    <div class="hero-content">
-                        <h1 class="display-4 fw-bold text-white mb-4">
-                            Music for everyone.
-                        </h1>
-                        <p class="lead text-white mb-0">
-                            Connect with Spotify and control your music from anywhere.
-                        </p>
-                    </div>
+<div class="login-container">
+    <div class="login-card text-center text-white">
+        <img src="{{ url_for('static', filename='images/spotify-logo.svg') }}" alt="Spotify" height="48" class="mb-3">
+        <h1 class="h3 mb-3 fw-bold">Welcome to SpotifAI</h1>
+        <p class="mb-4 text-light">
+            Discover your musical personality with AI-powered insights and get personalized recommendations 
+            that understand your unique taste.
+        </p>
+        
+        <div class="d-grid gap-3">
+            <p class="text-muted small mb-3">
+                Connect your Spotify account to begin your musical journey
+            </p>
+            
+            <a href="{{ url_for('auth.login') }}" class="btn btn-spotify btn-lg w-100 mb-3">
+                <i class="fab fa-spotify me-2"></i>
+                Connect with Spotify
+            </a>
+            
+            <div class="row text-center">
+                <div class="col-4">
+                    <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                    <p class="small text-muted">AI Psychology</p>
+                </div>
+                <div class="col-4">
+                    <i class="fas fa-music fa-2x text-success mb-2"></i>
+                    <p class="small text-muted">Smart Recommendations</p>
+                </div>
+                <div class="col-4">
+                    <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                    <p class="small text-muted">Taste Analysis</p>
                 </div>
             </div>
         </div>
         
-        <!-- Right side - Login form -->
-        <div class="col-lg-6 d-flex align-items-center justify-content-center">
-            <div class="login-form-container">
-                <div class="text-center mb-5">
-                    <img src="{{ url_for('static', filename='images/spotify-logo.svg') }}" alt="Spotify" height="48" class="mb-3">
-                    <h2 class="fw-bold text-white mb-2">Welcome to Spotify LLM</h2>
-                    <p class="text-muted">AI-powered music discovery and recommendation platform</p>
-                </div>
-                
-                <div class="card bg-dark-card border-0 shadow-lg">
-                    <div class="card-body p-5">
-                        <div class="text-center">
-                            <i class="fab fa-spotify spotify-icon mb-4"></i>
-                            <h4 class="text-white mb-4">Connect with Spotify</h4>
-                            <p class="text-muted mb-4">
-                                You'll be redirected to Spotify to authorize this application. 
-                                We'll only access what's necessary to provide you with the best music experience.
-                            </p>
-                            
-                            <a href="{{ url_for('login') }}" class="btn btn-spotify btn-lg w-100 mb-3">
-                                <i class="fab fa-spotify me-2"></i>
-                                Connect with Spotify
-                            </a>
-                            
-                            <div class="features mt-4">
-                                <div class="row text-start">
-                                    <div class="col-12 mb-2">
-                                        <i class="fas fa-brain text-spotify me-2"></i>
-                                        <span class="text-light">AI-powered music recommendations</span>
-                                    </div>
-                                    <div class="col-12 mb-2">
-                                        <i class="fas fa-user-music text-spotify me-2"></i>
-                                        <span class="text-light">Psychological music taste analysis</span>
-                                    </div>
-                                    <div class="col-12 mb-2">
-                                        <i class="fas fa-sparkles text-spotify me-2"></i>
-                                        <span class="text-light">Discover your next favorite song</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="text-center mt-4">
-                    <small class="text-muted">
-                        By connecting, you agree to our terms of service and privacy policy.
-                    </small>
-                </div>
-            </div>
+        <div class="mt-4 pt-3 border-top border-secondary">
+            <p class="text-muted small mb-0">
+                <i class="fas fa-shield-alt me-1"></i>
+                Secure OAuth authentication - we never store your Spotify password
+            </p>
         </div>
     </div>
 </div>

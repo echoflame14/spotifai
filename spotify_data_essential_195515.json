@@ -1,0 +1,468 @@
+{
+  "current_listening": {
+    "is_playing": true,
+    "track_name": "The Afterglow",
+    "artist_name": "Silverstein",
+    "album_name": "Dead Reflection"
+  },
+  "recent_tracks": [
+    {
+      "name": "This Is War",
+      "artist": "GAWNE",
+      "album": "Waves"
+    },
+    {
+      "name": "ringtone",
+      "artist": "100 gecs",
+      "album": "1000 gecs"
+    },
+    {
+      "name": "Beast - Southpaw Remix",
+      "artist": "Rob Bailey & The Hustle Standard",
+      "album": "Southpaw (Music From And Inspired By The Motion Picture)"
+    },
+    {
+      "name": "KPOP",
+      "artist": "vai5000",
+      "album": "KPOP"
+    },
+    {
+      "name": "The Drug In Me Is You",
+      "artist": "Falling In Reverse",
+      "album": "The Drug In Me Is You"
+    },
+    {
+      "name": "The Drug In Me Is You",
+      "artist": "Falling In Reverse",
+      "album": "The Drug In Me Is You"
+    },
+    {
+      "name": "The Drug In Me Is You",
+      "artist": "Falling In Reverse",
+      "album": "The Drug In Me Is You"
+    },
+    {
+      "name": "The Drug In Me Is You",
+      "artist": "Falling In Reverse",
+      "album": "The Drug In Me Is You"
+    },
+    {
+      "name": "Rock That Body",
+      "artist": "Black Eyed Peas",
+      "album": "THE E.N.D. (THE ENERGY NEVER DIES)"
+    },
+    {
+      "name": "The Drug In Me Is You",
+      "artist": "Falling In Reverse",
+      "album": "The Drug In Me Is You"
+    }
+  ],
+  "top_artists": [
+    {
+      "name": "Falling In Reverse",
+      "genres": [
+        "emo",
+        "rap metal"
+      ],
+      "popularity": 76,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Kanye West",
+      "genres": [
+        "rap"
+      ],
+      "popularity": 92,
+      "time_range": "short_term"
+    },
+    {
+      "name": "System Of A Down",
+      "genres": [
+        "nu metal",
+        "metal",
+        "alternative metal",
+        "rap metal",
+        "rock"
+      ],
+      "popularity": 84,
+      "time_range": "short_term"
+    },
+    {
+      "name": "100 gecs",
+      "genres": [
+        "hyperpop",
+        "glitch"
+      ],
+      "popularity": 61,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Bring Me The Horizon",
+      "genres": [
+        "metalcore",
+        "emo",
+        "screamo",
+        "rock",
+        "post-hardcore"
+      ],
+      "popularity": 79,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Ratatat",
+      "genres": [],
+      "popularity": 67,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Breaking Benjamin",
+      "genres": [
+        "alternative metal",
+        "post-grunge",
+        "rock",
+        "hard rock"
+      ],
+      "popularity": 74,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Three Days Grace",
+      "genres": [
+        "post-grunge",
+        "rock"
+      ],
+      "popularity": 79,
+      "time_range": "short_term"
+    },
+    {
+      "name": "RomancePlanet",
+      "genres": [
+        "hyperpop",
+        "gabber"
+      ],
+      "popularity": 54,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Falling In Reverse",
+      "genres": [
+        "emo",
+        "rap metal"
+      ],
+      "popularity": 76,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "System Of A Down",
+      "genres": [
+        "nu metal",
+        "metal",
+        "alternative metal",
+        "rap metal",
+        "rock"
+      ],
+      "popularity": 84,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Kanye West",
+      "genres": [
+        "rap"
+      ],
+      "popularity": 92,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Skrillex",
+      "genres": [
+        "dubstep",
+        "edm",
+        "electro",
+        "electronic"
+      ],
+      "popularity": 79,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "100 gecs",
+      "genres": [
+        "hyperpop",
+        "glitch"
+      ],
+      "popularity": 61,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Papa Roach",
+      "genres": [
+        "nu metal",
+        "rap metal",
+        "alternative metal",
+        "rap rock",
+        "rock"
+      ],
+      "popularity": 75,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Linkin Park",
+      "genres": [
+        "nu metal",
+        "rap metal",
+        "rock",
+        "alternative metal"
+      ],
+      "popularity": 90,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Falling In Reverse",
+      "genres": [
+        "emo",
+        "rap metal"
+      ],
+      "popularity": 76,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Disturbed",
+      "genres": [
+        "metal",
+        "nu metal",
+        "alternative metal",
+        "rap metal",
+        "hard rock"
+      ],
+      "popularity": 78,
+      "time_range": "long_term"
+    },
+    {
+      "name": "100 gecs",
+      "genres": [
+        "hyperpop",
+        "glitch"
+      ],
+      "popularity": 61,
+      "time_range": "long_term"
+    },
+    {
+      "name": "RomancePlanet",
+      "genres": [
+        "hyperpop",
+        "gabber"
+      ],
+      "popularity": 54,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Kanye West",
+      "genres": [
+        "rap"
+      ],
+      "popularity": 92,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Charli xcx",
+      "genres": [
+        "hyperpop",
+        "art pop"
+      ],
+      "popularity": 87,
+      "time_range": "long_term"
+    },
+    {
+      "name": "System Of A Down",
+      "genres": [
+        "nu metal",
+        "metal",
+        "alternative metal",
+        "rap metal",
+        "rock"
+      ],
+      "popularity": 84,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Skrillex",
+      "genres": [
+        "dubstep",
+        "edm",
+        "electro",
+        "electronic"
+      ],
+      "popularity": 79,
+      "time_range": "long_term"
+    }
+  ],
+  "top_tracks": [
+    {
+      "name": "Rock That Body",
+      "artist": "Black Eyed Peas",
+      "album": "THE E.N.D. (THE ENERGY NEVER DIES) [Deluxe Version]",
+      "popularity": 76,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Runaway",
+      "artist": "Bon Jovi",
+      "album": "Bon Jovi",
+      "popularity": 77,
+      "time_range": "short_term"
+    },
+    {
+      "name": "To \u00dc (feat. AlunaGeorge)",
+      "artist": "Jack \u00dc",
+      "album": "Skrillex and Diplo present Jack \u00dc",
+      "popularity": 60,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Rickety",
+      "artist": "Syka",
+      "album": "Rickety",
+      "popularity": 49,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Pursuit Of Happiness - Extended Steve Aoki Remix",
+      "artist": "Kid Cudi",
+      "album": "Pursuit Of Happiness (International Version)",
+      "popularity": 54,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Something",
+      "artist": "Lasgo",
+      "album": "Some Things",
+      "popularity": 11,
+      "time_range": "short_term"
+    },
+    {
+      "name": "X Rated",
+      "artist": "Excision",
+      "album": "X Rated",
+      "popularity": 39,
+      "time_range": "short_term"
+    },
+    {
+      "name": "Kryptonite",
+      "artist": "3 Doors Down",
+      "album": "The Better Life",
+      "popularity": 84,
+      "time_range": "short_term"
+    },
+    {
+      "name": "RUNAWAY",
+      "artist": "OneRepublic",
+      "album": "Artificial Paradise (Deluxe)",
+      "popularity": 62,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Again",
+      "artist": "Fetty Wap",
+      "album": "Fetty Wap (Deluxe)",
+      "popularity": 81,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Runaway",
+      "artist": "Bon Jovi",
+      "album": "Bon Jovi",
+      "popularity": 77,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Oxy Cotton",
+      "artist": "Lil Wyte",
+      "album": "Doubt Me Now",
+      "popularity": 58,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Adventure of a Lifetime",
+      "artist": "Coldplay",
+      "album": "A Head Full of Dreams",
+      "popularity": 88,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Cover Me In Sunshine",
+      "artist": "P!nk",
+      "album": "All I Know So Far: Setlist",
+      "popularity": 69,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Everything In Its Right Place",
+      "artist": "Radiohead",
+      "album": "Kid A",
+      "popularity": 78,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "Keith Don't Go - Live",
+      "artist": "Nils Lofgren",
+      "album": "Acoustic Live",
+      "popularity": 44,
+      "time_range": "medium_term"
+    },
+    {
+      "name": "RUNAWAY",
+      "artist": "OneRepublic",
+      "album": "RUNAWAY",
+      "popularity": 68,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Dreamscape",
+      "artist": "009 Sound System",
+      "album": "009 Sound System",
+      "popularity": 53,
+      "time_range": "long_term"
+    },
+    {
+      "name": "In Loving Memory",
+      "artist": "First and Forever",
+      "album": "In Loving Memory",
+      "popularity": 51,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Scary Monsters and Nice Sprites",
+      "artist": "Skrillex",
+      "album": "Scary Monsters and Nice Sprites EP",
+      "popularity": 63,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Blue Hedgehog",
+      "artist": "Versta",
+      "album": "Blue Hedgehog",
+      "popularity": 43,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Since U Been Gone",
+      "artist": "Kelly Clarkson",
+      "album": "Breakaway",
+      "popularity": 79,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Blueberry Yum Yum",
+      "artist": "Ludacris",
+      "album": "The Red Light District",
+      "popularity": 65,
+      "time_range": "long_term"
+    },
+    {
+      "name": "Again",
+      "artist": "Fetty Wap",
+      "album": "Fetty Wap (Deluxe)",
+      "popularity": 81,
+      "time_range": "long_term"
+    }
+  ]
+}
