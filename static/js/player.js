@@ -4,6 +4,7 @@
  */
 
 let isInitialized = false;
+let sessionAdjustment = null;
 
 // Custom logging function with truncation
 function log(message, level = 'info') {
@@ -484,9 +485,12 @@ function handleAIRecommendation() {
 
         if (sessionAdjustment) {
             payload.session_adjustment = sessionAdjustment;
+            log('🎛️ Including session adjustment in request:', sessionAdjustment);
+        } else {
+            log('🎛️ No session adjustment to include in request');
         }
 
-        log('Request payload prepared');
+        log('Request payload prepared:', payload);
 
         // Make AI recommendation request
         return fetch(endpoint, {
@@ -993,8 +997,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Session preferences functionality
-let sessionAdjustment = null;
-
 function setupSessionPreferences() {
     const applyButton = document.getElementById('applySessionAdjustment');
     const clearButton = document.getElementById('clearSessionAdjustment');
@@ -1030,7 +1032,9 @@ function setupSessionPreferences() {
 }
 
 function applySessionAdjustment(adjustment) {
+    // Store in both local variable and localStorage
     sessionAdjustment = adjustment;
+    localStorage.setItem('sessionAdjustment', adjustment);
     
     const statusDiv = document.getElementById('sessionAdjustmentStatus');
     const messageSpan = document.getElementById('sessionAdjustmentMessage');
@@ -1039,11 +1043,13 @@ function applySessionAdjustment(adjustment) {
     statusDiv.className = 'alert alert-success';
     messageSpan.textContent = `Session preference applied: "${adjustment}"`;
     
-    log('🎛️ Session adjustment applied:', adjustment);
+    log('🎛️ Session adjustment applied and saved to localStorage:', adjustment);
 }
 
 function clearSessionAdjustment() {
+    // Clear both local variable and localStorage
     sessionAdjustment = null;
+    localStorage.removeItem('sessionAdjustment');
     
     const textArea = document.getElementById('sessionAdjustmentText');
     const statusDiv = document.getElementById('sessionAdjustmentStatus');
@@ -1051,7 +1057,7 @@ function clearSessionAdjustment() {
     textArea.value = '';
     statusDiv.style.display = 'none';
     
-    log('🎛️ Session adjustment cleared');
+    log('🎛️ Session adjustment cleared from localStorage');
 }
 
 function setupAISettings() {
@@ -1303,6 +1309,29 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             showNotification('⚡ Lightning Mode Active - Hyper fast recommendations enabled!', 'success');
         }, 2000);
+    }
+});
+
+// Initialize session adjustment from localStorage on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load session adjustment from localStorage if it exists
+    const savedSessionAdjustment = localStorage.getItem('sessionAdjustment');
+    if (savedSessionAdjustment) {
+        sessionAdjustment = savedSessionAdjustment;
+        
+        // Update the UI to show the saved session adjustment
+        const textArea = document.getElementById('sessionAdjustmentText');
+        const statusDiv = document.getElementById('sessionAdjustmentStatus');
+        const messageSpan = document.getElementById('sessionAdjustmentMessage');
+        
+        if (textArea) textArea.value = savedSessionAdjustment;
+        if (statusDiv && messageSpan) {
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'alert alert-success';
+            messageSpan.textContent = `Session preference applied: "${savedSessionAdjustment}"`;
+        }
+        
+        log('🎛️ Restored session adjustment from localStorage:', savedSessionAdjustment);
     }
 });
 

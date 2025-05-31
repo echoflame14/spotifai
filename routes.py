@@ -1442,6 +1442,12 @@ def ai_recommendation_lightning():
     gemini_api_key = request_data.get('gemini_api_key')
     session_adjustment = request_data.get('session_adjustment', '')
     
+    # Debug logging for session adjustment
+    if session_adjustment:
+        app.logger.info(f"SESSION ADJUSTMENT RECEIVED: '{session_adjustment}'")
+    else:
+        app.logger.info("SESSION ADJUSTMENT: No adjustment provided")
+    
     if not gemini_api_key:
         return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
 
@@ -1796,6 +1802,12 @@ def ai_recommendation():
     gemini_api_key = request_data.get('gemini_api_key')
     session_adjustment = request_data.get('session_adjustment', '')
     
+    # Debug logging for session adjustment
+    if session_adjustment:
+        app.logger.info(f"SESSION ADJUSTMENT RECEIVED: '{session_adjustment}'")
+    else:
+        app.logger.info("SESSION ADJUSTMENT: No adjustment provided")
+    
     if not gemini_api_key:
         return jsonify({'success': False, 'message': 'Gemini API key required'}), 400
 
@@ -1929,19 +1941,25 @@ MUSIC DATA:
 
 RECENT RECOMMENDATIONS (DO NOT REPEAT): {recent_recommendations}
 
-SESSION ADJUSTMENT: {session_adjustment}
+{"IMPORTANT SESSION ADJUSTMENT FROM USER: " + session_adjustment if session_adjustment else "No specific session preferences provided."}
 
 Recommend exactly ONE song in this format:
 SONG: [song title]
 ARTIST: [artist name]
-REASON: [one sentence explaining why this matches their taste]
+REASON: [one sentence explaining why this matches their taste{"and session preference" if session_adjustment else ""}]
 
 The song should:
 - Match their established preferences
-- Introduce slight variation to keep things interesting
+{f"- PRIORITIZE the user's session adjustment: {session_adjustment}" if session_adjustment else "- Introduce slight variation to keep things interesting"}
 - Be available on Spotify
 - Not repeat recent recommendations
+{"- Respect the specific session mood/style requested above" if session_adjustment else ""}
 """
+        
+        # Debug log the full prompt (truncated for readability)
+        app.logger.info(f"STANDARD: Recommendation prompt includes session adjustment: {bool(session_adjustment)}")
+        if session_adjustment:
+            app.logger.info(f"STANDARD: Session adjustment in prompt: '{session_adjustment}'")
         
         try:
             rec_response = model.generate_content(rec_prompt)
