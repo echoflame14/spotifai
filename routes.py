@@ -459,117 +459,70 @@ def generate_music_taste_insights(spotify_client, gemini_api_key=None):
         return generate_basic_insights(spotify_client)
 
 def generate_ultra_detailed_music_analysis(comprehensive_music_data, gemini_api_key):
-    """Use Gemini AI to generate ultra-detailed, comprehensive music taste insights with psychological depth"""
+    """Use Gemini AI to generate comprehensive music taste insights with memory optimization"""
     try:
         import google.generativeai as genai
         
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')  # Use the most advanced model
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
-        # Create an extremely comprehensive prompt for ultra-detailed analysis
+        # Extract key data points to reduce prompt size
+        key_artists = comprehensive_music_data.get('top_artists', {}).get('examples', [])[:5]
+        key_genres = comprehensive_music_data.get('genres', {}).get('examples', [])[:5]
+        recent_tracks = comprehensive_music_data.get('recent_tracks', {}).get('examples', [])[:5]
+        
+        # Create optimized prompt for detailed analysis
         prompt = f"""
-You are a sophisticated music psychologist and data analyst with expertise in musical taste profiling, behavioral psychology, and cultural music trends. Analyze this comprehensive Spotify listening data to create an extremely detailed psychological and musical profile.
+Analyze this Spotify listening data to create a comprehensive music taste profile:
 
-COMPREHENSIVE MUSIC DATA FOR ANALYSIS:
-{json.dumps(comprehensive_music_data, indent=2)}
+KEY DATA:
+- Top Artists: {key_artists}
+- Main Genres: {key_genres}  
+- Recent Tracks: {recent_tracks}
+- Artist Count: {comprehensive_music_data.get('top_artists', {}).get('count', 0)}
+- Genre Count: {comprehensive_music_data.get('genres', {}).get('count', 0)}
 
-ANALYSIS REQUIREMENTS:
-Create an ultra-detailed, multi-dimensional analysis covering these specific areas with extreme depth and specificity:
+Create a detailed analysis covering:
+1. **Musical Identity**: Core taste, genre preferences, artist patterns
+2. **Listening Behavior**: Patterns, discovery tendencies, engagement style
+3. **Psychological Profile**: What music choices reveal about personality
+4. **Cultural Context**: Mainstream vs alternative positioning
 
-**PSYCHOLOGICAL MUSIC PROFILE:**
-- Deep psychological drivers behind their musical choices
-- Emotional regulation patterns through music
-- Personality traits reflected in listening habits
-- Cognitive and emotional processing style indicated by music preferences
-- Social identity and self-expression through musical taste
-- Stress response and coping mechanisms via music selection
-- Attention patterns and focus preferences based on track characteristics
-
-**MUSICAL IDENTITY & TASTE EVOLUTION:**
-- Core musical identity and what defines their taste
-- Evolution of preferences across different time periods
-- Consistency vs. exploration patterns in their listening
-- Musical adventurousness and openness to new genres
-- Comfort zone vs. discovery balance
-- Cultural and subcultural affiliations through music
-- Generational influences and musical nostalgia patterns
-
-**BEHAVIORAL LISTENING PATTERNS:**
-- Repeat listening psychology and attachment formation
-- Playlist creation and curation tendencies
-- Mood-based listening patterns and emotional regulation
-- Social vs. private listening preferences
-- Active vs. background listening behavior
-- Genre-switching patterns and cognitive flexibility
-- Musical attention span and complexity tolerance
-
-**GENRE PREFERENCES & SONIC CHARACTERISTICS:**
-- Detailed breakdown of genre preferences and their psychological implications
-- Sound texture preferences (aggressive, smooth, complex, minimal)
-- Rhythmic and temporal preferences and their neurological implications
-- Harmonic complexity tolerance and cognitive processing style
-- Lyrical content preferences and verbal processing patterns
-- Production style preferences and aesthetic sensibilities
-
-**SOCIAL & CULTURAL MUSICAL IDENTITY:**
-- Musical taste as social signaling and identity construction
-- Mainstream vs. alternative preferences and social positioning
-- Cultural capital accumulation through music discovery
-- Generational musical markers and cultural belonging
-- Musical gatekeeping tendencies and taste hierarchies
-
-**TEMPORAL & CONTEXTUAL LISTENING:**
-- Time-based listening patterns and lifestyle integration
-- Seasonal and mood-dependent musical preferences
-- Activity-based music selection patterns
-- Energy level matching and circadian rhythm alignment
-- Contextual switching between different musical personas
-
-Respond ONLY with a JSON object in this exact format:
+Respond with a JSON object:
 {{
-    "ultra_detailed_psychological_profile": "[4-6 detailed paragraphs providing extremely comprehensive psychological analysis of their musical personality, including specific references to artists, genres, and behavioral patterns. Include psychological theories, personality insights, emotional regulation patterns, and cognitive processing style. Be specific about what their music choices reveal about their inner world, social identity, and psychological needs. Reference specific data points and patterns from their listening history.]",
-    "comprehensive_musical_identity": "[3-4 paragraphs detailing their core musical identity, taste evolution, and artistic preferences. Include analysis of their genre journey, consistency patterns, discovery tendencies, and musical adventurousness. Reference specific artists and genres from their data and explain what these choices reveal about their aesthetic sensibilities and cultural positioning.]",
-    "detailed_behavioral_analysis": "[2-3 paragraphs analyzing their listening behaviors, repeat patterns, and musical engagement style. Include insights about their emotional regulation through music, social vs. private listening, and how they use music functionally in their daily life.]",
-    "sonic_preference_breakdown": "[2-3 paragraphs detailing their preferences for specific sonic characteristics, production styles, lyrical content, and musical complexity. Reference specific tracks and artists to illustrate points about their aesthetic preferences.]",
-    "cultural_social_context": "[2 paragraphs analyzing their musical taste within broader cultural and social contexts, including mainstream vs. alternative positioning, generational influences, and social identity construction through music.]",
+    "musical_identity": "[3-4 sentences about core taste and preferences]",
+    "listening_behavior": "[2-3 sentences about patterns and engagement]", 
+    "psychological_profile": "[2-3 sentences about personality insights]",
+    "cultural_context": "[2 sentences about cultural positioning]",
     "analysis_ready": true
 }}
 
-CRITICAL REQUIREMENTS:
-- Include specific artist names, track names, and genre references from their actual data
-- Provide psychological depth with references to established psychological theories where relevant
-- Use specific data points (numbers, percentages, patterns) to support analysis
-- Be extremely detailed and comprehensive - aim for 1000+ words total across all sections
-- Connect musical choices to broader personality traits and psychological patterns
-- Reference specific behavioral patterns observable in their listening data
-- Include insights about their emotional relationship with music
-- Analyze their musical taste within broader cultural and social contexts
-
-Make this analysis so detailed and insightful that it feels like a professional psychological assessment of their musical personality.
+Keep total response under 300 words. Be specific but concise.
 """
         
-        app.logger.info("Generating ultra-detailed AI music taste analysis...")
+        app.logger.info("Generating optimized AI music taste analysis...")
         response = model.generate_content(prompt)
         
         if response and response.text:
             # Parse the JSON response
             import re
+            import json
             
             # Extract JSON from the response
             json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
             if json_match:
                 insights_json = json.loads(json_match.group())
-                app.logger.info("Ultra-detailed AI music analysis generated successfully")
+                app.logger.info("Optimized AI music analysis generated successfully")
                 return insights_json
             else:
-                app.logger.warning("Could not extract JSON from ultra-detailed AI response")
+                app.logger.warning("Could not extract JSON from AI response")
                 return None
         else:
-            app.logger.warning("Empty response from ultra-detailed AI music analysis")
+            app.logger.warning("Empty response from AI music analysis")
             return None
             
     except Exception as e:
-        app.logger.error(f"Error in ultra-detailed AI music analysis: {e}")
+        app.logger.error(f"Error in AI music analysis: {e}")
         return None
 
 def generate_basic_insights(spotify_client):
@@ -991,7 +944,7 @@ def get_track_reasoning(recommendation_id):
         return jsonify({'error': 'Failed to get track reasoning'}), 500
 
 def process_feedback_insights(feedbacks, gemini_api_key=None):
-    """Process user feedback entries to generate ultra-detailed AI-powered insights"""
+    """Process user feedback entries to generate AI-powered insights with memory optimization"""
     if not feedbacks:
         return "No feedback available yet. Start rating songs to get personalized insights!"
     
@@ -1000,119 +953,104 @@ def process_feedback_insights(feedbacks, gemini_api_key=None):
         return generate_enhanced_basic_feedback_insights(feedbacks)
     
     try:
-        # Prepare comprehensive feedback data for AI analysis
-        feedback_data = []
-        all_genres = set()
-        all_artists = set()
-        temporal_patterns = {}
+        # Memory optimization: limit and chunk feedback processing
+        max_feedbacks_to_process = min(len(feedbacks), 15)  # Reduced from 25 to prevent OOM
+        chunk_size = 5  # Process 5 feedback entries at a time
         
-        for feedback in feedbacks[:25]:  # Analyze more feedback entries for deeper insights
-            # Get the recommendation details
-            from models import Recommendation
-            recommendation = Recommendation.query.get(feedback.recommendation_id)
-            if recommendation:
-                # Extract creation date for temporal analysis
-                creation_date = feedback.created_at.strftime('%Y-%m-%d') if feedback.created_at else 'unknown'
-                if creation_date not in temporal_patterns:
-                    temporal_patterns[creation_date] = {'positive': 0, 'negative': 0, 'neutral': 0}
-                temporal_patterns[creation_date][feedback.sentiment or 'neutral'] += 1
-                
-                # Collect artists and potential genres for pattern analysis
-                all_artists.add(recommendation.artist_name)
-                
-                feedback_entry = {
-                    'track_name': recommendation.track_name,
-                    'artist_name': recommendation.artist_name,
-                    'album_name': recommendation.album_name,
-                    'feedback_text': feedback.feedback_text,
-                    'sentiment': feedback.sentiment,
-                    'ai_processed_feedback': feedback.ai_processed_feedback,
-                    'created_at': feedback.created_at.isoformat() if feedback.created_at else None,
-                    'recommendation_method': recommendation.recommendation_method,
-                    'session_adjustment': recommendation.session_adjustment,
-                    'was_played': recommendation.was_played,
-                    'play_count': recommendation.play_count or 0
-                }
-                feedback_data.append(feedback_entry)
+        app.logger.info(f"Processing {max_feedbacks_to_process} feedback entries in chunks of {chunk_size}")
         
-        # Generate ultra-detailed AI insights using the more advanced model
+        # Get comprehensive feedback data in smaller chunks
         import google.generativeai as genai
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')  # Use advanced model for detailed analysis
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
         
-        # Create comprehensive prompt for ultra-detailed feedback analysis
-        prompt = f"""
-You are a sophisticated music psychology AI analyzing a user's feedback patterns to provide comprehensive insights about their musical preferences, listening behavior, and taste evolution. 
+        chunk_insights = []
+        feedbacks_to_process = feedbacks[:max_feedbacks_to_process]
+        
+        # Process feedback in chunks to reduce memory usage
+        for i in range(0, len(feedbacks_to_process), chunk_size):
+            chunk = feedbacks_to_process[i:i + chunk_size]
+            app.logger.info(f"Processing feedback chunk {i//chunk_size + 1}/{(len(feedbacks_to_process) + chunk_size - 1)//chunk_size}")
+            
+            # Prepare minimal feedback data for this chunk
+            feedback_data = []
+            for feedback in chunk:
+                from models import Recommendation
+                recommendation = Recommendation.query.get(feedback.recommendation_id)
+                if recommendation:
+                    feedback_entry = {
+                        'track_name': recommendation.track_name,
+                        'artist_name': recommendation.artist_name,
+                        'sentiment': feedback.sentiment,
+                        'feedback_text': feedback.feedback_text,
+                        'was_played': recommendation.was_played,
+                        'recommendation_method': recommendation.recommendation_method
+                    }
+                    feedback_data.append(feedback_entry)
+            
+            # Create concise prompt for chunk analysis
+            chunk_prompt = f"""
+Analyze this set of {len(feedback_data)} music feedback entries and provide key insights in 2-3 sentences:
 
-COMPREHENSIVE FEEDBACK DATA:
-{json.dumps(feedback_data, indent=2)}
+FEEDBACK DATA:
+{json.dumps(feedback_data, indent=1)}
 
-TEMPORAL PATTERNS:
-{json.dumps(temporal_patterns, indent=2)}
+Focus on:
+- Musical preference patterns
+- Recommendation performance
+- Key learning points
 
-STATISTICAL OVERVIEW:
-- Total feedback entries analyzed: {len(feedback_data)}
-- Unique artists in feedback: {len(all_artists)}
-- Artists mentioned: {list(all_artists)[:10]}
-- Feedback span: {min(temporal_patterns.keys()) if temporal_patterns else 'N/A'} to {max(temporal_patterns.keys()) if temporal_patterns else 'N/A'}
-
-ANALYSIS REQUIREMENTS:
-Create an ultra-detailed, comprehensive analysis covering these specific areas:
-
-1. **MUSICAL TASTE PATTERNS & PREFERENCES**:
-   - Identify specific musical characteristics the user consistently loves/dislikes
-   - Analyze artist preferences and any emerging patterns
-   - Detect genre preferences and aversions based on feedback
-   - Note any contradictions or interesting combinations in their taste
-
-2. **BEHAVIORAL & LISTENING INSIGHTS**:
-   - Analyze their feedback style and engagement level
-   - Identify patterns in what they choose to play vs. skip
-   - Examine their openness to new discoveries vs. familiar territory
-   - Look for mood-based or contextual preferences
-
-3. **RECOMMENDATION SYSTEM PERFORMANCE**:
-   - Evaluate which recommendation methods (standard/lightning/playlist) work best
-   - Identify what session adjustments lead to positive feedback
-   - Analyze the success rate of different musical approaches
-   - Note any recommendation improvements over time
-
-4. **DETAILED LEARNING INSIGHTS**:
-   - Specific improvements you've made based on their feedback
-   - Concrete examples of how their input shaped future recommendations
-   - Detailed explanations of preference patterns you've discovered
-   - Specific artists, genres, or characteristics to emphasize/avoid
-
-5. **PSYCHOLOGICAL MUSIC PROFILE**:
-   - Analyze their relationship with music discovery
-   - Identify their preferred musical complexity levels
-   - Examine their emotional connections to different musical elements
-   - Note any personality traits reflected in their musical choices
-
-6. **FORWARD-LOOKING RECOMMENDATIONS**:
-   - Specific musical directions to explore based on their feedback
-   - Detailed suggestions for expanding their taste while respecting preferences
-   - Concrete artists or genres to introduce gradually
-   - Specific musical characteristics to emphasize in future recommendations
-
-FORMAT YOUR RESPONSE as a comprehensive, conversational analysis using multiple detailed paragraphs. Be specific, use exact examples from their feedback data, mention specific songs and artists, and provide actionable insights. Aim for 500-800 words of detailed analysis that shows deep understanding of their musical journey.
-
-Do NOT be concise - be thorough, specific, and comprehensive. Include specific examples and detailed observations.
+Provide a concise summary in 150 words or less.
 """
+            
+            try:
+                response = model.generate_content(chunk_prompt)
+                if response and response.text:
+                    chunk_insight = response.text.strip()
+                    chunk_insights.append(chunk_insight)
+                    app.logger.info(f"Generated chunk insight ({len(chunk_insight)} characters)")
+                else:
+                    app.logger.warning(f"No response for chunk {i//chunk_size + 1}")
+            except Exception as e:
+                app.logger.error(f"Error processing chunk {i//chunk_size + 1}: {e}")
+                continue
         
-        app.logger.info("Generating ultra-detailed AI-powered feedback insights...")
-        response = model.generate_content(prompt)
-        
-        if response and response.text:
-            ai_insights = response.text.strip()
-            app.logger.info(f"Ultra-detailed AI feedback insights generated successfully ({len(ai_insights)} characters)")
-            return ai_insights
+        # If we have chunk insights, combine them into a final summary
+        if chunk_insights:
+            app.logger.info("Generating final comprehensive summary from chunk insights")
+            
+            # Create final summary prompt with reduced size
+            final_prompt = f"""
+Based on these individual feedback analysis chunks, create a comprehensive but concise music taste profile:
+
+CHUNK INSIGHTS:
+{chr(10).join([f"Chunk {i+1}: {insight}" for i, insight in enumerate(chunk_insights)])}
+
+TOTAL FEEDBACK ANALYZED: {max_feedbacks_to_process} entries
+
+Create a comprehensive analysis covering:
+1. **Musical Taste Patterns**: Key preferences and patterns identified
+2. **Recommendation Performance**: How well the AI is learning their taste
+3. **Learning Insights**: Specific improvements and discoveries
+4. **Future Directions**: Recommended musical exploration paths
+
+Limit response to 400-500 words. Be specific but concise.
+"""
+            
+            response = model.generate_content(final_prompt)
+            if response and response.text:
+                final_insights = response.text.strip()
+                app.logger.info(f"Generated final comprehensive insights ({len(final_insights)} characters)")
+                return final_insights
+            else:
+                app.logger.warning("Failed to generate final summary, combining chunk insights")
+                return " ".join(chunk_insights)
         else:
-            app.logger.warning("Advanced AI feedback analysis failed, using enhanced fallback")
+            app.logger.warning("No chunk insights generated, using enhanced fallback")
             return generate_enhanced_basic_feedback_insights(feedbacks)
             
     except Exception as e:
-        app.logger.error(f"Error generating ultra-detailed AI feedback insights: {e}")
+        app.logger.error(f"Error generating AI feedback insights: {e}")
         return generate_enhanced_basic_feedback_insights(feedbacks)
 
 def generate_enhanced_basic_feedback_insights(feedbacks):
@@ -1195,6 +1133,16 @@ def generate_basic_feedback_insights(feedbacks):
 @app.route('/feedback-insights', methods=['GET', 'POST'])
 def get_feedback_insights():
     logger.debug('Fetching feedback insights')
+    
+    # Log memory usage before processing
+    try:
+        import psutil
+        process = psutil.Process()
+        memory_before = process.memory_info().rss / 1024 / 1024  # MB
+        app.logger.info(f"Memory usage before feedback processing: {memory_before:.1f}MB")
+    except Exception:
+        memory_before = None
+    
     try:
         # Get user's feedback history
         user_id = session.get('user_id')
@@ -1217,6 +1165,20 @@ def get_feedback_insights():
 
         # Process feedback for insights (with or without AI)
         insights = process_feedback_insights(feedbacks, gemini_api_key)
+        
+        # Log memory usage after processing
+        if memory_before:
+            try:
+                memory_after = process.memory_info().rss / 1024 / 1024  # MB
+                memory_diff = memory_after - memory_before
+                app.logger.info(f"Memory usage after feedback processing: {memory_after:.1f}MB (diff: {memory_diff:+.1f}MB)")
+                
+                # Warning if memory usage increased significantly
+                if memory_diff > 50:  # More than 50MB increase
+                    app.logger.warning(f"High memory increase during feedback processing: {memory_diff:.1f}MB")
+            except Exception:
+                pass
+        
         logger.debug('Successfully generated feedback insights')
         return jsonify({'insights': insights, 'ai_powered': bool(gemini_api_key)})
 
