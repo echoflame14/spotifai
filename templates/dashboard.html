@@ -517,6 +517,18 @@ function generateMusicTasteProfile() {
         generateBtn.disabled = true;
     }
     
+    // Update AI transparency sections to show profile generation in progress
+    const analysisElement = document.getElementById('aiAnalysisData');
+    const inputElement = document.getElementById('aiInputData');
+    const outputElement = document.getElementById('aiOutputData');
+    
+    if (inputElement) {
+        inputElement.textContent = `Music Taste Profile Generation Started...
+API Key: Provided
+Timestamp: ${new Date().toLocaleString()}
+Status: Analyzing Spotify listening data...`;
+    }
+    
     // Make API call to generate music taste profile
     fetch('/api/generate-music-taste-profile', {
         method: 'POST',
@@ -534,12 +546,55 @@ function generateMusicTasteProfile() {
             updateMusicProfileContent(data.insights);
             window.musicProfileGenerated = true;
             console.log('Music taste profile generated successfully');
+            
+            // Update AI transparency sections with the profile data
+            if (analysisElement) {
+                let analysisText = 'Music Taste Profile Analysis:\n\n';
+                if (data.insights.user_taste_profile) {
+                    analysisText += `Musical Personality:\n${data.insights.user_taste_profile}\n\n`;
+                }
+                if (data.insights.recent_mood_analysis) {
+                    analysisText += `Recent Listening Patterns:\n${data.insights.recent_mood_analysis}\n\n`;
+                }
+                analysisText += `Analysis Generated: ${new Date().toLocaleString()}`;
+                analysisElement.textContent = analysisText;
+            }
+            
+            if (inputElement) {
+                const currentContent = inputElement.textContent;
+                inputElement.textContent = currentContent + `\n\nProfile Generation Complete
+AI Model: gemini-2.5-flash-preview-05-20
+Data Sources: Recent tracks, top artists, listening patterns
+Analysis Type: Psychological music profiling`;
+            }
+            
+            if (outputElement) {
+                let outputText = 'Music Taste Profile Generated:\n\n';
+                if (data.insights.user_taste_profile) {
+                    outputText += `"${data.insights.user_taste_profile}"\n\n`;
+                }
+                if (data.insights.recent_mood_analysis) {
+                    outputText += `Recent Mood Analysis:\n"${data.insights.recent_mood_analysis}"\n\n`;
+                }
+                outputText += `Generation Status: Success
+Analysis Ready: ${data.insights.analysis_ready}
+Timestamp: ${new Date().toLocaleString()}`;
+                outputElement.textContent = outputText;
+            }
+            
         } else {
             console.warn('Music taste profile generation failed:', data.message);
             // Reset button state on failure
             if (generateBtn) {
                 generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate AI Profile';
                 generateBtn.disabled = false;
+            }
+            
+            // Update AI transparency sections with error info
+            if (outputElement) {
+                outputElement.textContent = `Music Taste Profile Generation Failed:
+Error: ${data.message}
+Timestamp: ${new Date().toLocaleString()}`;
             }
         }
     })
@@ -549,6 +604,13 @@ function generateMusicTasteProfile() {
         if (generateBtn) {
             generateBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate AI Profile';
             generateBtn.disabled = false;
+        }
+        
+        // Update AI transparency sections with error info
+        if (outputElement) {
+            outputElement.textContent = `Music Taste Profile Generation Error:
+Network Error: ${error.message}
+Timestamp: ${new Date().toLocaleString()}`;
         }
     });
 }
@@ -603,6 +665,9 @@ function updateMusicProfileContent(insights) {
 
 // Auto-generate music taste profile when page loads and API key becomes available
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize AI transparency sections based on API key availability
+    initializeAITransparencySections();
+    
     // Try to generate immediately if API key is already available
     generateMusicTasteProfile();
     
@@ -619,9 +684,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Also listen for storage changes in case API key is added in another tab
     window.addEventListener('storage', function(e) {
-        if (e.key === 'gemini_api_key' && e.newValue) {
-            generateMusicTasteProfile();
-            updateGenerateButtonVisibility();
+        if (e.key === 'gemini_api_key') {
+            if (e.newValue) {
+                generateMusicTasteProfile();
+                updateGenerateButtonVisibility();
+                updateAITransparencyForApiKey(true);
+            } else {
+                updateAITransparencyForApiKey(false);
+            }
         }
     });
     
@@ -636,6 +706,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Function to initialize AI transparency sections based on API key availability
+function initializeAITransparencySections() {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    updateAITransparencyForApiKey(!!apiKey);
+}
+
+// Function to update AI transparency sections based on API key availability
+function updateAITransparencyForApiKey(hasApiKey) {
+    const analysisElement = document.getElementById('aiAnalysisData');
+    const inputElement = document.getElementById('aiInputData');
+    const outputElement = document.getElementById('aiOutputData');
+    
+    if (hasApiKey) {
+        if (analysisElement) {
+            analysisElement.textContent = 'AI capabilities enabled - generate a music profile or make a recommendation to see analysis data';
+        }
+        if (inputElement) {
+            inputElement.textContent = 'AI capabilities enabled - generate a music profile or make a recommendation to see input data';
+        }
+        if (outputElement) {
+            outputElement.textContent = 'AI capabilities enabled - generate a music profile or make a recommendation to see output data';
+        }
+    } else {
+        if (analysisElement) {
+            analysisElement.textContent = 'No data available - Gemini API key required for AI features. Add your API key in AI Settings above.';
+        }
+        if (inputElement) {
+            inputElement.textContent = 'No data available - Gemini API key required for AI features. Add your API key in AI Settings above.';
+        }
+        if (outputElement) {
+            outputElement.textContent = 'No data available - Gemini API key required for AI features. Add your API key in AI Settings above.';
+        }
+    }
+}
 
 // Function to check if we should show the generate button
 function updateGenerateButtonVisibility() {

@@ -5,6 +5,7 @@
 
 let isInitialized = false;
 let sessionAdjustment = null;
+let lastAIData = null; // Store AI interaction data globally
 
 // Custom logging function with truncation
 function log(message, level = 'info') {
@@ -493,6 +494,17 @@ function handleAIRecommendation() {
 
         log('Request payload prepared:', payload);
 
+        // Update AI Input Data immediately with the request info
+        const inputElement = document.getElementById('aiInputData');
+        if (inputElement) {
+            inputElement.textContent = `AI Recommendation Request Started...
+Endpoint: ${endpoint}
+Mode: ${mode}
+Session Adjustment: ${sessionAdjustment || 'None'}
+API Key: ${customGeminiKey ? 'Provided' : 'Missing'}
+Timestamp: ${new Date().toLocaleString()}`;
+        }
+
         // Make AI recommendation request
         return fetch(endpoint, {
             method: 'POST',
@@ -515,6 +527,16 @@ function handleAIRecommendation() {
         if (data.success) {
             log('Recommendation successful:', data.track.name, 'by', data.track.artist);
             
+            // Update AI transparency data with the full response
+            updateAITransparencyData({
+                track: data.track,
+                ai_recommendation: data.ai_recommendation,
+                user_profile: data.user_profile,
+                session_adjustment: sessionAdjustment,
+                performance_stats: data.performance_stats,
+                exact_match: data.exact_match
+            });
+            
             // Show performance banner with stats
             if (data.performance_stats) {
                 showPerformanceBanner(data.performance_stats, data.performance_stats.mode || 'standard');
@@ -536,6 +558,13 @@ function handleAIRecommendation() {
     .catch(error => {
         log('AI recommendation request failed:', error.message, 'error');
         showRecommendationError('Network error: ' + error.message);
+        
+        // Update AI data with error info
+        const outputElement = document.getElementById('aiOutputData');
+        if (outputElement) {
+            outputElement.textContent = `Error: ${error.message}
+Timestamp: ${new Date().toLocaleString()}`;
+        }
     })
     .finally(() => {
         // Remove loading state
@@ -556,6 +585,15 @@ function generateConversationalReasoning(recommendationId, geminiApiKey) {
     const reasoningElement = document.querySelector('.ai-reasoning-text');
     if (reasoningElement) {
         reasoningElement.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Crafting your personalized explanation...';
+    }
+    
+    // Update AI Input Data to show reasoning generation
+    const inputElement = document.getElementById('aiInputData');
+    if (inputElement && lastAIData) {
+        const currentContent = inputElement.textContent;
+        inputElement.textContent = currentContent + `\n\nGenerating conversational reasoning...
+Recommendation ID: ${recommendationId}
+Timestamp: ${new Date().toLocaleString()}`;
     }
     
     // Make request to generate reasoning
@@ -587,6 +625,16 @@ function generateConversationalReasoning(recommendationId, geminiApiKey) {
                 reasoningElement.innerHTML = data.ai_reasoning;
             }
             
+            // Update AI Output Data with the new reasoning
+            const outputElement = document.getElementById('aiOutputData');
+            if (outputElement && lastAIData) {
+                const currentContent = outputElement.textContent;
+                outputElement.textContent = currentContent + `\n\nConversational Reasoning Generated:
+"${data.ai_reasoning}"
+Generation Time: ${data.generation_time}s
+Timestamp: ${new Date().toLocaleString()}`;
+            }
+            
             // Show a subtle notification
             showNotification('✨ Personalized explanation ready!', 'success');
         } else {
@@ -596,6 +644,13 @@ function generateConversationalReasoning(recommendationId, geminiApiKey) {
             if (reasoningElement) {
                 reasoningElement.innerHTML = 'This track was selected based on your unique music taste and listening patterns.';
             }
+            
+            // Update AI Output Data with error
+            const outputElement = document.getElementById('aiOutputData');
+            if (outputElement) {
+                const currentContent = outputElement.textContent;
+                outputElement.textContent = currentContent + `\n\nReasoning Generation Failed: ${data.message}`;
+            }
         }
     })
     .catch(error => {
@@ -604,6 +659,13 @@ function generateConversationalReasoning(recommendationId, geminiApiKey) {
         // Show fallback message
         if (reasoningElement) {
             reasoningElement.innerHTML = 'This track was selected based on your unique music taste and listening patterns.';
+        }
+        
+        // Update AI Output Data with error
+        const outputElement = document.getElementById('aiOutputData');
+        if (outputElement) {
+            const currentContent = outputElement.textContent;
+            outputElement.textContent = currentContent + `\n\nReasoning Generation Error: ${error.message}`;
         }
     });
 }
@@ -668,8 +730,6 @@ function showPerformanceBanner(stats, mode) {
         container.insertBefore(banner, container.firstChild);
     }
 }
-
-let lastAIData = null; // Store AI interaction data globally
 
 function displayRecommendedTrack(track, reasoning, recommendationId) {
     log('Displaying recommended track...');
@@ -1210,6 +1270,21 @@ function setupAISettings() {
             showNotification('API key saved successfully', 'success');
             clearKeyBtn.style.display = 'block';
             
+            // Update AI transparency sections to show API key is available
+            const analysisElement = document.getElementById('aiAnalysisData');
+            const inputElement = document.getElementById('aiInputData');
+            const outputElement = document.getElementById('aiOutputData');
+            
+            if (analysisElement) {
+                analysisElement.textContent = 'AI capabilities enabled - make a recommendation to see analysis data';
+            }
+            if (inputElement) {
+                inputElement.textContent = 'AI capabilities enabled - make a recommendation to see input data';
+            }
+            if (outputElement) {
+                outputElement.textContent = 'AI capabilities enabled - make a recommendation to see output data';
+            }
+            
             // Refresh feedback insights to show AI-powered version
             setTimeout(() => {
                 fetchFeedbackInsights();
@@ -1231,6 +1306,22 @@ function setupAISettings() {
             clearKeyBtn.style.display = 'none';
             log('API key cleared successfully');
             showNotification('API key cleared', 'success');
+            
+            // Reset AI transparency sections
+            const analysisElement = document.getElementById('aiAnalysisData');
+            const inputElement = document.getElementById('aiInputData');
+            const outputElement = document.getElementById('aiOutputData');
+            
+            if (analysisElement) {
+                analysisElement.textContent = 'No data available - API key required for AI features';
+            }
+            if (inputElement) {
+                inputElement.textContent = 'No data available - API key required for AI features';
+            }
+            if (outputElement) {
+                outputElement.textContent = 'No data available - API key required for AI features';
+            }
+            
         } catch (error) {
             log('Failed to clear API key:', error, 'error');
             showNotification('Failed to clear API key', 'error');
@@ -1424,6 +1515,80 @@ document.addEventListener('DOMContentLoaded', function() {
         log('🎛️ Restored session adjustment from localStorage:', savedSessionAdjustment);
     }
 });
+
+// New function to update AI transparency data
+function updateAITransparencyData(aiData) {
+    try {
+        // Store the data globally
+        lastAIData = aiData;
+        
+        // Update Psychological Analysis
+        const analysisElement = document.getElementById('aiAnalysisData');
+        if (analysisElement && aiData.user_profile) {
+            analysisElement.textContent = aiData.user_profile;
+            log('Updated AI Analysis Data');
+        }
+        
+        // Update Input to Gemini AI (reconstruct the prompt)
+        const inputElement = document.getElementById('aiInputData');
+        if (inputElement && aiData.ai_recommendation) {
+            // Create a simplified representation of the input prompt
+            const inputData = `AI Recommendation Request:
+Track: ${aiData.track?.name || 'Unknown'} by ${aiData.track?.artist || 'Unknown'}
+User Profile: ${aiData.user_profile || 'No profile available'}
+Session Adjustment: ${aiData.session_adjustment || 'None'}
+Mode: ${aiData.performance_stats?.mode || 'standard'}
+Model: ${aiData.performance_stats?.model_used || 'unknown'}`;
+            
+            inputElement.textContent = inputData;
+            log('Updated AI Input Data');
+        }
+        
+        // Update Response from Gemini AI
+        const outputElement = document.getElementById('aiOutputData');
+        if (outputElement && aiData.ai_recommendation) {
+            const outputData = `AI Recommendation Response:
+${aiData.ai_recommendation}
+
+Processing Stats:
+- Total Duration: ${aiData.performance_stats?.total_duration || 'N/A'}s
+- Model: ${aiData.performance_stats?.model_used || 'unknown'}
+- Mode: ${aiData.performance_stats?.mode || 'standard'}
+- Exact Match: ${aiData.exact_match ? 'Yes' : 'No'}`;
+            
+            outputElement.textContent = outputData;
+            log('Updated AI Output Data');
+        }
+        
+        log('AI Transparency data updated successfully');
+    } catch (error) {
+        log('Error updating AI transparency data:', error, 'error');
+    }
+}
+
+// New function to update AI data from music taste profile
+function updateAIDataFromProfile(profileData) {
+    try {
+        // Update Psychological Analysis
+        const analysisElement = document.getElementById('aiAnalysisData');
+        if (analysisElement && profileData) {
+            let analysisText = '';
+            if (profileData.user_taste_profile) {
+                analysisText += `Music Taste Profile:\n${profileData.user_taste_profile}\n\n`;
+            }
+            if (profileData.recent_mood_analysis) {
+                analysisText += `Recent Mood Analysis:\n${profileData.recent_mood_analysis}`;
+            }
+            if (!analysisText) {
+                analysisText = JSON.stringify(profileData, null, 2);
+            }
+            analysisElement.textContent = analysisText;
+            log('Updated AI Analysis Data from profile');
+        }
+    } catch (error) {
+        log('Error updating AI data from profile:', error, 'error');
+    }
+}
 
 // Console welcome message with debug info
 log('%c🎵 Spotify Clone Player Initialized', 'color: #1db954; font-size: 16px; font-weight: bold;');
