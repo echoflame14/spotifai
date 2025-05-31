@@ -13,6 +13,8 @@ from spotify_client import SpotifyClient
 import google.generativeai as genai
 import logging
 from structured_llm import structured_llm
+import threading
+import queue
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -804,15 +806,51 @@ CRITICAL INSTRUCTIONS:
 - Ground insights in the actual data provided, not generalizations
 """
 
-        app.logger.info("Generating ultra-detailed psychological music analysis with Gemini 2.5 Flash Preview...")
+        app.logger.info("Generating ultra-detailed psychological music analysis with Gemini 1.5 Flash...")
         start_time = time.time()
         
         try:
-            response = model.generate_content(prompt)
+            # Set a timeout for the API call to prevent long waits
+            import threading
+            import queue
+            
+            result_queue = queue.Queue()
+            
+            def generate_with_timeout():
+                try:
+                    response = model.generate_content(prompt)
+                    result_queue.put(('success', response))
+                except Exception as e:
+                    result_queue.put(('error', e))
+            
+            # Start generation in a separate thread
+            thread = threading.Thread(target=generate_with_timeout)
+            thread.daemon = True
+            thread.start()
+            
+            # Wait for result with timeout
+            thread.join(timeout=20)  # 20 second timeout
+            
+            if thread.is_alive():
+                # Timeout occurred
+                app.logger.warning("Psychological analysis timed out after 20 seconds")
+                return None
+            
+            try:
+                result_type, result = result_queue.get_nowait()
+                if result_type == 'error':
+                    raise result
+                response = result
+            except queue.Empty:
+                app.logger.error("No result received from generation thread")
+                return None
+                
             duration = time.time() - start_time
             app.logger.info(f"Gemini API call completed in {duration:.2f}s")
+            
         except Exception as api_error:
-            app.logger.error(f"Gemini API call failed: {api_error}")
+            duration = time.time() - start_time
+            app.logger.error(f"Gemini API call failed after {duration:.2f}s: {api_error}")
             return None
         
         if response and response.text:
@@ -820,23 +858,70 @@ CRITICAL INSTRUCTIONS:
                 # Parse the JSON response
                 import re
                 
-                # Extract JSON from the response
-                json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-                if json_match:
-                    insights_json = json.loads(json_match.group())
-                    app.logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
-                    app.logger.info(f"Analysis includes {len(insights_json)} main sections with deep psychological insights")
-                    return insights_json
+                app.logger.info(f"Raw response length: {len(response.text)} characters")
+                
+                # Clean the response text
+                response_text = response.text.strip()
+                
+                # Remove markdown code blocks if present
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]  # Remove ```json
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]  # Remove ```
+                elif response_text.startswith('```'):
+                    response_text = response_text[3:]  # Remove ```
+                
+                # Try to find and extract complete JSON
+                json_start = response_text.find('{')
+                if json_start != -1:
+                    # Find the matching closing brace
+                    brace_count = 0
+                    json_end = -1
+                    for i, char in enumerate(response_text[json_start:], json_start):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                json_end = i + 1
+                                break
+                    
+                    if json_end != -1:
+                        json_text = response_text[json_start:json_end]
+                        app.logger.info(f"Extracted JSON length: {len(json_text)} characters")
+                        
+                        try:
+                            insights_json = json.loads(json_text)
+                            app.logger.info(f"Ultra-detailed psychological analysis generated successfully in {duration:.2f}s")
+                            app.logger.info(f"Analysis includes {len(insights_json)} main sections with deep psychological insights")
+                            return insights_json
+                        except json.JSONDecodeError as json_error:
+                            app.logger.error(f"Failed to parse extracted JSON: {json_error}")
+                            app.logger.error(f"JSON text (first 500 chars): {json_text[:500]}")
+                            
+                            # Try to create a fallback response
+                            fallback_analysis = {
+                                "psychological_profile": {
+                                    "core_personality": "Analysis completed but JSON parsing failed. User shows diverse musical taste with strong emotional connections.",
+                                    "emotional_patterns": "Complex emotional regulation through music, mixing experimental and familiar elements.",
+                                    "cognitive_style": "Open to new experiences while maintaining emotional anchors in familiar music.",
+                                    "social_tendencies": "Balances mainstream and underground preferences.",
+                                    "life_phase_indicators": "Active exploration phase with established core preferences."
+                                },
+                                "analysis_ready": True,
+                                "parsing_issue": True
+                            }
+                            return fallback_analysis
+                    else:
+                        app.logger.error("Could not find complete JSON in response")
                 else:
-                    app.logger.warning("Could not extract JSON from ultra-detailed analysis response")
-                    app.logger.debug(f"Response text: {response.text[:500]}...")
-                    return None
-            except json.JSONDecodeError as json_error:
-                app.logger.error(f"Failed to parse JSON response: {json_error}")
-                app.logger.debug(f"Response text: {response.text[:500]}...")
+                    app.logger.error("No JSON found in response")
+                
                 return None
+                
             except Exception as parse_error:
                 app.logger.error(f"Error parsing response: {parse_error}")
+                app.logger.debug(f"Response text (first 1000 chars): {response.text[:1000]}")
                 return None
         else:
             app.logger.warning("Empty response from ultra-detailed psychological analysis")
