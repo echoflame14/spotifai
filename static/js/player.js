@@ -837,6 +837,7 @@ function showPerformanceBanner(stats, mode) {
 
 function displayRecommendedTrack(track, reasoning, recommendationId) {
     log('Displaying recommended track...');
+    log('AI Reasoning received:', reasoning); // Log reasoning for debugging
     const trackDiv = document.getElementById('recommendedTrack');
     const recommendationResult = document.getElementById('recommendationResult');
     
@@ -871,6 +872,17 @@ function displayRecommendedTrack(track, reasoning, recommendationId) {
                 <h6 class="text-white mb-1">${track.name}</h6>
                 <p class="text-muted mb-1">${track.artist}</p>
                 <p class="text-muted small mb-0">${track.album}</p>
+                ${reasoning ? `
+                <div class="ai-reasoning mt-2 p-2 rounded" style="background-color: rgba(29, 185, 84, 0.1); border-left: 3px solid #1DB954;">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-robot text-spotify me-2 mt-1" style="font-size: 0.9rem;"></i>
+                        <div>
+                            <small class="text-spotify fw-bold d-block mb-1">AI Reasoning</small>
+                            <small class="text-light" style="line-height: 1.4;">${reasoning}</small>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
             </div>
             <div>
                 <button class="btn btn-spotify me-2" onclick="playRecommendedTrack('${track.uri}')">

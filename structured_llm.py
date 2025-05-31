@@ -4,9 +4,47 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import google.generativeai as genai
 from difflib import SequenceMatcher
+import random
+import time
 
 # Get logger
 logger = logging.getLogger(__name__)
+
+# ENHANCED: Prompt performance tracking
+class PromptPerformanceTracker:
+    def __init__(self):
+        self.metrics = {
+            'recommendation_success_rate': [],
+            'selection_accuracy': [],
+            'parsing_success_rate': [],
+            'average_confidence': [],
+            'response_times': []
+        }
+    
+    def log_recommendation_performance(self, success: bool, confidence: float, response_time: float):
+        self.metrics['recommendation_success_rate'].append(success)
+        self.metrics['average_confidence'].append(confidence)
+        self.metrics['response_times'].append(response_time)
+    
+    def log_selection_performance(self, accuracy: float, parsing_success: bool):
+        self.metrics['selection_accuracy'].append(accuracy)
+        self.metrics['parsing_success_rate'].append(parsing_success)
+    
+    def get_performance_summary(self):
+        if not any(self.metrics.values()):
+            return "No performance data available"
+        
+        summary = {}
+        for metric, values in self.metrics.items():
+            if values:
+                if metric == 'response_times':
+                    summary[metric] = f"{sum(values)/len(values):.2f}s avg"
+                else:
+                    summary[metric] = f"{sum(values)/len(values):.2f} avg"
+        return summary
+
+# Global performance tracker
+performance_tracker = PromptPerformanceTracker()
 
 @dataclass
 class SelectedTrackData:
@@ -126,37 +164,44 @@ class StructuredLLM:
             
             # Create improved prompt for LLM
             prompt = f"""
-You are helping to select the best Spotify search result that matches the intended song and artist.
+You are Spotifai's track matching expert. Select the BEST Spotify search result that matches the target song and artist.
 
-Target Song: "{song_title}"
-Target Artist: "{artist_name}"
+🎯 TARGET:
+Song: "{song_title}"
+Artist: "{artist_name}"
 
-Available search results:
+📋 SEARCH RESULTS:
 {json.dumps(results_for_analysis, indent=2)}
 
-CRITICAL INSTRUCTIONS:
-1. You MUST select an index between 0 and {len(search_results) - 1}
-2. Look for EXACT matches first, then close matches
-3. Artist name match is MORE important than song title match
-4. Consider common variations in spelling, punctuation, and capitalization
-5. If no good match exists, select the closest one but give it a low match_score
+🧠 SMART MATCHING CRITERIA:
+1. EXACT matches get priority (score: 0.9-1.0)
+2. Artist name match is MORE important than song title (weight: 70/30)
+3. Handle common variations:
+   - Punctuation differences ("Don't" vs "Dont")
+   - Articles ("The", "A", "An")
+   - Featuring artists ("feat.", "ft.", "featuring")
+   - Spaces and capitalization
+   - Special characters (&, +, -, etc.)
+4. Album/single versions usually identical content
+5. Higher popularity can break ties between similar matches
 
-Respond with a JSON object in this EXACT format (no additional text):
+🎵 SCORING GUIDE:
+• 0.95-1.0: Perfect match (exact title + artist)
+• 0.85-0.94: Near perfect (minor variations only)  
+• 0.70-0.84: Good match (clear same song, some differences)
+• 0.50-0.69: Acceptable (likely correct but noticeable differences)
+• 0.30-0.49: Poor match (questionable but best available)
+• 0.10-0.29: Very poor (clearly different song/artist)
+
+RESPOND WITH ONLY THIS JSON:
 {{
-    "selected_index": <integer between 0 and {len(search_results) - 1}>,
-    "match_score": <float between 0.0 and 1.0>,
-    "confidence": <float between 0.0 and 1.0>,
-    "reasoning": "<brief explanation of why this result was selected>"
+    "selected_index": {random.choice(range(len(search_results)))},
+    "match_score": 0.85,
+    "confidence": 0.90,
+    "reasoning": "Brief explanation of match quality and any variations noted"
 }}
 
-Example response:
-{{
-    "selected_index": 0,
-    "match_score": 0.95,
-    "confidence": 0.9,
-    "reasoning": "Exact match for both song title and artist name"
-}}
-"""
+SELECT INDEX BETWEEN 0 AND {len(search_results) - 1} ONLY."""
 
             # Generate response
             response = model.generate_content(prompt)
@@ -301,7 +346,7 @@ Example response:
 
     def generate_recommendation_with_reasoning(self, model, music_data: dict, psychological_profile: str, 
                                              session_adjustment: str, blacklist_tracks: list, 
-                                             diversity_warning: str) -> RecommendationResult:
+                                             diversity_warning: str, feedback_insights: dict = None) -> RecommendationResult:
         """
         Generate a song recommendation with clever reasoning in a single LLM call using structured output.
         
@@ -312,71 +357,134 @@ Example response:
             session_adjustment: Any session-specific adjustments
             blacklist_tracks: List of tracks to avoid
             diversity_warning: Warning about recent recommendations
+            feedback_insights: Optional feedback insights from previous recommendations
             
         Returns:
             RecommendationResult with the recommendation and reasoning
         """
         try:
-            # Create comprehensive but concise context
+            # ENHANCED: Intelligent context prioritization
             current_context = "None"
+            current_mood_indicator = ""
             if isinstance(music_data['current_track'], dict) and music_data['current_track'].get('item'):
                 current_track_name = music_data['current_track']['item']['name']
                 current_artist = music_data['current_track']['item']['artists'][0]['name']
                 current_context = f"{current_track_name} by {current_artist}"
+                
+                # Extract mood indicators from current track
+                current_genres = music_data['current_track']['item'].get('genres', [])
+                if current_genres:
+                    current_mood_indicator = f" [Current mood: {', '.join(current_genres[:2])}]"
             
-            # Get recent tracks for context (simplified)
-            recent_tracks_simple = []
+            # ENHANCED: Smart recent tracks selection (prioritize variety and recency)
+            recent_tracks_contextual = []
             if isinstance(music_data['recent_tracks'], list):
-                for item in music_data['recent_tracks'][:8]:  # Just last 8 tracks
+                # Get diverse recent tracks, not just sequential
+                tracks_by_artist = {}
+                for item in music_data['recent_tracks'][:15]:  # Look at more but select smartly
                     track = item.get('track', {})
                     if track:
-                        track_info = f"{track.get('name', 'Unknown')} by {track['artists'][0]['name'] if track.get('artists') else 'Unknown'}"
-                        recent_tracks_simple.append(track_info)
+                        artist = track['artists'][0]['name'] if track.get('artists') else 'Unknown'
+                        track_name = track.get('name', 'Unknown')
+                        
+                        # Limit tracks per artist for diversity
+                        if artist not in tracks_by_artist or len(tracks_by_artist[artist]) < 2:
+                            if artist not in tracks_by_artist:
+                                tracks_by_artist[artist] = []
+                            tracks_by_artist[artist].append(f"{track_name} by {artist}")
+                            recent_tracks_contextual.append(f"{track_name} by {artist}")
+                            
+                            if len(recent_tracks_contextual) >= 8:  # Cap at 8 for efficiency
+                                break
             
-            # Get top genres (simplified)
-            top_genres_simple = music_data.get('top_genres', [])[:10]
+            # ENHANCED: Genre prioritization (focus on dominant patterns)
+            top_genres_weighted = []
+            if music_data.get('top_genres'):
+                # Take top genres but add context about their significance
+                main_genres = music_data['top_genres'][:6]  # Reduced from 10
+                top_genres_weighted = main_genres
+                
+                # Add genre personality insight
+                genre_personality = ""
+                if 'metal' in str(main_genres).lower() and 'pop' in str(main_genres).lower():
+                    genre_personality = " [Genre conflict: seeks intensity AND accessibility]"
+                elif 'electronic' in str(main_genres).lower() and 'rock' in str(main_genres).lower():
+                    genre_personality = " [Genre bridge: synthetic meets organic]"
+            
+            # ENHANCED: Intelligent blacklist trimming (keep only most recent/relevant)
+            relevant_blacklist = blacklist_tracks[:10] if blacklist_tracks else []  # Reduced from 15
+            
+            # ENHANCED: Condensed psychological profile (keep most impactful parts)
+            profile_key_insights = psychological_profile[:600] + "..." if len(psychological_profile) > 600 else psychological_profile
+            
+            # ENHANCED: Format feedback insights for prompt
+            feedback_section = ""
+            if feedback_insights and feedback_insights.get('has_feedback'):
+                if feedback_insights.get('positive_patterns'):
+                    feedback_section += f"\n💚 LEARNED FROM POSITIVE FEEDBACK:\n{chr(10).join(['• ' + pattern for pattern in feedback_insights['positive_patterns'][:3]])}"
+                
+                if feedback_insights.get('negative_patterns'):
+                    feedback_section += f"\n❌ LEARNED FROM NEGATIVE FEEDBACK:\n{chr(10).join(['• ' + pattern for pattern in feedback_insights['negative_patterns'][:3]])}"
+                
+                if feedback_insights.get('learning_note'):
+                    feedback_section += f"\n🧠 LEARNING STATUS: {feedback_insights['learning_note']}"
+            else:
+                feedback_section = "\n🧠 LEARNING STATUS: No previous feedback available - focus on psychological profile analysis"
             
             # Create streamlined prompt for combined recommendation + reasoning
             prompt = f"""
-You are a witty music AI that recommends songs with clever, brief explanations. Based on this user's music profile, recommend ONE song with a short but entertaining reason why.
+You are Spotifai's sassy music AI that delivers perfect recommendations with razor-sharp reasoning. Analyze this user's musical DNA and recommend ONE song that will genuinely surprise and delight them.
 
-USER'S MUSICAL PERSONALITY:
-{psychological_profile[:800]}...
+🎵 USER'S MUSICAL PERSONALITY:
+{profile_key_insights}
+{feedback_section}
 
-CURRENT CONTEXT:
-Currently Playing: {current_context}
-Recent Tracks: {recent_tracks_simple}
-Top Genres: {top_genres_simple}
-Session Request: {session_adjustment if session_adjustment else "Good recommendations"}
+📍 CURRENT CONTEXT:
+• Now Playing: {current_context}
+• Recent 8 Tracks: {recent_tracks_contextual}
+• Top Genres: {top_genres_weighted}
+• Session Request: {session_adjustment if session_adjustment else "Surprise me with something good"}
 
-AVOIDANCE LIST (DO NOT RECOMMEND):
-{blacklist_tracks[:15]}
+🚫 BLACKLIST (NEVER RECOMMEND):
+{relevant_blacklist[:15]}
 
 {diversity_warning}
 
-INSTRUCTIONS:
-1. Recommend ONE specific song that exists on Spotify
-2. Include a 1-2 sentence witty explanation that connects to their personality
-3. Be clever, sassy, and insightful but concise
-4. Format as JSON only, no extra text
+🎯 OPTIMIZATION RULES:
+1. Recommend a REAL song that exists on Spotify (exact title/artist)
+2. Connect recommendation to their SPECIFIC musical patterns/personality
+3. Be witty but substantive - show you understand their musical psychology
+4. **INCORPORATE FEEDBACK LEARNING**: Use positive/negative patterns to guide recommendation
+5. Confidence score should reflect match quality (0.7-0.95 for good matches)
+6. Avoid generic reasoning - reference their actual listening behavior + feedback patterns
 
-Respond with ONLY this JSON structure:
+🔥 ENHANCED REASONING STYLES:
+• Psychological: "Your music rotates between control anthems and emotional chaos - this track bridges that gap perfectly"
+• Behavioral: "Based on your 3am Linkin Park sessions, you clearly need cathartic energy with melodic hooks"  
+• Musical DNA: "Your Tame Impala + metalcore combo suggests you crave textured complexity with emotional payoff"
+• Pattern Recognition: "You consistently gravitate toward artists who blend aggression with vulnerability - this is your sweet spot"
+• **Feedback Learning**: "Since you loved [previous rec] but found [other rec] too aggressive, this balances energy with accessibility"
+
+RESPOND WITH ONLY THIS JSON (no markdown, no extra text):
 {{
     "song_title": "Exact Song Title",
-    "artist_name": "Exact Artist Name", 
-    "reasoning": "Witty 1-2 sentence explanation connecting to their musical chaos/personality",
+    "artist_name": "Exact Artist Name",
+    "reasoning": "Specific 1-2 sentence explanation connecting to their musical psychology/patterns AND feedback learning",
     "confidence": 0.85
 }}
 
-Example reasoning styles:
-- "Your taste screams 'emotional rollercoaster seeking musical therapy' and this track is exactly the controlled chaos your overthinking brain craves."
-- "Given your commitment to angsty nu-metal mixed with hyperpop confusion, this is the perfect soundtrack for your next existential crisis."
-- "This song matches your energy of 'I'm fine' while aggressively streaming music that suggests otherwise."
+CRITICAL: 
+- Base reasoning on ACTUAL data patterns from their profile AND feedback learning
+- If you have feedback patterns, reference them in your reasoning
+- Show that you're learning from their past responses to improve recommendations
 """
 
             # Generate response
+            start_time = time.time()
             response = model.generate_content(prompt)
             response_text = response.text.strip() if response and response.text else ""
+            end_time = time.time()
+            response_time = end_time - start_time
             
             # Parse JSON response
             try:
@@ -403,6 +511,9 @@ Example reasoning styles:
                         reasoning=recommendation_data['reasoning'],
                         confidence=float(recommendation_data['confidence'])
                     )
+                    
+                    # Log performance metrics
+                    performance_tracker.log_recommendation_performance(True, recommendation.confidence, response_time)
                     
                     return RecommendationResult(
                         recommendation=recommendation,
@@ -440,9 +551,12 @@ Example reasoning styles:
                     confidence=0.3
                 )
                 
+                # Log performance metrics
+                performance_tracker.log_recommendation_performance(False, recommendation.confidence, response_time)
+                
                 return RecommendationResult(
                     recommendation=recommendation,
-                    success=True
+                    success=False
                 )
                 
         except Exception as e:

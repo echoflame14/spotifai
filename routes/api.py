@@ -13,6 +13,7 @@ import time
 import json
 import logging
 import google.generativeai as genai
+from utils.recommendations import get_user_feedback_insights
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +141,38 @@ def api_loading_phrases():
                 from models import UserAnalysis
                 cached_analysis = UserAnalysis.get_latest_analysis(user.id, 'psychological', max_age_hours=24)
                 
+                # ENHANCED: Also get feedback insights for loading phrase personalization
+                feedback_insights = get_user_feedback_insights(user, limit=10)
+                logger.info(f"LOADING: Retrieved feedback insights - {feedback_insights['summary']}")
+                
+                # ENHANCED: Get recent tracks for more personalized loading phrases
+                recent_tracks_context = ""
+                spotify_client = SpotifyClient(user.access_token)
+                try:
+                    recent_tracks = spotify_client.get_recently_played(limit=50)
+                    if recent_tracks and 'items' in recent_tracks and recent_tracks['items']:
+                        # Format recent tracks for prompt
+                        recent_songs = []
+                        for item in recent_tracks['items'][:50]:
+                            track = item.get('track', {})
+                            if track and track.get('name') and track.get('artists'):
+                                track_name = track['name']
+                                artist_name = track['artists'][0]['name']
+                                recent_songs.append(f'"{track_name}" by {artist_name}')
+                        
+                        if recent_songs:
+                            # ENHANCED: Limit to 10 most recent for prompt efficiency
+                            recent_tracks_context = f"""
+RECENT LISTENING HISTORY (10 MOST RECENT TRACKS):
+{chr(10).join([f'{i+1}. {song}' for i, song in enumerate(recent_songs[:10])])}"""
+                            logger.info(f"LOADING: Retrieved {len(recent_songs[:10])} recent tracks for personalization")
+                    else:
+                        recent_tracks_context = "\nRECENT TRACKS: No recent listening data available"
+                        logger.info("LOADING: No recent tracks found")
+                except Exception as e:
+                    recent_tracks_context = "\nRECENT TRACKS: Unable to retrieve recent listening data"
+                    logger.warning(f"LOADING: Failed to get recent tracks: {e}")
+                
                 if cached_analysis:
                     analysis_data = cached_analysis.get_data()
                     if isinstance(analysis_data, dict) and analysis_data.get('analysis_ready'):
@@ -156,18 +189,16 @@ def api_loading_phrases():
                 
                 if not comprehensive_analysis:
                     # Fallback to basic recent listening context
-                    spotify_client = SpotifyClient(user.access_token)
                     try:
-                        # Try to get recent listening context
-                        recent_tracks = spotify_client.get_recently_played(limit=5)
-                        if recent_tracks and 'items' in recent_tracks and recent_tracks['items']:
-                            recent_artists = []
-                            for item in recent_tracks['items'][:3]:
-                                track = item.get('track', {})
-                                if track.get('artists'):
-                                    recent_artists.append(track['artists'][0]['name'])
-                            user_context = f"Recently listened to artists like {', '.join(recent_artists[:3])}"
-                            logger.info("LOADING: Using basic listening context for loading phrases")
+                        # Try to get recent listening context (using already fetched data)
+                        if recent_tracks_context and "RECENT LISTENING HISTORY" in recent_tracks_context:
+                            # Use the recent tracks we already fetched for context
+                            user_context = f"Recently listened to music including recent tracks analysis"
+                            logger.info("LOADING: Using comprehensive recent tracks context for loading phrases")
+                        else:
+                            # If we couldn't get recent tracks, use generic context
+                            user_context = "music lover"
+                            logger.info("LOADING: Using generic context for loading phrases")
                     except:
                         # If we can't get recent tracks, use generic context
                         user_context = "music lover"
@@ -186,89 +217,81 @@ def api_loading_phrases():
         
         # Create enhanced prompt for loading phrases with psychological context
         if comprehensive_analysis:
-            prompt = f"""Generate 1 exceptionally creative and personalized funny one-liner for a music recommendation AI loading screen.
+            # ENHANCED: Create feedback learning context for loading phrases
+            feedback_context = ""
+            if feedback_insights and feedback_insights.get('has_feedback'):
+                feedback_context = f"""
+FEEDBACK LEARNING CONTEXT:
+- Total Feedback Analyzed: {feedback_insights.get('total_feedback', 0)} entries
+- Success Rate: {feedback_insights.get('positive_count', 0)}/{feedback_insights.get('total_feedback', 0)} positive responses
+- Learning Status: {feedback_insights.get('learning_note', 'Learning phase')}
+- Positive Patterns: {', '.join(feedback_insights.get('positive_patterns', [])[:2])}
+- Negative Patterns: {', '.join(feedback_insights.get('negative_patterns', [])[:2])}"""
+            else:
+                feedback_context = "\nFEEDBACK LEARNING: No feedback data yet - initial recommendation"
+            
+            prompt = f"""Generate 1 creative, personalized loading phrase for a music AI.
 
-USER PSYCHOLOGICAL CONTEXT:
-{user_context}
+USER CONTEXT: {user_context}
+{feedback_context}
+{recent_tracks_context}
 
-COMPREHENSIVE ANALYSIS INSIGHTS:
-- Musical Identity: {comprehensive_analysis.get('musical_identity', {}).get('sophistication_level', 'Music enthusiast')}
-- Discovery Style: {comprehensive_analysis.get('behavioral_insights', {}).get('discovery_preferences', 'Open to new music')}
-- Listening Psychology: {comprehensive_analysis.get('listening_psychology', {}).get('mood_regulation', 'Uses music for emotional balance')}
-- Unique Traits: {', '.join(comprehensive_analysis.get('summary_insights', {}).get('unique_traits', ['Musical explorer'])[:2])}
+INSTRUCTIONS:
+- Create ONE funny 6-12 word headline
+- Reference their recent tracks or feedback learning if available  
+- Make it feel like the AI knows them personally
+- Be witty but encouraging
+{used_phrases_text}
 
-PERSONALIZATION INSTRUCTIONS:
-- Reference their specific musical sophistication level and discovery preferences
-- Align with their listening psychology and unique traits
-- Make it feel like the AI truly understands their musical personality
-- Use their psychological profile to craft a joke that resonates
+EXAMPLES:
+- "Debugging after your brutal feedback on my last pick..."
+- "Noticed your Kanye obsession - calculating ego-friendly recommendations..."
+- "Learning from your 85% approval rate to avoid disasters..."
 
-AVOID these repetitive themes:
-- Generic "analyzing your taste" messages
-- Overused "musical DNA" references
-- Basic "crazy" or "wild" taste comments{used_phrases_text}
-
-Instead, be creative with these diverse themes (pick ONE that fits their psychology):
-- Music discovery adventure metaphors (for exploratory users)
-- AI robot/technology humor about music (for tech-savvy users)
-- Studio/recording session jokes (for sophisticated listeners)
-- Musical instrument humor (for technically-minded users)
-- Genre-mixing comedy (for diverse taste users)
-- Artist collaboration jokes (for social listeners)
-- Music production humor (for detail-oriented users)
-
-Requirements:
-- Create 1 outstanding one-sentence headline (6-12 words)
-- Make it genuinely funny with a clever punchline or twist
-- Personalize it to their specific psychological profile above
-- Make it feel like the AI has a quirky personality AND knows them personally
-- Keep it encouraging and music-focused
-- MUST be completely different from any previously used phrases listed above
-
-Return ONLY a JSON object with this exact structure:
+Return ONLY this JSON:
 {{
     "phrases": [
         {{
-            "headline": "One personalized, creative, and funny sentence"
+            "headline": "Your one creative, personalized sentence here"
         }}
     ]
 }}"""
         else:
+            # ENHANCED: Include basic feedback insights even for fallback prompt
+            basic_feedback_context = ""
+            if feedback_insights and feedback_insights.get('has_feedback'):
+                success_rate = int((feedback_insights.get('positive_count', 0) / feedback_insights.get('total_feedback', 1)) * 100)
+                basic_feedback_context = f"""
+FEEDBACK LEARNING STATUS:
+- Total Feedback: {feedback_insights.get('total_feedback', 0)} responses
+- Success Rate: {success_rate}% positive feedback
+- Learning Note: {feedback_insights.get('learning_note', 'Learning phase')}"""
+            else:
+                basic_feedback_context = "\nFEEDBACK STATUS: No previous feedback - fresh start!"
+            
             # Fallback prompt for users without comprehensive analysis
-            prompt = f"""Generate 1 exceptionally creative and varied funny one-liner for a music recommendation AI loading screen.
-The user is a {user_context if user_context else "music enthusiast"}.
+            prompt = f"""Generate 1 creative loading phrase for a music AI.
 
-AVOID these repetitive themes:
-- Anything about "crazy" or "wild" tastes
-- Generic "analyzing your taste" messages
-- Overused "musical DNA" references{used_phrases_text}
+USER: {user_context if user_context else "music enthusiast"}
+{basic_feedback_context}
+{recent_tracks_context}
 
-Instead, be creative with these diverse themes (pick ONE):
-- Music discovery adventure metaphors
-- AI robot/technology humor about music
-- Musical journey/quest references  
-- Studio/recording session jokes
-- Concert/performance analogies
-- Music streaming/technology puns
-- Musical instrument humor
-- Genre-mixing comedy
-- Artist collaboration jokes
-- Music production humor
+INSTRUCTIONS:
+- Create ONE funny 6-12 word headline
+- Reference recent tracks or feedback if available
+- Be witty and personal
+{used_phrases_text}
 
-Requirements:
-- Create 1 outstanding one-sentence headline (6-12 words)
-- Make it genuinely funny with a clever punchline or twist
-- Use fresh, original humor - avoid clichés
-- Pick a completely different theme than typical "analyzing taste" messages
-- Make it feel like the AI has a quirky personality
-- Keep it encouraging and music-focused
-- MUST be completely different from any previously used phrases listed above
+EXAMPLES:
+- "Getting better at reading your musical mind..."
+- "Remembering you actually liked that last song..."
+- "Noticed your Taylor Swift marathon this week..."
 
-Return ONLY a JSON object with this exact structure:
+Return ONLY this JSON:
 {{
     "phrases": [
         {{
-            "headline": "One fresh, creative, and funny sentence"
+            "headline": "Your creative, personalized sentence here"
         }}
     ]
 }}"""
@@ -281,10 +304,16 @@ Return ONLY a JSON object with this exact structure:
         duration = time.time() - start_time
         logger.info(f"Loading phrases generated in {duration:.2f}s")
         
+        # Log the raw response for debugging
+        logger.info(f"LOADING PHRASES: Raw response: {response.text[:200]}...")
+        
         # Parse response
         try:
             # Extract JSON from response
             response_text = response.text.strip()
+            
+            # Log the response text before parsing
+            logger.info(f"LOADING PHRASES: Response text to parse: {response_text[:100]}...")
             
             # Remove markdown code blocks if present
             if response_text.startswith('```json'):
@@ -308,6 +337,8 @@ Return ONLY a JSON object with this exact structure:
                 was_added = user.add_used_loading_phrase(generated_phrase)
                 logger.info(f"Added new loading phrase to user's list: '{generated_phrase}' (was new: {was_added})")
             
+            logger.info(f"LOADING PHRASES: Successfully generated: '{generated_phrase}'")
+            
             return jsonify({
                 'success': True,
                 'phrases': phrases_data['phrases'],
@@ -317,6 +348,7 @@ Return ONLY a JSON object with this exact structure:
             
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(f"Failed to parse loading phrases response: {str(e)}")
+            logger.error(f"Raw response was: {response.text}")
             # Return fallback phrases
             fallback_phrases = [
                 {

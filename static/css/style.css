@@ -300,19 +300,18 @@ html, body {
 
 /* Track display improvements */
 .recommended-track-item {
-    background: rgba(29, 185, 84, 0.05);
-    border: 1px solid rgba(29, 185, 84, 0.2);
+    background: var(--dark-card);
     border-radius: 12px;
     padding: 20px;
     transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .recommended-track-item:hover {
-    background: rgba(29, 185, 84, 0.08);
-    border-color: rgba(29, 185, 84, 0.3);
+    background: hsl(0 0% 18%);
+    border-color: rgba(29, 185, 84, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 /* Album cover styling */
@@ -858,19 +857,6 @@ html, body {
     animation: fadeInUp 0.6s ease-out;
 }
 
-.recommended-track-item {
-    display: flex;
-    align-items: center;
-    padding: 1rem;
-    background: var(--spotify-gray);
-    border-radius: 8px;
-    transition: background-color 0.2s ease;
-}
-
-.recommended-track-item:hover {
-    background: rgba(29, 185, 84, 0.1);
-}
-
 .recommendation-loading {
     text-align: center;
     padding: 2rem;
@@ -924,4 +910,59 @@ html, body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* AI Reasoning Display */
+.ai-reasoning {
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.08) 0%, rgba(29, 185, 84, 0.03) 100%);
+    border: 1px solid rgba(29, 185, 84, 0.15);
+    border-left: 3px solid var(--spotify-green);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-reasoning:hover {
+    background: linear-gradient(135deg, rgba(29, 185, 84, 0.12) 0%, rgba(29, 185, 84, 0.05) 100%);
+    border-color: rgba(29, 185, 84, 0.25);
+    transform: translateY(-1px);
+}
+
+.ai-reasoning::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(29, 185, 84, 0.4), transparent);
+    animation: shimmer-reasoning 3s ease-in-out infinite;
+}
+
+@keyframes shimmer-reasoning {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+.ai-reasoning .fa-robot {
+    color: var(--spotify-green);
+    text-shadow: 0 0 8px rgba(29, 185, 84, 0.3);
+}
+
+.ai-reasoning small.text-spotify {
+    color: var(--spotify-green) !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.75rem;
+}
+
+.ai-reasoning small.text-light {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-style: italic;
+    line-height: 1.5;
+    font-size: 0.85rem;
 }

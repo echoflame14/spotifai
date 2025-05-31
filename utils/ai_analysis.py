@@ -195,55 +195,71 @@ def generate_ultra_detailed_psychological_analysis(comprehensive_music_data, gem
         return None
 
 def create_psychological_analysis_prompt(cleaned_data):
-    """Create unstructured, brutally honest psychological analysis prompt"""
+    """Create optimized, brutally honest psychological analysis prompt"""
+    
+    # ENHANCED: Extract key data points for focused analysis
+    key_patterns = {
+        'top_artists': cleaned_data.get('top_artists', [])[:8],  # Reduced from unlimited
+        'top_tracks': cleaned_data.get('top_tracks', [])[:8],    # Focus on most important
+        'top_genres': cleaned_data.get('top_genres', [])[:6],    # Core genres only
+        'listening_habits': cleaned_data.get('listening_patterns', {}),
+        'mood_indicators': []
+    }
+    
+    # Extract mood patterns from track names/artists
+    mood_keywords = ['sad', 'happy', 'angry', 'chill', 'intense', 'mellow', 'aggressive', 'emotional']
+    for track in key_patterns['top_tracks']:
+        track_name = track.get('name', '').lower()
+        for mood in mood_keywords:
+            if mood in track_name:
+                key_patterns['mood_indicators'].append(f"{track['name']} ({mood})")
+                break
+    
     return f"""
-🎭 TIME FOR A BRUTALLY HONEST MUSICAL PSYCHOLOGICAL READING 🎭
+🎭 FOCUSED MUSICAL PSYCHOLOGY ANALYSIS 🎭
 
-You're a music psychologist with zero filter who's about to deliver the most authentic, unsugarcoated analysis of someone's musical soul. NO FAKE COMPLIMENTS. NO GLAZING. Just pure, unfiltered truth about what their music taste reveals about them as a person.
+You're a music psychologist delivering an authentic, no-filter analysis of someone's musical soul. Skip the pleasantries and get to the psychological truth.
 
-🔍 THE MUSICAL EVIDENCE:
-{json.dumps(cleaned_data, indent=2)}
+🔍 CORE MUSICAL DATA:
+{json.dumps(key_patterns, indent=2)}
 
-🎯 YOUR MISSION: 
-Write a completely unstructured, flowing analysis that reads like a brutally honest friend who knows way too much about psychology just went through their entire music library. 
+🎯 ANALYSIS FRAMEWORK:
+1. **Musical Identity** - What their taste says about who they are
+2. **Emotional Patterns** - How they use music for mood/regulation  
+3. **Social Positioning** - Where they fit in musical/cultural landscape
+4. **Psychological Contradictions** - Internal conflicts revealed by music choices
+5. **Growth Trajectory** - Where their taste is evolving
 
-⚠️ CRITICAL RULES:
-- NO FAKE COMPLIMENTS OR GLAZING
-- Be genuinely critical when their taste deserves it
-- Call out contradictions, pretentious choices, and basic behavior
-- Don't force positive interpretations of obviously questionable music choices
-- Be authentic - some people just have chaotic or basic taste, and that's okay to say
-- No rigid categories or forced structure - let the analysis flow naturally
-- Use their actual listening data as evidence for your psychological reads
-- Be funny but not mean - think "honest friend" not "internet troll"
+⚡ EFFICIENCY RULES:
+- Focus on the MOST telling patterns, not everything
+- Connect musical choices to specific psychological insights
+- Be brutally honest but constructive
+- Reference actual data points from their listening history
+- Keep analysis flowing and conversational, not clinical
 
-🎨 TONE EXAMPLES:
+🎨 TONE GUIDELINES:
 
-❌ GLAZING: "Your diverse musical taste shows sophisticated emotional intelligence and complex artistic appreciation"
-✅ HONEST: "You're out here pretending 100 gecs is a personality trait while secretly having Imagine Dragons in your liked songs. The duality is exhausting to witness."
+✅ INSIGHTFUL: "Your rotation between Kanye's ego anthems and melancholic indie suggests someone oscillating between wanting to feel powerful and needing emotional validation."
 
-❌ FORCED POSITIVE: "Your music choices reflect a deep understanding of sonic complexity"
-✅ REAL TALK: "Your Spotify looks like someone threw a dart at a music magazine and called it a day. There's no cohesive identity here, just vibes and chaos."
+✅ PATTERN-FOCUSED: "The fact that you consistently return to nu-metal during late-night sessions indicates music serves as your primary emotional regulation tool."
 
-❌ FAKE DEPTH: "This reveals profound emotional maturity through musical exploration"
-✅ ACTUAL INSIGHT: "You use music like emotional training wheels, never quite ready to sit with your feelings without a soundtrack to guide you through them."
+✅ PSYCHOLOGICALLY ASTUTE: "Your genre-hopping isn't indecision - it's someone who uses different sonic textures to manage different internal states."
 
-📝 RESPONSE FORMAT:
-Just write naturally. No forced JSON structure. No required sections. Let the analysis flow like a real conversation where someone who actually knows psychology is reading their musical soul. 
+❌ AVOID: Generic descriptions, fake positivity, surface-level observations
 
-Start with whatever strikes you most about their music taste, follow that thread, and see where it leads. Maybe it's about their emotional patterns, maybe it's about their social insecurities, maybe it's about how they're clearly going through something. Just be honest about what you see.
+📝 RESPONSE STYLE:
+Write naturally as if you're a perceptive friend who studied psychology and just spent time analyzing their music data. Start with the most striking pattern you notice and build from there.
 
-Make it feel like someone actually looked at their data and had real thoughts about it, not like you're checking boxes on a personality test.
+Make it feel like you actually understand their musical psychology, not like you're checking boxes on a personality test.
 
-🎪 REMEMBER:
-- Some music taste is just basic, and that's worth mentioning
-- Contradictions in their taste probably reveal actual contradictions in their personality
-- Not everyone has deep, sophisticated reasons for their music choices
-- It's okay to point out when someone is clearly trying too hard to be unique
-- Be specific about what you see in their actual listening data
-- Make them laugh while also making them think "damn, that's actually accurate"
+🎪 KEY FOCUS AREAS:
+- What they're trying to accomplish with their music choices
+- Emotional patterns and coping mechanisms
+- Identity formation through musical taste
+- Social and cultural positioning
+- Contradictions that reveal deeper psychology
 
-Write like you actually care about getting to the truth of who they are through their music, not like you're trying to make them feel good about themselves.
+Write like you care about getting to the psychological truth, using their actual listening data as evidence.
 """
 
 def parse_psychological_analysis_response(response_text, duration):

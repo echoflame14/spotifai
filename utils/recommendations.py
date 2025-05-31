@@ -8,7 +8,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from flask import session
-from models import Recommendation, UserAnalysis, db
+from models import Recommendation, UserAnalysis, UserFeedback, db
 from spotify_client import SpotifyClient
 from utils.ai_analysis import configure_gemini, log_llm_timing
 from structured_llm import structured_llm
@@ -387,10 +387,14 @@ def generate_ai_recommendation(user, gemini_api_key, session_adjustment=""):
         # Generate recommendation with reasoning in single call using structured output
         logger.info("ENHANCED: Generating AI recommendation with clever reasoning in single call...")
         
+        # ENHANCED: Get user feedback insights to inform recommendation
+        feedback_insights = get_user_feedback_insights(user, limit=15)
+        logger.info(f"ENHANCED: Retrieved feedback insights - {feedback_insights['summary']}")
+        
         try:
             recommendation_result = structured_llm.generate_recommendation_with_reasoning(
                 model, music_data, psychological_profile, session_adjustment, 
-                blacklist_tracks, diversity_warning
+                blacklist_tracks, diversity_warning, feedback_insights
             )
             
             if not recommendation_result.success:
@@ -919,4 +923,123 @@ def create_fallback_profile(music_data):
         return "User demonstrates eclectic musical tastes with a preference for discovering new artists and exploring diverse soundscapes."
     
     genre_text = ", ".join(genres)
-    return f"User shows strong affinity for {genre_text} with {recent_count} recent tracks analyzed, indicating active listening habits and preference for both familiar and exploratory music experiences." 
+    return f"User shows strong affinity for {genre_text} with {recent_count} recent tracks analyzed, indicating active listening habits and preference for both familiar and exploratory music experiences."
+
+
+def get_user_feedback_insights(user, limit=20):
+    """Get recent user feedback to inform recommendations"""
+    from models import UserFeedback, Recommendation
+    
+    # Get recent feedback entries
+    recent_feedbacks = UserFeedback.query.filter_by(user_id=user.id)\
+        .order_by(UserFeedback.created_at.desc())\
+        .limit(limit).all()
+    
+    if not recent_feedbacks:
+        return {
+            'has_feedback': False,
+            'summary': "No previous feedback available.",
+            'positive_patterns': [],
+            'negative_patterns': [],
+            'learning_note': ""
+        }
+    
+    # Analyze feedback patterns
+    positive_feedback = []
+    negative_feedback = []
+    neutral_feedback = []
+    
+    for feedback in recent_feedbacks:
+        recommendation = Recommendation.query.get(feedback.recommendation_id)
+        if recommendation:
+            feedback_data = {
+                'track': recommendation.track_name,
+                'artist': recommendation.artist_name,
+                'sentiment': feedback.sentiment,
+                'text': feedback.feedback_text,
+                'was_played': recommendation.was_played
+            }
+            
+            if feedback.sentiment == 'positive':
+                positive_feedback.append(feedback_data)
+            elif feedback.sentiment == 'negative':
+                negative_feedback.append(feedback_data)
+            else:
+                neutral_feedback.append(feedback_data)
+    
+    # Generate patterns
+    positive_patterns = []
+    negative_patterns = []
+    
+    # Analyze positive feedback patterns
+    if positive_feedback:
+        positive_artists = {}
+        for fb in positive_feedback:
+            artist = fb['artist'].lower()
+            positive_artists[artist] = positive_artists.get(artist, 0) + 1
+        
+        # Get most appreciated artists
+        top_positive_artists = sorted(positive_artists.items(), key=lambda x: x[1], reverse=True)[:3]
+        if top_positive_artists:
+            positive_patterns.append(f"User loves: {', '.join([artist for artist, count in top_positive_artists])}")
+        
+        # Analyze common positive words
+        positive_words = []
+        for fb in positive_feedback[:5]:  # Recent positive feedback
+            text_lower = fb['text'].lower()
+            if any(word in text_lower for word in ['love', 'perfect', 'exactly', 'great']):
+                positive_patterns.append(f"Positive about '{fb['track']}' by {fb['artist']}")
+    
+    # Analyze negative feedback patterns  
+    if negative_feedback:
+        negative_artists = {}
+        avoided_words = []
+        
+        for fb in negative_feedback:
+            artist = fb['artist'].lower()
+            negative_artists[artist] = negative_artists.get(artist, 0) + 1
+            
+            text_lower = fb['text'].lower()
+            if 'too' in text_lower:
+                if 'aggressive' in text_lower or 'heavy' in text_lower:
+                    avoided_words.append('heavy/aggressive music')
+                elif 'slow' in text_lower or 'boring' in text_lower:
+                    avoided_words.append('slow/boring tracks')
+                elif 'loud' in text_lower:
+                    avoided_words.append('loud music')
+        
+        # Get artists to avoid
+        artists_to_avoid = [artist for artist, count in negative_artists.items() if count >= 2]
+        if artists_to_avoid:
+            negative_patterns.append(f"Avoid artists like: {', '.join(artists_to_avoid[:3])}")
+        
+        if avoided_words:
+            negative_patterns.append(f"User dislikes: {', '.join(set(avoided_words))}")
+    
+    # Create learning note
+    total_feedback = len(recent_feedbacks)
+    positive_count = len(positive_feedback)
+    negative_count = len(negative_feedback)
+    
+    if total_feedback >= 5:
+        success_rate = positive_count / total_feedback
+        if success_rate > 0.7:
+            learning_note = f"High success rate ({success_rate:.0%}) - AI is learning user's taste well."
+        elif success_rate > 0.4:
+            learning_note = f"Moderate success rate ({success_rate:.0%}) - continue refining recommendations."
+        else:
+            learning_note = f"Learning phase ({success_rate:.0%} success) - adjust approach based on feedback patterns."
+    else:
+        learning_note = "Limited feedback available - continue gathering user preferences."
+    
+    return {
+        'has_feedback': True,
+        'total_feedback': total_feedback,
+        'positive_count': positive_count,
+        'negative_count': negative_count,
+        'summary': f"Analyzed {total_feedback} feedback entries: {positive_count} positive, {negative_count} negative",
+        'positive_patterns': positive_patterns,
+        'negative_patterns': negative_patterns,
+        'learning_note': learning_note,
+        'recent_feedback_sample': recent_feedbacks[:3]  # For detailed context if needed
+    } 
